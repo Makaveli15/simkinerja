@@ -56,6 +56,7 @@ interface StatusData {
   name: string;
   value: number;
   color: string;
+  [key: string]: string | number;
 }
 
 interface Kegiatan {
@@ -355,7 +356,7 @@ export default function PelaksanaDashboard() {
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                   }}
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : '-'}
                 />
                 <Legend />
                 <Bar dataKey="pagu" fill="#E5E7EB" name="Pagu" radius={[4, 4, 0, 0]} />
@@ -386,12 +387,20 @@ export default function PelaksanaDashboard() {
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
+                  label
                 >
                   {statusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : (
