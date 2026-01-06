@@ -1,0 +1,36 @@
+<table border='1'>
+  <tr style='background-color:#f2f2f2; font-weight:bold;'>
+    <th>No</th>
+    <th>Nama Kegiatan</th>
+    <th>KRO</th>
+    <th>Detail Kegiatan</th>
+    <th>Target Anggaran</th>
+    <th>Realisasi Anggaran</th>
+    <th>Progres (%)</th>
+    <th>Kendala</th>
+    <th>Solusi</th>
+    <th>Tindak Lanjut</th>
+   
+    <th>Batas Waktu Tindak Lanjut</th>
+    <th>PIC</th>
+    <th>Mitra</th>
+    <th>Tanggal Mulai</th>
+    <th>Tanggal Selesai</th>
+  </tr><tr>
+    <td>1</td>
+    <td>Sensus Penduduk</td>
+    <td>2886.EBD.955</td>
+    <td>ddsda</td>
+    <td>0</td>
+    <td>0</td>
+    <td>0</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    
+    <td></td>
+    <td>ZI</td>
+    <td>Abraham Derusel Tethun</td>
+    <td>13-01-2026</td>
+    <td>31-01-2026</td>
+  </tr></table>
