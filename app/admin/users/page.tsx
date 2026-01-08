@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Pagination from '../../components/Pagination';
 
 interface Tim {
   id: number;
@@ -10,6 +11,7 @@ interface Tim {
 interface User {
   id: number;
   username: string;
+  nama_lengkap: string | null;
   email: string;
   role: string;
   status: string;
@@ -32,12 +34,14 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     username: '',
+    nama_lengkap: '',
     email: '',
-    password: '',
     role: 'pelaksana',
     tim_id: '',
   });
@@ -81,7 +85,7 @@ export default function UsersPage() {
 
       if (res.ok) {
         setShowModal(false);
-        setFormData({ username: '', email: '', password: '', role: 'pelaksana', tim_id: '' });
+        setFormData({ username: '', nama_lengkap: '', email: '', role: 'pelaksana', tim_id: '' });
         fetchUsers();
       } else {
         const error = await res.json();
@@ -164,6 +168,18 @@ export default function UsersPage() {
     return matchSearch && matchRole && matchStatus;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterRole, filterStatus]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -185,7 +201,7 @@ export default function UsersPage() {
         </div>
         <button
           onClick={() => {
-            setFormData({ username: '', email: '', password: '', role: 'pelaksana', tim_id: '' });
+            setFormData({ username: '', nama_lengkap: '', email: '', role: 'pelaksana', tim_id: '' });
             setShowModal(true);
           }}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/30 font-medium"
@@ -304,7 +320,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredUsers.map((user) => (
+              {paginatedUsers.map((user) => (
                 <tr key={user.id} className={`hover:bg-gray-50/50 transition-colors ${user.status === 'nonaktif' ? 'opacity-60' : ''}`}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -312,8 +328,8 @@ export default function UsersPage() {
                         {user.username.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{user.username}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="font-medium text-gray-900">{user.nama_lengkap || user.username}</p>
+                        <p className="text-sm text-gray-500">@{user.username} • {user.email}</p>
                       </div>
                     </div>
                   </td>
@@ -373,6 +389,22 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {filteredUsers.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredUsers.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
+        )}
+        
         {filteredUsers.length === 0 && (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -414,6 +446,16 @@ export default function UsersPage() {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap</label>
+                <input
+                  type="text"
+                  value={formData.nama_lengkap}
+                  onChange={(e) => setFormData({ ...formData, nama_lengkap: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  placeholder="Masukkan nama lengkap"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                 <input
                   type="email"
@@ -423,16 +465,14 @@ export default function UsersPage() {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  required
-                  placeholder="Masukkan password"
-                />
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-blue-700">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-sm font-medium">Password default: <span className="font-bold">BPS5305</span></span>
+                </div>
+                <p className="text-xs text-blue-600 mt-1">Pengguna akan diminta mengubah password saat login pertama kali</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Pagination from '../../components/Pagination';
 
 interface Mitra {
   id: number;
@@ -32,6 +33,8 @@ export default function MitraPage() {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJK, setFilterJK] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchMitra = async () => {
     try {
@@ -133,6 +136,18 @@ export default function MitraPage() {
     const matchJK = filterJK === '' || mitra.jk === filterJK;
     return matchSearch && matchJK;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredMitra.length / itemsPerPage);
+  const paginatedMitra = filteredMitra.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterJK]);
 
   if (loading) {
     return (
@@ -249,7 +264,7 @@ export default function MitraPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredMitra.map((mitra) => (
+              {paginatedMitra.map((mitra) => (
                 <tr key={mitra.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -337,6 +352,22 @@ export default function MitraPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {filteredMitra.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredMitra.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
+        )}
+        
         {filteredMitra.length === 0 && (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

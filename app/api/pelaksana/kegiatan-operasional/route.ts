@@ -220,17 +220,44 @@ export async function POST(request: NextRequest) {
 
     const timId = userRows[0].tim_id;
 
-    const { nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, kro_id, mitra_id } = await request.json();
+    const { nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status: inputStatus, kro_id, mitra_id } = await request.json();
 
     if (!nama || !tanggal_mulai) {
       return NextResponse.json({ error: 'Nama dan tanggal mulai harus diisi' }, { status: 400 });
     }
 
+    // Validate status value
+    const validStatuses = ['belum_mulai', 'berjalan', 'selesai', 'tertunda'];
+    const finalStatus = validStatuses.includes(inputStatus) ? inputStatus : 'berjalan';
+
+    // Check if mitra is available (not assigned to another active kegiatan in overlapping dates)
+    if (mitra_id && tanggal_mulai && tanggal_selesai) {
+      const [conflictingKegiatan] = await pool.query<RowDataPacket[]>(
+        `SELECT id, nama, tanggal_mulai, tanggal_selesai 
+         FROM kegiatan_operasional 
+         WHERE mitra_id = ? 
+           AND status != 'selesai'
+           AND (
+             (tanggal_mulai <= ? AND tanggal_selesai >= ?)
+             OR (tanggal_mulai <= ? AND tanggal_selesai >= ?)
+             OR (tanggal_mulai >= ? AND tanggal_selesai <= ?)
+           )`,
+        [mitra_id, tanggal_selesai, tanggal_mulai, tanggal_mulai, tanggal_mulai, tanggal_mulai, tanggal_selesai]
+      );
+
+      if (conflictingKegiatan.length > 0) {
+        const conflict = conflictingKegiatan[0];
+        return NextResponse.json({ 
+          error: `Mitra sudah ditugaskan pada kegiatan "${conflict.nama}" (${new Date(conflict.tanggal_mulai).toLocaleDateString('id-ID')} - ${new Date(conflict.tanggal_selesai).toLocaleDateString('id-ID')})` 
+        }, { status: 400 });
+      }
+    }
+
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO kegiatan_operasional 
        (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, kro_id, mitra_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'berjalan', ?, ?)`,
-      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', anggaran_pagu || 0, kro_id || null, mitra_id || null]
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', anggaran_pagu || 0, finalStatus, kro_id || null, mitra_id || null]
     );
 
     return NextResponse.json({ message: 'Kegiatan berhasil dibuat', id: result.insertId });

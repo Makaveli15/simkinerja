@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Pagination from '../../components/Pagination';
 
 interface KRO {
   id: number;
@@ -19,6 +20,8 @@ export default function KROPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchKRO = async () => {
     try {
@@ -110,6 +113,18 @@ export default function KROPage() {
     kro.deskripsi?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pagination
+  const totalPages = Math.ceil(filteredKRO.length / itemsPerPage);
+  const paginatedKRO = filteredKRO.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -184,7 +199,7 @@ export default function KROPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredKRO.map((kro) => (
+              {paginatedKRO.map((kro) => (
                 <tr key={kro.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <span className="inline-flex px-3 py-1.5 text-sm font-mono font-semibold rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm">
@@ -229,6 +244,22 @@ export default function KROPage() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {filteredKRO.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredKRO.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
+        )}
+        
         {filteredKRO.length === 0 && (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

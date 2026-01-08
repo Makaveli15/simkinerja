@@ -46,8 +46,8 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   }).format(value);
 }
 
@@ -310,7 +310,7 @@ export async function POST(request: Request) {
                   borders: tableBorders,
                 }),
                 new TableCell({ 
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Pagu Anggaran', bold: true })] })],
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Target Anggaran', bold: true })] })],
                   borders: tableBorders,
                 }),
                 new TableCell({ 
@@ -535,7 +535,7 @@ export async function POST(request: Request) {
                     borders: tableBorders,
                   }),
                   new TableCell({ 
-                    children: [new Paragraph({ children: [new TextRun({ text: 'Total Pagu Anggaran', bold: true })] })],
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Total Target Anggaran', bold: true })] })],
                     borders: tableBorders,
                     shading: { fill: 'F0F0F0' },
                   }),

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 interface User {
   id: number;
   username: string;
+  nama_lengkap?: string;
   email: string;
   role: string;
   status: string;
@@ -26,6 +27,7 @@ export default function ProfilePage() {
 
   const [formData, setFormData] = useState({
     username: '',
+    nama_lengkap: '',
     email: '',
     foto: '',
   });
@@ -48,6 +50,7 @@ export default function ProfilePage() {
         setUser(data);
         setFormData({
           username: data.username || '',
+          nama_lengkap: data.nama_lengkap || '',
           email: data.email || '',
           foto: data.foto || '',
         });
@@ -212,8 +215,8 @@ export default function ProfilePage() {
                   <span className="text-3xl font-bold">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
                 )}
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mt-4">{user?.username}</h2>
-              <p className="text-gray-500">{user?.email}</p>
+              <h2 className="text-xl font-bold text-gray-900 mt-4">{user?.nama_lengkap || user?.username}</h2>
+              <p className="text-gray-500">@{user?.username} • {user?.email}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="px-3 py-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-medium rounded-full capitalize">
                   {user?.role}
@@ -346,6 +349,20 @@ export default function ProfilePage() {
                       onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       required
+                    />
+                  </div>
+
+                  {/* Nama Lengkap */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nama Lengkap
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.nama_lengkap}
+                      onChange={(e) => setFormData({ ...formData, nama_lengkap: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Masukkan nama lengkap Anda"
                     />
                   </div>
 

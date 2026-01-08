@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Pagination from '@/app/components/Pagination';
 
 interface KendalaItem {
   id: number;
@@ -56,6 +57,10 @@ export default function KegiatanPage() {
   const [exportPeriode, setExportPeriode] = useState('all');
   const [exportTahun, setExportTahun] = useState(new Date().getFullYear().toString());
   const [exportBulan, setExportBulan] = useState((new Date().getMonth() + 1).toString());
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Generate years list (current year and 5 years back)
   const currentYear = new Date().getFullYear();
@@ -108,8 +113,8 @@ export default function KegiatanPage() {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -131,6 +136,7 @@ export default function KegiatanPage() {
       case 'belum_mulai':
         return 'bg-gray-100 text-gray-700';
       case 'bermasalah':
+        return 'bg-yellow-100 text-yellow-700';
       case 'tertunda':
         return 'bg-red-100 text-red-700';
       default:
@@ -296,7 +302,7 @@ export default function KegiatanPage() {
           'Tanggal Mulai': formatDate(k.tanggal_mulai),
           'Tanggal Selesai': formatDate(k.tanggal_selesai),
           'Durasi (Hari)': durasiHari,
-          'Pagu Anggaran (Rp)': pagu,
+          'Target Anggaran (Rp)': pagu,
           'Realisasi Anggaran (Rp)': realisasiAnggaranNominal,
           'Realisasi Anggaran (%)': realisasiAnggaranPersen,
           'Sisa Anggaran (Rp)': sisaAnggaran,
@@ -505,13 +511,13 @@ export default function KegiatanPage() {
               <div class="value">${avgFisik}%</div>
             </div>
             <div class="summary-item">
-              <div class="label">Total Pagu</div>
+              <div class="label">Total Target</div>
               <div class="value">${formatCurrency(totalPagu)}</div>
             </div>
             <div class="summary-item green">
               <div class="label">Total Realisasi</div>
               <div class="value">${formatCurrency(totalRealisasiAnggaran)}</div>
-              <div class="subvalue">${totalPagu > 0 ? ((totalRealisasiAnggaran / totalPagu) * 100).toFixed(1) : 0}% dari pagu</div>
+              <div class="subvalue">${totalPagu > 0 ? ((totalRealisasiAnggaran / totalPagu) * 100).toFixed(1) : 0}% dari target</div>
             </div>
             <div class="summary-item">
               <div class="label">Sisa Anggaran</div>
@@ -543,7 +549,7 @@ export default function KegiatanPage() {
                 <th style="width: 130px;">Nama Kegiatan</th>
                 <th style="width: 50px;">Status</th>
                 <th style="width: 65px;">Periode</th>
-                <th style="width: 80px;" class="text-right">Pagu (Rp)</th>
+                <th style="width: 80px;" class="text-right">Target (Rp)</th>
                 <th style="width: 80px;" class="text-right">Realisasi (Rp)</th>
                 <th style="width: 35px;" class="text-center">Fisik</th>
                 <th style="width: 55px;" class="text-center">Kendala</th>
@@ -721,8 +727,20 @@ export default function KegiatanPage() {
     return matchSearch && matchStatus && matchKro;
   });
 
-  // Group kegiatan by KRO
-  const kegiatanByKro = filteredKegiatan.reduce((acc, k) => {
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterKro]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredKegiatan.length / itemsPerPage);
+  const paginatedKegiatan = filteredKegiatan.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Group kegiatan by KRO (using paginated data)
+  const kegiatanByKro = paginatedKegiatan.reduce((acc, k) => {
     const kroKey = k.kro_id ? `${k.kro_kode} - ${k.kro_nama}` : 'Tanpa KRO';
     if (!acc[kroKey]) {
       acc[kroKey] = [];
@@ -938,7 +956,7 @@ export default function KegiatanPage() {
           <p className="text-2xl font-bold text-green-600">{kegiatan.filter(k => k.status === 'selesai').length}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-          <p className="text-sm text-gray-500">Total Pagu</p>
+          <p className="text-sm text-gray-500">Total Target</p>
           <p className="text-xl font-bold text-gray-900">{formatCurrency(kegiatan.reduce((sum, k) => sum + (parseFloat(String(k.anggaran_pagu)) || 0), 0))}</p>
         </div>
       </div>
@@ -972,7 +990,7 @@ export default function KegiatanPage() {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kegiatan</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Periode</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pagu</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Target</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Progres</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kinerja</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Aksi</th>
@@ -1057,6 +1075,21 @@ export default function KegiatanPage() {
               </div>
             </div>
           ))}
+          
+          {/* Pagination */}
+          {filteredKegiatan.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredKegiatan.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(value) => {
+                setItemsPerPage(value);
+                setCurrentPage(1);
+              }}
+            />
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">

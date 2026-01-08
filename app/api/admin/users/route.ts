@@ -14,7 +14,7 @@ export async function GET() {
 
   try {
     const [rows] = await pool.execute(
-      `SELECT u.id, u.username, u.email, u.role, u.status, u.tim_id, t.nama as tim_nama, u.created_at 
+      `SELECT u.id, u.username, u.nama_lengkap, u.email, u.role, u.status, u.tim_id, t.nama as tim_nama, u.created_at 
        FROM users u 
        LEFT JOIN tim t ON u.tim_id = t.id 
        ORDER BY u.id DESC`
@@ -34,10 +34,10 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { username, email, password, role, tim_id } = body;
+    const { username, nama_lengkap, email, role, tim_id } = body;
 
-    if (!username || !email || !password || !role) {
-      return NextResponse.json({ error: 'Semua field wajib diisi' }, { status: 400 });
+    if (!username || !email || !role) {
+      return NextResponse.json({ error: 'Username, email, dan role wajib diisi' }, { status: 400 });
     }
 
     const validRoles = ['admin', 'pimpinan', 'pelaksana'];
@@ -50,14 +50,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Tim wajib dipilih untuk pelaksana' }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Use default password
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
     const [result]: any = await pool.execute(
-      'INSERT INTO users (username, email, password, role, status, tim_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [username, email, hashedPassword, role, 'aktif', role === 'pelaksana' ? tim_id : null]
+      'INSERT INTO users (username, nama_lengkap, email, password, role, status, tim_id, is_first_login) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+      [username, nama_lengkap || null, email, hashedPassword, role, 'aktif', role === 'pelaksana' ? tim_id : null]
     );
 
-    return NextResponse.json({ id: result.insertId, message: 'User berhasil dibuat' }, { status: 201 });
+    return NextResponse.json({ id: result.insertId, message: 'User berhasil dibuat dengan password default BPS5305' }, { status: 201 });
   } catch (err: any) {
     if (err.code === 'ER_DUP_ENTRY') {
       return NextResponse.json({ error: 'Username atau email sudah digunakan' }, { status: 400 });

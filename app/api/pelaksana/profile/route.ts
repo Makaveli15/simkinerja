@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { username, email, foto } = await request.json();
+    const { username, nama_lengkap, email, foto } = await request.json();
 
     // Check if username already exists
     const [existing] = await pool.query<RowDataPacket[]>(
@@ -78,8 +78,8 @@ export async function PUT(request: NextRequest) {
     }
 
     await pool.query(
-      'UPDATE users SET username = ?, email = ?, foto = ? WHERE id = ?',
-      [username, email, foto || null, auth.id]
+      'UPDATE users SET username = ?, nama_lengkap = ?, email = ?, foto = ? WHERE id = ?',
+      [username, nama_lengkap || null, email, foto || null, auth.id]
     );
 
     return NextResponse.json({ message: 'Profile updated successfully' });

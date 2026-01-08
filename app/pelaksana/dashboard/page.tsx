@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Pagination from '@/app/components/Pagination';
 import {
   BarChart,
   Bar,
@@ -31,6 +32,7 @@ interface DashboardStats {
   kegiatanSelesai: number;
   kegiatanBerjalan: number;
   kegiatanBelum: number;
+  kegiatanTertunda: number;
   kegiatanBermasalah: number;
   persentaseSelesai: number;
   totalKendala: number;
@@ -66,6 +68,7 @@ interface Kegiatan {
   tanggal_mulai: string;
   tanggal_selesai: string;
   anggaran_pagu: number;
+  kro_kode?: string;
   kro_nama?: string;
 }
 
@@ -76,6 +79,7 @@ export default function PelaksanaDashboard() {
     kegiatanSelesai: 0,
     kegiatanBerjalan: 0,
     kegiatanBelum: 0,
+    kegiatanTertunda: 0,
     kegiatanBermasalah: 0,
     persentaseSelesai: 0,
     totalKendala: 0,
@@ -89,6 +93,10 @@ export default function PelaksanaDashboard() {
   const [statusData, setStatusData] = useState<StatusData[]>([]);
   const [kegiatanTerbaru, setKegiatanTerbaru] = useState<Kegiatan[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   useEffect(() => {
     fetchDashboard();
@@ -117,7 +125,8 @@ export default function PelaksanaDashboard() {
           { name: 'Selesai', value: data.stats.kegiatanSelesai, color: '#10B981' },
           { name: 'Berjalan', value: data.stats.kegiatanBerjalan, color: '#3B82F6' },
           { name: 'Belum Mulai', value: data.stats.kegiatanBelum, color: '#9CA3AF' },
-          { name: 'Bermasalah', value: data.stats.kegiatanBermasalah, color: '#EF4444' },
+          { name: 'Tertunda', value: data.stats.kegiatanTertunda, color: '#EF4444' },
+          { name: 'Bermasalah', value: data.stats.kegiatanBermasalah, color: '#efef44ff' },
         ].filter(d => d.value > 0));
       }
     } catch (error) {
@@ -131,8 +140,8 @@ export default function PelaksanaDashboard() {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   };
 
@@ -153,8 +162,10 @@ export default function PelaksanaDashboard() {
         return 'bg-blue-100 text-blue-700';
       case 'belum_mulai':
         return 'bg-gray-100 text-gray-700';
-      case 'bermasalah':
+      case 'tertunda':
         return 'bg-red-100 text-red-700';
+      case 'bermasalah':
+        return 'bg-yellow-100 text-yellow-700';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -165,6 +176,7 @@ export default function PelaksanaDashboard() {
       case 'selesai': return 'Selesai';
       case 'berjalan': return 'Berjalan';
       case 'belum_mulai': return 'Belum Mulai';
+      case 'tertunda': return 'Tertunda';
       case 'bermasalah': return 'Bermasalah';
       default: return status;
     }
@@ -263,14 +275,14 @@ export default function PelaksanaDashboard() {
 
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg shadow-yellow-500/30">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Bermasalah</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.kegiatanBermasalah}</p>
+              <p className="text-sm text-gray-500">Tertunda</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.kegiatanTertunda}</p>
             </div>
           </div>
         </div>
@@ -359,7 +371,7 @@ export default function PelaksanaDashboard() {
                   formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : '-'}
                 />
                 <Legend />
-                <Bar dataKey="pagu" fill="#E5E7EB" name="Pagu" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="pagu" fill="#E5E7EB" name="Target" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="realisasi" fill="#3B82F6" name="Realisasi" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -423,7 +435,7 @@ export default function PelaksanaDashboard() {
           <h3 className="font-semibold text-gray-900 mb-4">Ringkasan Anggaran</h3>
           <div className="space-y-4">
             <div className="p-4 bg-gray-50 rounded-xl">
-              <p className="text-sm text-gray-500">Total Pagu</p>
+              <p className="text-sm text-gray-500">Target Anggaran</p>
               <p className="text-xl font-bold text-gray-900">{formatCurrency(stats.totalPagu)}</p>
             </div>
             <div className="p-4 bg-blue-50 rounded-xl">
@@ -492,18 +504,20 @@ export default function PelaksanaDashboard() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">KRO</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Periode</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pagu</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Target</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {kegiatanTerbaru.map((kegiatan) => (
+                {kegiatanTerbaru
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((kegiatan) => (
                   <tr key={kegiatan.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <p className="text-sm font-medium text-gray-900">{kegiatan.nama}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">{kegiatan.kro_nama || '-'}</span>
+                      <span className="text-sm text-gray-600">{kegiatan.kro_kode || '-'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(kegiatan.status)}`}>
@@ -550,6 +564,21 @@ export default function PelaksanaDashboard() {
             </div>
           )}
         </div>
+        
+        {/* Pagination */}
+        {kegiatanTerbaru.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(kegiatanTerbaru.length / itemsPerPage)}
+            totalItems={kegiatanTerbaru.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
+        )}
       </div>
     </div>
   );

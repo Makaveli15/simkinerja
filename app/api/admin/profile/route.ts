@@ -19,7 +19,7 @@ export async function GET() {
     let rows;
     try {
       [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT u.id, u.username, u.email, u.role, u.status, u.tim_id, u.foto, t.nama as tim_nama 
+        `SELECT u.id, u.username, u.nama_lengkap, u.email, u.role, u.status, u.tim_id, u.foto, t.nama as tim_nama 
          FROM users u 
          LEFT JOIN tim t ON u.tim_id = t.id 
          WHERE u.id = ?`,
@@ -28,7 +28,7 @@ export async function GET() {
     } catch {
       // If foto column doesn't exist, query without it
       [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT u.id, u.username, u.email, u.role, u.status, u.tim_id, t.nama as tim_nama 
+        `SELECT u.id, u.username, u.nama_lengkap, u.email, u.role, u.status, u.tim_id, t.nama as tim_nama 
          FROM users u 
          LEFT JOIN tim t ON u.tim_id = t.id 
          WHERE u.id = ?`,
@@ -59,19 +59,19 @@ export async function PUT(request: NextRequest) {
     
     const auth = JSON.parse(authCookie.value);
     const body = await request.json();
-    const { username, email, foto } = body;
+    const { username, nama_lengkap, email, foto } = body;
 
     // Try to update with foto column, fallback without it
     try {
       await pool.query(
-        'UPDATE users SET username = ?, email = ?, foto = ? WHERE id = ?',
-        [username, email, foto || null, auth.id]
+        'UPDATE users SET username = ?, nama_lengkap = ?, email = ?, foto = ? WHERE id = ?',
+        [username, nama_lengkap || null, email, foto || null, auth.id]
       );
     } catch {
       // If foto column doesn't exist, update without it
       await pool.query(
-        'UPDATE users SET username = ?, email = ? WHERE id = ?',
-        [username, email, auth.id]
+        'UPDATE users SET username = ?, nama_lengkap = ?, email = ? WHERE id = ?',
+        [username, nama_lengkap || null, email, auth.id]
       );
     }
 

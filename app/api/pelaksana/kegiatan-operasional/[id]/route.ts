@@ -257,6 +257,44 @@ export async function PUT(
 
     const { nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, kro_id, mitra_id } = await request.json();
 
+    // Get current kegiatan data to preserve fields that are not being updated
+    const [currentData] = await pool.query<RowDataPacket[]>(
+      'SELECT kro_id, mitra_id, tanggal_mulai, tanggal_selesai FROM kegiatan_operasional WHERE id = ?',
+      [id]
+    );
+
+    const currentKegiatan = currentData[0];
+    
+    // Use current values if new values are not provided (undefined means not sent, null means explicitly cleared)
+    const finalKroId = kro_id !== undefined ? kro_id : currentKegiatan.kro_id;
+    const finalMitraId = mitra_id !== undefined ? mitra_id : currentKegiatan.mitra_id;
+    const finalTanggalMulai = tanggal_mulai || currentKegiatan.tanggal_mulai;
+    const finalTanggalSelesai = tanggal_selesai || currentKegiatan.tanggal_selesai;
+
+    // Check if mitra is available (not assigned to another active kegiatan in overlapping dates)
+    if (finalMitraId && finalTanggalMulai && finalTanggalSelesai) {
+      const [conflictingKegiatan] = await pool.query<RowDataPacket[]>(
+        `SELECT ko.id, ko.nama, ko.tanggal_mulai, ko.tanggal_selesai 
+         FROM kegiatan_operasional ko
+         WHERE ko.mitra_id = ? 
+           AND ko.id != ?
+           AND ko.status != 'selesai'
+           AND (
+             (ko.tanggal_mulai <= ? AND ko.tanggal_selesai >= ?)
+             OR (ko.tanggal_mulai <= ? AND ko.tanggal_selesai >= ?)
+             OR (ko.tanggal_mulai >= ? AND ko.tanggal_selesai <= ?)
+           )`,
+        [finalMitraId, id, finalTanggalSelesai, finalTanggalMulai, finalTanggalMulai, finalTanggalMulai, finalTanggalMulai, finalTanggalSelesai]
+      );
+
+      if (conflictingKegiatan.length > 0) {
+        const conflict = conflictingKegiatan[0];
+        return NextResponse.json({ 
+          error: `Mitra sudah ditugaskan pada kegiatan "${conflict.nama}" (${new Date(conflict.tanggal_mulai).toLocaleDateString('id-ID')} - ${new Date(conflict.tanggal_selesai).toLocaleDateString('id-ID')})` 
+        }, { status: 400 });
+      }
+    }
+
     await pool.query<ResultSetHeader>(
       `UPDATE kegiatan_operasional SET
         nama = COALESCE(?, nama),
@@ -271,7 +309,7 @@ export async function PUT(
         mitra_id = ?,
         updated_at = NOW()
       WHERE id = ?`,
-      [nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, kro_id, mitra_id, id]
+      [nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, finalKroId, finalMitraId, id]
     );
 
     return NextResponse.json({ message: 'Kegiatan berhasil diupdate' });

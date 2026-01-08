@@ -72,6 +72,8 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   const [activeTab, setActiveTab] = useState<TabType>('progres');
   
   const [kegiatan, setKegiatan] = useState<KegiatanDetail | null>(null);
+  const [currentStatus, setCurrentStatus] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [progres, setProgres] = useState<Progres[]>([]);
   const [realisasiFisik, setRealisasiFisik] = useState<RealisasiFisik[]>([]);
   const [realisasiAnggaran, setRealisasiAnggaran] = useState<RealisasiAnggaran[]>([]);
@@ -128,6 +130,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
       
       const data = await res.json();
       setKegiatan(data.kegiatan);
+      setCurrentStatus(data.kegiatan?.status || '');
       setProgres(data.progres || []);
       setRealisasiFisik(data.realisasi_fisik || []);
       setRealisasiAnggaran(data.realisasi_anggaran || []);
@@ -137,6 +140,41 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
       setError('Terjadi kesalahan saat memuat data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (newStatus === currentStatus) return;
+    
+    setUpdatingStatus(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nama: kegiatan?.nama,
+          tanggal_mulai: kegiatan?.tanggal_mulai,
+          status: newStatus
+        })
+      });
+
+      if (res.ok) {
+        setCurrentStatus(newStatus);
+        setKegiatan(prev => prev ? { ...prev, status: newStatus } : null);
+        setSuccess('Status berhasil diperbarui');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Gagal mengupdate status');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Terjadi kesalahan saat mengupdate status');
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -349,7 +387,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
     setError('');
   };
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+  const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   const formatDate = (dateStr?: string) => !dateStr ? '-' : new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   const formatCurrencyInput = (value: string) => {
     const num = parseFloat(value.replace(/[^\d]/g, ''));
@@ -444,7 +482,52 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
           
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Update Progres Kegiatan</h1>
-            <p className="text-gray-600">{kegiatan.nama}</p>
+            <p className="text-gray-600 mb-4">{kegiatan.nama}</p>
+            
+            {/* Status Update Section */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Status Kegiatan</label>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { value: 'belum_mulai', label: 'Belum Mulai', color: 'gray', icon: '⏳' },
+                  { value: 'berjalan', label: 'Berjalan', color: 'blue', icon: '🔄' },
+                  { value: 'tertunda', label: 'Tertunda', color: 'yellow', icon: '⚠️' },
+                  { value: 'selesai', label: 'Selesai', color: 'green', icon: '✅' }
+                ].map(status => (
+                  <button
+                    key={status.value}
+                    type="button"
+                    disabled={updatingStatus}
+                    onClick={() => handleUpdateStatus(status.value)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 font-medium transition-all ${
+                      currentStatus === status.value
+                        ? status.color === 'gray'
+                          ? 'border-gray-500 bg-gray-100 text-gray-700'
+                          : status.color === 'blue' 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : status.color === 'yellow'
+                          ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
+                          : 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    } ${updatingStatus ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span>{status.icon}</span>
+                    {status.label}
+                    {currentStatus === status.value && (
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                {updatingStatus && (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-sm">Menyimpan...</span>
+                  </div>
+                )}
+              </div>
+            </div>
             
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
@@ -455,10 +538,10 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
               <div className="bg-green-50 p-4 rounded-lg">
                 <p className="text-sm text-green-600 font-medium">Realisasi Anggaran</p>
                 <p className="text-lg font-bold text-green-700">{formatCurrency(totalRealisasiAnggaran)}</p>
-                <p className="text-xs text-green-600">{persenAnggaran.toFixed(1)}% dari pagu</p>
+                <p className="text-xs text-green-600">{persenAnggaran.toFixed(1)}% dari target</p>
               </div>
               <div className="bg-purple-50 p-4 rounded-lg">
-                <p className="text-sm text-purple-600 font-medium">Pagu Anggaran</p>
+                <p className="text-sm text-purple-600 font-medium">Target Anggaran</p>
                 <p className="text-lg font-bold text-purple-700">{formatCurrency(paguAnggaran)}</p>
               </div>
               <div className="bg-orange-50 p-4 rounded-lg">
@@ -690,7 +773,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Ringkasan Serapan Anggaran</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <p className="text-sm text-gray-600">Pagu Anggaran</p>
+                      <p className="text-sm text-gray-600">Target Anggaran</p>
                       <p className="text-xl font-bold text-gray-900">{formatCurrency(paguAnggaran)}</p>
                     </div>
                     <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -719,9 +802,9 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
                       {persenAnggaran > 100 
-                        ? '⚠️ Anggaran melebihi pagu!' 
+                        ? '⚠️ Anggaran melebihi target!' 
                         : persenAnggaran > 80 
-                          ? '⚠️ Serapan mendekati batas pagu'
+                          ? '⚠️ Serapan mendekati batas target'
                           : '✓ Serapan dalam batas normal'}
                     </p>
                   </div>

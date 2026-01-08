@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Pagination from '../../components/Pagination';
 
 interface Member {
   id: number;
@@ -31,6 +32,8 @@ export default function TimPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchTim = async () => {
     try {
@@ -125,6 +128,18 @@ export default function TimPage() {
     tim.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tim.deskripsi?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Pagination
+  const totalPages = Math.ceil(filteredTim.length / itemsPerPage);
+  const paginatedTim = filteredTim.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   // Generate random gradient colors for tim cards
   const gradients = [
@@ -228,7 +243,7 @@ export default function TimPage() {
 
       {/* Tim Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTim.map((tim, index) => (
+        {paginatedTim.map((tim, index) => (
           <div key={tim.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all overflow-hidden group">
             <div className={`h-2 bg-gradient-to-r ${gradients[index % gradients.length]}`}></div>
             <div className="p-5">
@@ -311,6 +326,23 @@ export default function TimPage() {
           </div>
         ))}
       </div>
+
+      {/* Pagination */}
+      {filteredTim.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredTim.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(value) => {
+              setItemsPerPage(value);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+      )}
 
       {filteredTim.length === 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">

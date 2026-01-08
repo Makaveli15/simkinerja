@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Pagination from '../../components/Pagination';
 
 interface Laporan {
   id: number;
@@ -40,6 +41,8 @@ export default function LaporanPage() {
   // Filter state
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear());
   const [filterBulan, setFilterBulan] = useState<number | ''>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Form state for upload
   const [judul, setJudul] = useState('');
@@ -403,6 +406,7 @@ export default function LaporanPage() {
             </div>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -415,7 +419,9 @@ export default function LaporanPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {laporanList.map((laporan) => (
+                {laporanList
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((laporan) => (
                   <tr key={laporan.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{laporan.judul}</div>
@@ -470,12 +476,28 @@ export default function LaporanPage() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {laporanList.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(laporanList.length / itemsPerPage)}
+              totalItems={laporanList.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(value) => {
+                setItemsPerPage(value);
+                setCurrentPage(1);
+              }}
+            />
+          )}
+        </>
         )}
       </div>
 
       {/* Generate Report Modal */}
       {showGenerateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="flex justify-between items-center p-4 border-b">
               <h2 className="text-lg font-semibold text-gray-800">Generate Laporan Word</h2>

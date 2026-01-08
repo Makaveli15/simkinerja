@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import Pagination from '../../components/Pagination';
 
 interface Kegiatan {
   id: number;
@@ -37,6 +38,8 @@ export default function JadwalPage() {
   const [statusFilter, setStatusFilter] = useState('semua');
   const [filterBulan, setFilterBulan] = useState<string>('semua');
   const [filterTahun, setFilterTahun] = useState<number>(new Date().getFullYear());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Real-time state
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -148,7 +151,8 @@ export default function JadwalPage() {
     switch (status) {
       case 'selesai': return 'bg-green-100 text-green-800 border-green-200';
       case 'berjalan': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'tertunda': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'belum_mulai': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'tertunda': return 'bg-red-100 text-yellow-800 border-yellow-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -157,8 +161,19 @@ export default function JadwalPage() {
     switch (status) {
       case 'selesai': return 'bg-green-500';
       case 'berjalan': return 'bg-blue-500';
+      case 'belum_mulai': return 'bg-gray-400';
       case 'tertunda': return 'bg-yellow-500';
       default: return 'bg-gray-500';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'selesai': return 'Selesai';
+      case 'berjalan': return 'Berjalan';
+      case 'belum_mulai': return 'Belum Mulai';
+      case 'tertunda': return 'Tertunda';
+      default: return status;
     }
   };
 
@@ -225,6 +240,18 @@ export default function JadwalPage() {
   const sortedKegiatan = [...filteredKegiatan].sort((a, b) => 
     new Date(a.tanggal_mulai).getTime() - new Date(b.tanggal_mulai).getTime()
   );
+
+  // Pagination for table view
+  const totalPages = Math.ceil(sortedKegiatan.length / itemsPerPage);
+  const paginatedKegiatan = sortedKegiatan.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, filterBulan, filterTahun]);
 
   // Generate calendar grid
   const renderCalendar = () => {
@@ -439,6 +466,7 @@ export default function JadwalPage() {
                   className="px-3 py-2 border rounded-lg text-sm"
                 >
                   <option value="semua">Semua</option>
+                  <option value="belum_mulai">Belum Mulai</option>
                   <option value="berjalan">Berjalan</option>
                   <option value="selesai">Selesai</option>
                   <option value="tertunda">Tertunda</option>
@@ -550,7 +578,7 @@ export default function JadwalPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {sortedKegiatan.map(kg => {
+                    {paginatedKegiatan.map(kg => {
                       const daysRemaining = getDaysRemaining(kg.tanggal_selesai);
                       const startDate = new Date(kg.tanggal_mulai);
                       const endDate = new Date(kg.tanggal_selesai);
@@ -584,7 +612,7 @@ export default function JadwalPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(kg.status)}`}>
-                              {kg.status.charAt(0).toUpperCase() + kg.status.slice(1)}
+                              {getStatusLabel(kg.status)}
                             </span>
                           </td>
                         </tr>
@@ -593,6 +621,21 @@ export default function JadwalPage() {
                   </tbody>
                 </table>
               </div>
+            )}
+            
+            {/* Pagination */}
+            {sortedKegiatan.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={sortedKegiatan.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(value) => {
+                  setItemsPerPage(value);
+                  setCurrentPage(1);
+                }}
+              />
             )}
           </div>
         ) : (

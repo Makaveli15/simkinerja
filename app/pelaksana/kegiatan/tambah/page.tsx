@@ -18,6 +18,12 @@ interface Mitra {
   alamat: string;
   no_telp: string;
   sobat_id: string;
+  available?: boolean;
+  busy_info?: {
+    kegiatan: string;
+    mulai: string;
+    selesai: string;
+  } | null;
 }
 
 export default function TambahKegiatanPage() {
@@ -25,6 +31,7 @@ export default function TambahKegiatanPage() {
   const [kroList, setKroList] = useState<KRO[]>([]);
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMitra, setLoadingMitra] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   
@@ -45,6 +52,13 @@ export default function TambahKegiatanPage() {
     fetchKRO();
     fetchMitra();
   }, []);
+
+  // Fetch mitra with availability when dates change
+  useEffect(() => {
+    if (formData.tanggal_mulai && formData.tanggal_selesai) {
+      fetchMitraWithAvailability();
+    }
+  }, [formData.tanggal_mulai, formData.tanggal_selesai]);
 
   const fetchKRO = async () => {
     try {
@@ -69,6 +83,30 @@ export default function TambahKegiatanPage() {
       console.error('Error fetching Mitra:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMitraWithAvailability = async () => {
+    setLoadingMitra(true);
+    try {
+      const params = new URLSearchParams({
+        tanggal_mulai: formData.tanggal_mulai,
+        tanggal_selesai: formData.tanggal_selesai
+      });
+      const res = await fetch(`/api/pelaksana/mitra?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMitraList(data);
+        // Reset mitra selection if currently selected mitra is not available
+        const selectedMitra = data.find((m: Mitra) => m.id.toString() === formData.mitra_id);
+        if (selectedMitra && selectedMitra.available === false) {
+          setFormData(prev => ({ ...prev, mitra_id: '' }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching Mitra:', error);
+    } finally {
+      setLoadingMitra(false);
     }
   };
 
@@ -130,6 +168,7 @@ export default function TambahKegiatanPage() {
           target_output: parseFloat(formData.target_output) || null,
           satuan_output: formData.satuan_output || 'dokumen',
           anggaran_pagu: parseFloat(formData.anggaran_pagu) || 0,
+          status: formData.status,
           kro_id: parseInt(formData.kro_id),
           mitra_id: formData.mitra_id ? parseInt(formData.mitra_id) : null,
         })
@@ -324,10 +363,10 @@ export default function TambahKegiatanPage() {
             </div>
           </div>
 
-          {/* Pagu Anggaran */}
+          {/* Target Anggaran */}
           <div>
             <label htmlFor="anggaran_pagu" className="block text-sm font-medium text-gray-700 mb-2">
-              Pagu Anggaran (Rp)
+              Target Anggaran (Rp)
             </label>
             <input
               type="number"
@@ -337,12 +376,12 @@ export default function TambahKegiatanPage() {
               onChange={handleChange}
               placeholder="0"
               min="0"
-              step="1000"
+              step="0.01"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             {formData.anggaran_pagu && (
               <p className="mt-2 text-sm text-gray-500">
-                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(parseFloat(formData.anggaran_pagu) || 0)}
+                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(formData.anggaran_pagu) || 0)}
               </p>
             )}
           </div>
@@ -351,21 +390,46 @@ export default function TambahKegiatanPage() {
           <div>
             <label htmlFor="mitra_id" className="block text-sm font-medium text-gray-700 mb-2">
               Mitra Terkait (Opsional)
+              {loadingMitra && <span className="ml-2 text-blue-500 text-xs">Memuat ketersediaan...</span>}
             </label>
+            {(!formData.tanggal_mulai || !formData.tanggal_selesai) && (
+              <p className="text-xs text-amber-600 mb-2">
+                💡 Pilih tanggal mulai dan selesai terlebih dahulu untuk melihat ketersediaan mitra
+              </p>
+            )}
             <select
               id="mitra_id"
               name="mitra_id"
               value={formData.mitra_id}
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={loadingMitra}
             >
               <option value="">-- Tanpa Mitra --</option>
               {mitraList.map((mitra) => (
-                <option key={mitra.id} value={mitra.id}>
+                <option 
+                  key={mitra.id} 
+                  value={mitra.id}
+                  disabled={mitra.available === false}
+                  className={mitra.available === false ? 'text-gray-400' : ''}
+                >
                   {mitra.nama} {mitra.posisi && `- ${mitra.posisi}`} {mitra.alamat && `(${mitra.alamat})`}
+                  {mitra.available === false && ' [Tidak Tersedia]'}
                 </option>
               ))}
             </select>
+            {formData.mitra_id && (() => {
+              const selectedMitra = mitraList.find(m => m.id.toString() === formData.mitra_id);
+              if (selectedMitra?.busy_info) {
+                return (
+                  <p className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                    ⚠️ Mitra ini sedang ditugaskan pada &quot;{selectedMitra.busy_info.kegiatan}&quot; 
+                    ({new Date(selectedMitra.busy_info.mulai).toLocaleDateString('id-ID')} - {new Date(selectedMitra.busy_info.selesai).toLocaleDateString('id-ID')})
+                  </p>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           {/* Status */}

@@ -268,14 +268,25 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value);
+  const formatCurrency = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   const formatDate = (dateStr: string) => !dateStr ? '-' : new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'selesai': return 'bg-green-100 text-green-800';
       case 'berjalan': return 'bg-blue-100 text-blue-800';
-      case 'tertunda': return 'bg-yellow-100 text-yellow-800';
+      case 'tertunda': return 'bg-red-100 text-red-800';
+      case 'bermasalah': return 'bg-yellow-100 text-yellow-800';
+      case 'belum_mulai': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'selesai': return 'Selesai';
+      case 'berjalan': return 'Berjalan';
+      case 'tertunda': return 'Tertunda';
+      case 'belum_mulai': return 'Belum Mulai';
+      default: return status;
     }
   };
   const getScoreColor = (score: number) => score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600';
@@ -330,7 +341,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
               </div>
               <div className="flex items-center gap-3">
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(kegiatan.status)}`}>
-                  {kegiatan.status.charAt(0).toUpperCase() + kegiatan.status.slice(1)}
+                  {getStatusLabel(kegiatan.status)}
                 </span>
                 
                 <button onClick={() => setShowEditModal(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
@@ -352,8 +363,8 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
               <div><span className="text-gray-500">Tim:</span><span className="ml-2 font-medium">{kegiatan.tim_nama}</span></div>
               <div><span className="text-gray-500">Mulai:</span><span className="ml-2 font-medium">{formatDate(kegiatan.tanggal_mulai)}</span></div>
               <div><span className="text-gray-500">Selesai:</span><span className="ml-2 font-medium">{formatDate(kegiatan.tanggal_selesai)}</span></div>
-              <div><span className="text-gray-500">Pagu:</span><span className="ml-2 font-medium">{formatCurrency(kegiatan.anggaran_pagu)}</span></div>
-              {kegiatan.target_output && <div><span className="text-gray-500">Target:</span><span className="ml-2 font-medium">{kegiatan.target_output} {kegiatan.satuan_output}</span></div>}
+              <div><span className="text-gray-500">Target Anggaran:</span><span className="ml-2 font-medium">{formatCurrency(kegiatan.anggaran_pagu)}</span></div>
+              {kegiatan.target_output && <div><span className="text-gray-500">Target Output:</span><span className="ml-2 font-medium">{kegiatan.target_output} {kegiatan.satuan_output}</span></div>}
               {kegiatan.mitra_nama && <div><span className="text-gray-500">Mitra:</span><span className="ml-2 font-medium">{kegiatan.mitra_nama}</span></div>}
             </div>
 
@@ -441,7 +452,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     <div>
                       <p className="text-green-600 font-medium">Realisasi Anggaran</p>
                       <p className="text-xl font-bold text-green-700">{formatCurrency(Number(summary.realisasi_anggaran_nominal) || 0)}</p>
-                      <p className="text-sm text-green-600">{summary.realisasi_anggaran_persen}% dari pagu</p>
+                      <p className="text-sm text-green-600">{summary.realisasi_anggaran_persen}% dari target</p>
                     </div>
                     <div className="w-16 h-16 rounded-full border-4 border-green-500 flex items-center justify-center">
                       <span className="text-green-600 font-bold text-sm">{summary.realisasi_anggaran_persen}%</span>
@@ -776,9 +787,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   </div>
                 </div>
 
-                {/* Pagu Anggaran */}
+                {/* Target Anggaran */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Pagu Anggaran</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Target Anggaran</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
                     <input 
@@ -797,35 +808,6 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                       Terbilang: Rp {Number(editForm.anggaran_pagu).toLocaleString('id-ID')}
                     </p>
                   )}
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
-                  <div className="flex gap-3">
-                    {[
-                      { value: 'berjalan', label: 'Berjalan', color: 'blue' },
-                      { value: 'tertunda', label: 'Tertunda', color: 'yellow' },
-                      { value: 'selesai', label: 'Selesai', color: 'green' }
-                    ].map(status => (
-                      <button
-                        key={status.value}
-                        type="button"
-                        onClick={() => setEditForm({...editForm, status: status.value})}
-                        className={`flex-1 px-4 py-2.5 rounded-lg border-2 font-medium transition-all ${
-                          editForm.status === status.value
-                            ? status.color === 'blue' 
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : status.color === 'yellow'
-                              ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                              : 'border-green-500 bg-green-50 text-green-700'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                        }`}
-                      >
-                        {status.label}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* KRO */}

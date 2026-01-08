@@ -69,6 +69,7 @@ export async function GET() {
         ko.tanggal_selesai,
         ko.anggaran_pagu,
         ko.kro_id,
+        kro.kode as kro_kode,
         kro.nama as kro_nama
       FROM kegiatan_operasional ko
       LEFT JOIN kro ON ko.kro_id = kro.id
@@ -81,7 +82,8 @@ export async function GET() {
     const kegiatanSelesai = kegiatan.filter(k => k.status === 'selesai').length;
     const kegiatanBerjalan = kegiatan.filter(k => k.status === 'berjalan').length;
     const kegiatanBelum = kegiatan.filter(k => k.status === 'belum_mulai').length;
-    const kegiatanBermasalah = kegiatan.filter(k => k.status === 'bermasalah' || k.status === 'tertunda').length;
+    const kegiatanTertunda = kegiatan.filter(k => k.status === 'tertunda').length;
+    const kegiatanBermasalah = kegiatan.filter(k => k.status === 'bermasalah').length;
     const persentaseSelesai = totalKegiatan > 0 ? Math.round((kegiatanSelesai / totalKegiatan) * 100) : 0;
 
     // Calculate total pagu and realisasi
@@ -210,6 +212,7 @@ export async function GET() {
         kegiatanSelesai,
         kegiatanBerjalan,
         kegiatanBelum,
+        kegiatanTertunda,
         kegiatanBermasalah,
         persentaseSelesai,
         totalKendala: parseInt(kendalaStats[0]?.total) || 0,
@@ -218,7 +221,7 @@ export async function GET() {
         totalPagu,
         totalRealisasiAnggaran,
       },
-      kegiatanTerbaru: kegiatan.slice(0, 5),
+      kegiatanTerbaru: kegiatan,
       progresChart,
       anggaranChart,
     });

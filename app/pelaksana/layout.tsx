@@ -226,50 +226,59 @@ export default function PelaksanaLayout({
         } ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-white/10">
-          <Link href="/pelaksana/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
-              <Image src="/images/logo-bps.png" alt="BPS" width={28} height={28} className="object-contain" />
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col">
-                <span className="font-bold text-lg leading-tight">SIMKINERJA</span>
-                <span className="text-[10px] text-blue-100 leading-tight">BPS Kab. Timor Tengah Utara</span>
+        <div className="h-16 flex items-center justify-between px-4 border-b border-white/15">
+          {!isCollapsed && (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-lg overflow-hidden">
+                <Image src="/images/logo-bps.png" alt="Logo BPS" width={32} height={32} className="object-contain" />
               </div>
-            )}
-          </Link>
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <svg className={`w-5 h-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
+              <div>
+                <span className="font-bold text-lg text-white">SIMKINERJA</span>
+                <p className="text-xs text-blue-100">BPS Kab. Timor Tengah Utara</p>
+              </div>
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center mx-auto shadow-lg overflow-hidden">
+              <Image src="/images/logo-bps.png" alt="Logo BPS" width={32} height={32} className="object-contain" />
+            </div>
+          )}
         </div>
 
         {/* Menu */}
-        <nav className="p-4 space-y-1.5 overflow-y-auto h-[calc(100vh-4rem)]">
+        <nav className="p-3 space-y-1 mt-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-white text-blue-600 shadow-lg shadow-blue-900/20'
-                    : 'text-white/80 hover:bg-white/10 hover:text-white'
-                }`}
+                className={`
+                  flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
+                  ${isActive 
+                    ? 'bg-white text-blue-600 shadow-lg font-semibold' 
+                    : 'text-white/90 hover:bg-white/15 hover:text-white'
+                  }
+                  ${isCollapsed ? 'justify-center' : ''}
+                `}
+                title={isCollapsed ? item.label : undefined}
               >
-                <span className={isActive ? 'text-blue-600' : 'text-white/80 group-hover:text-white'}>
-                  {item.icon}
-                </span>
+                {item.icon}
                 {!isCollapsed && <span className="font-medium">{item.label}</span>}
               </Link>
             );
           })}
         </nav>
+
+        {/* Collapse button */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute bottom-4 right-4 w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 flex items-center justify-center transition-all hidden lg:flex"
+        >
+          <svg className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
       </aside>
 
       {/* Mobile Overlay */}
