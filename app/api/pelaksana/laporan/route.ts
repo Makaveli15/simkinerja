@@ -40,14 +40,21 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const tahun = searchParams.get('tahun') || new Date().getFullYear().toString();
+    const bulan = searchParams.get('bulan');
 
-    const [laporan] = await pool.query<RowDataPacket[]>(
-      `SELECT id, judul, periode_bulan, periode_tahun, file_path, file_name, keterangan, created_at
+    let query = `SELECT id, judul, periode_bulan, periode_tahun, file_path, file_name, keterangan, created_at
        FROM upload_laporan
-       WHERE user_id = ? AND periode_tahun = ?
-       ORDER BY periode_bulan DESC, created_at DESC`,
-      [auth.id, tahun]
-    );
+       WHERE user_id = ? AND periode_tahun = ?`;
+    const params: (number | string)[] = [auth.id, tahun];
+
+    if (bulan) {
+      query += ` AND periode_bulan = ?`;
+      params.push(bulan);
+    }
+
+    query += ` ORDER BY periode_bulan DESC, created_at DESC`;
+
+    const [laporan] = await pool.query<RowDataPacket[]>(query, params);
 
     return NextResponse.json(laporan);
   } catch (error) {

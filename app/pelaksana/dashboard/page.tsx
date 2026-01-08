@@ -537,7 +537,7 @@ export default function PelaksanaDashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
               </div>
-              <p className="text-gray-500 mb-4">Belum ada kegiatan operasional</p>
+              <p className="text-gray-500 mb-4">Belum ada kegiatan</p>
               <Link
                 href="/pelaksana/kegiatan/tambah"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"

@@ -176,7 +176,7 @@ export default function TambahKegiatanPage() {
             Kembali ke Daftar Kegiatan
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Tambah Kegiatan Baru</h1>
-          <p className="text-gray-600">Buat kegiatan operasional baru dengan memilih KRO terkait</p>
+          <p className="text-gray-600">Buat kegiatan baru dengan memilih KRO terkait</p>
         </div>
 
         {/* Form */}

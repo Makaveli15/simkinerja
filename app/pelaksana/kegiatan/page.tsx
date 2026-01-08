@@ -419,7 +419,7 @@ export default function KegiatanPage() {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Laporan Kegiatan Operasional</title>
+          <title>Laporan Kegiatan</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { font-family: Arial, sans-serif; padding: 20px; font-size: 10px; }
@@ -465,7 +465,7 @@ export default function KegiatanPage() {
         </head>
         <body>
           <div class="header">
-            <h1>LAPORAN KEGIATAN OPERASIONAL</h1>
+            <h1>LAPORAN KEGIATAN</h1>
             <h2>Sistem Informasi Manajemen Kinerja (SIMKINERJA)</h2>
             <p>${getPeriodText()}</p>
             <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
@@ -838,8 +838,8 @@ export default function KegiatanPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Kegiatan Operasional</h1>
-          <p className="text-gray-500 mt-1">Kelola kegiatan operasional tim Anda</p>
+          <h1 className="text-2xl font-bold text-gray-900">Daftar Kegiatan</h1>
+          <p className="text-gray-500 mt-1">Kelola kegiatan tim Anda</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Export Buttons */}
@@ -1066,7 +1066,7 @@ export default function KegiatanPage() {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kegiatan</h3>
-          <p className="text-gray-500 mb-6">Mulai dengan menambahkan kegiatan operasional pertama Anda</p>
+          <p className="text-gray-500 mb-6">Mulai dengan menambahkan kegiatan pertama Anda</p>
           <Link
             href="/pelaksana/kegiatan/tambah"
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"

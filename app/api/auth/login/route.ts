@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     }
 
     const [rows]: any = await pool.execute(
-      'SELECT id, username, password, role, status FROM users WHERE username = ? LIMIT 1',
+      'SELECT id, username, password, role, status, is_first_login FROM users WHERE username = ? LIMIT 1',
       [username]
     );
 
@@ -37,14 +37,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Akses ditolak: role tidak valid' }, { status: 403 });
     }
 
-    const payload = { id: user.id, username: user.username, role: user.role };
+    const isFirstLogin = user.is_first_login === 1 || user.is_first_login === true;
+    const payload = { id: user.id, username: user.username, role: user.role, isFirstLogin };
     const cookieValue = encodeURIComponent(JSON.stringify(payload));
     const maxAge = 60 * 60 * 24 * 7; // 7 days
     const cookie = `auth=${cookieValue}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
 
-    // Return JSON response with role for client-side redirect
+    // Return JSON response with role and isFirstLogin for client-side handling
     return NextResponse.json(
-      { message: 'Login berhasil', role: user.role },
+      { message: 'Login berhasil', role: user.role, isFirstLogin },
       { headers: { 'Set-Cookie': cookie } }
     );
   } catch (err: any) {

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import FirstLoginModal from '../components/FirstLoginModal';
 
 interface User {
   id: number;
@@ -33,6 +34,7 @@ export default function PelaksanaLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
 
   // Notifications state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -115,7 +117,19 @@ export default function PelaksanaLayout({
   useEffect(() => {
     fetchProfile();
     fetchNotifications();
+    
+    // Check if first login from sessionStorage
+    const isFirstLogin = sessionStorage.getItem('isFirstLogin');
+    if (isFirstLogin === 'true') {
+      setShowFirstLoginModal(true);
+    }
   }, [fetchProfile, fetchNotifications, pathname]);
+
+  // Handle first login modal success
+  const handleFirstLoginSuccess = () => {
+    sessionStorage.removeItem('isFirstLogin');
+    setShowFirstLoginModal(false);
+  };
 
   // Listen for profile update events
   useEffect(() => {
@@ -433,6 +447,12 @@ export default function PelaksanaLayout({
           {children}
         </main>
       </div>
+
+      {/* First Login Modal */}
+      <FirstLoginModal 
+        isOpen={showFirstLoginModal} 
+        onSuccess={handleFirstLoginSuccess} 
+      />
     </div>
   );
 }

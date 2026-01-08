@@ -145,7 +145,7 @@ export async function PATCH(req: Request) {
 
     if (action === 'reset_password') {
       const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-      await pool.execute('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, id]);
+      await pool.execute('UPDATE users SET password = ?, is_first_login = 1 WHERE id = ?', [hashedPassword, id]);
       
       return NextResponse.json({ message: `Password berhasil direset ke default (${DEFAULT_PASSWORD})` });
     }

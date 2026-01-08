@@ -32,6 +32,11 @@ export default function LoginPage() {
         return;
       }
 
+      // Store isFirstLogin in sessionStorage for modal display
+      if (data?.isFirstLogin) {
+        sessionStorage.setItem('isFirstLogin', 'true');
+      }
+
       // successful login - redirect based on role
       if (data?.role === 'admin') {
         router.push('/admin/dashboard');

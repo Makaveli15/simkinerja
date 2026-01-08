@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 interface Kegiatan {
@@ -23,36 +23,125 @@ const BULAN_NAMES = [
 
 const HARI_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
+// Interval refresh dalam milidetik (30 detik)
+const REFRESH_INTERVAL = 30000;
+
 export default function JadwalPage() {
   const [kegiatan, setKegiatan] = useState<Kegiatan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [statusFilter, setStatusFilter] = useState('semua');
+  const [filterBulan, setFilterBulan] = useState<string>('semua');
+  const [filterTahun, setFilterTahun] = useState<number>(new Date().getFullYear());
+  
+  // Real-time state
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [notification, setNotification] = useState<string | null>(null);
+  const prevKegiatanRef = useRef<Kegiatan[]>([]);
 
-  useEffect(() => {
-    fetchKegiatan();
-  }, []);
+  // Generate tahun options (5 tahun terakhir hingga tahun depan)
+  const tahunOptions = Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 5 + i);
 
-  const fetchKegiatan = async () => {
-    setLoading(true);
+  // Fetch kegiatan dengan silent mode untuk auto-refresh
+  const fetchKegiatan = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
+    
     try {
-      const res = await fetch('/api/pelaksana/kegiatan-operasional');
+      // Build URL dengan filter
+      const params = new URLSearchParams();
+      if (filterBulan !== 'semua') {
+        params.append('bulan', filterBulan);
+      }
+      params.append('tahun', filterTahun.toString());
+      
+      const url = `/api/pelaksana/kegiatan-operasional${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await fetch(url);
+      
       if (res.ok) {
         const data = await res.json();
+        
+        // Check for changes dan tampilkan notifikasi
+        if (silent && prevKegiatanRef.current.length > 0) {
+          const changes = detectChanges(prevKegiatanRef.current, data);
+          if (changes.length > 0) {
+            setNotification(changes[0]);
+            setTimeout(() => setNotification(null), 5000);
+          }
+        }
+        
+        prevKegiatanRef.current = data;
         setKegiatan(data);
+        setLastUpdated(new Date());
       }
     } catch (error) {
       console.error('Error:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, [filterBulan, filterTahun]);
+
+  // Deteksi perubahan data
+  const detectChanges = (oldData: Kegiatan[], newData: Kegiatan[]): string[] => {
+    const changes: string[] = [];
+    
+    // Check for new kegiatan
+    const oldIds = new Set(oldData.map(k => k.id));
+    const newKegiatan = newData.filter(k => !oldIds.has(k.id));
+    if (newKegiatan.length > 0) {
+      changes.push(`${newKegiatan.length} kegiatan baru ditambahkan`);
+    }
+    
+    // Check for status changes
+    newData.forEach(newK => {
+      const oldK = oldData.find(k => k.id === newK.id);
+      if (oldK && oldK.status !== newK.status) {
+        changes.push(`"${newK.nama}" status berubah: ${oldK.status} → ${newK.status}`);
+      }
+      if (oldK && oldK.progres_persen !== newK.progres_persen) {
+        changes.push(`"${newK.nama}" progres: ${oldK.progres_persen}% → ${newK.progres_persen}%`);
+      }
+    });
+    
+    return changes;
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchKegiatan();
+  }, [fetchKegiatan]);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      fetchKegiatan(true);
+    }, REFRESH_INTERVAL);
+    
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchKegiatan]);
+
+  // Manual refresh
+  const handleManualRefresh = () => {
+    fetchKegiatan(true);
   };
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
   const getStatusColor = (status: string) => {
@@ -195,6 +284,16 @@ export default function JadwalPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Notification Toast */}
+        {notification && (
+          <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{notification}</span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-6">
           <Link href="/pelaksana/dashboard" className="text-blue-600 hover:text-blue-800 flex items-center gap-2 mb-4">
@@ -203,17 +302,67 @@ export default function JadwalPage() {
             </svg>
             Kembali ke Dashboard
           </Link>
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Jadwal Kegiatan</h1>
-              <p className="text-gray-600">Kelola dan pantau jadwal kegiatan operasional</p>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Jadwal Kegiatan</h1>
+            <p className="text-gray-600">Pantau jadwal kegiatan</p>
+          </div>
+        </div>
+
+        {/* Real-time Status Bar */}
+        <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-100 rounded-xl p-4 mb-6">
+          <div className="flex flex-wrap justify-between items-center gap-4">
+            <div className="flex items-center gap-4">
+              {/* Auto-refresh Toggle */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      autoRefresh ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-gray-700">Auto-refresh</span>
+              </div>
+
+              {/* Refresh Button */}
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing}
+                className={`flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors ${
+                  refreshing ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <svg 
+                  className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {refreshing ? 'Memperbarui...' : 'Refresh'}
+              </button>
             </div>
-            <Link
-              href="/pelaksana/kegiatan/tambah"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              + Tambah Kegiatan
-            </Link>
+
+            {/* Last Updated */}
+            <div className="flex items-center gap-2 text-sm">
+              <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span className="text-gray-600">
+                {lastUpdated ? (
+                  <>Terakhir diperbarui: <span className="font-medium text-gray-800">{formatTime(lastUpdated)}</span></>
+                ) : (
+                  'Memuat data...'
+                )}
+              </span>
+              {autoRefresh && (
+                <span className="text-xs text-gray-500">(auto setiap 30 detik)</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -250,19 +399,51 @@ export default function JadwalPage() {
               </button>
             </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Status:</label>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border rounded-lg text-sm"
-              >
-                <option value="semua">Semua</option>
-                <option value="berjalan">Berjalan</option>
-                <option value="selesai">Selesai</option>
-                <option value="tertunda">Tertunda</option>
-              </select>
+            {/* Filters */}
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Filter Bulan */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Bulan:</label>
+                <select
+                  value={filterBulan}
+                  onChange={e => setFilterBulan(e.target.value)}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  <option value="semua">Semua Bulan</option>
+                  {BULAN_NAMES.map((nama, index) => (
+                    <option key={index} value={index + 1}>{nama}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Filter Tahun */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Tahun:</label>
+                <select
+                  value={filterTahun}
+                  onChange={e => setFilterTahun(Number(e.target.value))}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  {tahunOptions.map(tahun => (
+                    <option key={tahun} value={tahun}>{tahun}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Status:</label>
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border rounded-lg text-sm"
+                >
+                  <option value="semua">Semua</option>
+                  <option value="berjalan">Berjalan</option>
+                  <option value="selesai">Selesai</option>
+                  <option value="tertunda">Tertunda</option>
+                </select>
+              </div>
             </div>
 
             {/* Calendar Navigation (only for calendar view) */}
@@ -298,19 +479,53 @@ export default function JadwalPage() {
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex gap-4 mb-4 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-blue-500 rounded"></div>
-            <span>Berjalan</span>
+        {/* Statistics Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Kegiatan</p>
+                <p className="text-xl font-bold text-gray-900">{kegiatan.length}</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-500 rounded"></div>
-            <span>Selesai</span>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Berjalan</p>
+                <p className="text-xl font-bold text-blue-600">{kegiatan.filter(k => k.status === 'berjalan').length}</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-            <span>Tertunda</span>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Selesai</p>
+                <p className="text-xl font-bold text-green-600">{kegiatan.filter(k => k.status === 'selesai').length}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Tertunda</p>
+                <p className="text-xl font-bold text-yellow-600">{kegiatan.filter(k => k.status === 'tertunda').length}</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -331,9 +546,7 @@ export default function JadwalPage() {
                       <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal Selesai</th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Durasi</th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Sisa Hari</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Progres</th>
                       <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Status</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -369,30 +582,10 @@ export default function JadwalPage() {
                               <span className="text-gray-600 text-sm">{daysRemaining} hari</span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
-                                style={{ width: `${kg.progres_persen}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-xs text-gray-500">{kg.progres_persen}%</span>
-                          </td>
                           <td className="px-4 py-3 text-center">
                             <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(kg.status)}`}>
                               {kg.status.charAt(0).toUpperCase() + kg.status.slice(1)}
                             </span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <Link
-                              href={`/pelaksana/kegiatan/${kg.id}`}
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              <svg className="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </Link>
                           </td>
                         </tr>
                       );

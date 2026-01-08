@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "docx": "^9.5.1",
+    "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.0.0",
     "mysql2": "^3.16.0",
@@ -21,6 +23,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

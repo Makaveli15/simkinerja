@@ -36,7 +36,7 @@ function calculateKinerjaScore(
 }
 
 // GET - List kegiatan operasional tim
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
     const authCookie = cookieStore.get('auth');
@@ -51,6 +51,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Get filter parameters
+    const { searchParams } = new URL(request.url);
+    const filterBulan = searchParams.get('bulan');
+    const filterTahun = searchParams.get('tahun');
+
     // Get user's tim_id
     const [userRows] = await pool.query<RowDataPacket[]>(
       'SELECT tim_id FROM users WHERE id = ?',
@@ -63,9 +68,8 @@ export async function GET() {
 
     const timId = userRows[0].tim_id;
 
-    // Get kegiatan with calculated scores
-    const [kegiatan] = await pool.query<RowDataPacket[]>(
-      `SELECT 
+    // Build query with optional filters
+    let query = `SELECT 
         ko.id,
         ko.nama,
         ko.deskripsi,
@@ -90,10 +94,32 @@ export async function GET() {
       JOIN users u ON ko.created_by = u.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       LEFT JOIN mitra m ON ko.mitra_id = m.id
-      WHERE ko.tim_id = ?
-      ORDER BY ko.created_at DESC`,
-      [timId]
-    );
+      WHERE ko.tim_id = ?`;
+    
+    const params: (string | number)[] = [timId];
+
+    // Add date filters
+    if (filterTahun) {
+      if (filterBulan && filterBulan !== 'semua') {
+        // Filter by specific month and year
+        query += ` AND (
+          (YEAR(ko.tanggal_mulai) = ? AND MONTH(ko.tanggal_mulai) = ?)
+          OR (YEAR(ko.tanggal_selesai) = ? AND MONTH(ko.tanggal_selesai) = ?)
+          OR (ko.tanggal_mulai <= LAST_DAY(CONCAT(?, '-', LPAD(?, 2, '0'), '-01')) 
+              AND ko.tanggal_selesai >= CONCAT(?, '-', LPAD(?, 2, '0'), '-01'))
+        )`;
+        params.push(filterTahun, filterBulan, filterTahun, filterBulan, filterTahun, filterBulan, filterTahun, filterBulan);
+      } else {
+        // Filter by year only
+        query += ` AND (YEAR(ko.tanggal_mulai) = ? OR YEAR(ko.tanggal_selesai) = ?)`;
+        params.push(filterTahun, filterTahun);
+      }
+    }
+
+    query += ` ORDER BY ko.created_at DESC`;
+
+    // Get kegiatan with calculated scores
+    const [kegiatan] = await pool.query<RowDataPacket[]>(query, params);
 
     // Calculate scores for each kegiatan
     const kegiatanWithScores = await Promise.all(kegiatan.map(async (k) => {

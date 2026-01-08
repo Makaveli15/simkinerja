@@ -13,6 +13,12 @@ interface Laporan {
   created_at: string;
 }
 
+interface KRO {
+  id: number;
+  kode: string;
+  nama: string;
+}
+
 const BULAN_NAMES = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -20,18 +26,22 @@ const BULAN_NAMES = [
 
 export default function LaporanPage() {
   const [laporanList, setLaporanList] = useState<Laporan[]>([]);
+  const [kroList, setKroList] = useState<KRO[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
   // Filter state
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear());
+  const [filterBulan, setFilterBulan] = useState<number | ''>('');
   
-  // Form state
+  // Form state for upload
   const [judul, setJudul] = useState('');
   const [periodeBulan, setPeriodeBulan] = useState(new Date().getMonth() + 1);
   const [periodeTahun, setPeriodeTahun] = useState(new Date().getFullYear());
@@ -39,17 +49,28 @@ export default function LaporanPage() {
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Generate form state
+  const [genBulan, setGenBulan] = useState<number | ''>('');
+  const [genTahun, setGenTahun] = useState(new Date().getFullYear());
+  const [genKroId, setGenKroId] = useState<number | ''>('');
+  const [genStatus, setGenStatus] = useState<string>('');
+
   // Generate years for dropdown
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   useEffect(() => {
     fetchLaporan();
-  }, [filterTahun]);
+    fetchKRO();
+  }, [filterTahun, filterBulan]);
 
   const fetchLaporan = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/pelaksana/laporan?tahun=${filterTahun}`);
+      let url = `/api/pelaksana/laporan?tahun=${filterTahun}`;
+      if (filterBulan) {
+        url += `&bulan=${filterBulan}`;
+      }
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setLaporanList(data);
@@ -61,10 +82,21 @@ export default function LaporanPage() {
     }
   };
 
+  const fetchKRO = async () => {
+    try {
+      const response = await fetch('/api/pelaksana/kro');
+      if (response.ok) {
+        const data = await response.json();
+        setKroList(data);
+      }
+    } catch (error) {
+      console.error('Error fetching KRO:', error);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Validate file type (PDF, DOC, DOCX, XLS, XLSX)
       const allowedTypes = [
         'application/pdf',
         'application/msword',
@@ -78,7 +110,6 @@ export default function LaporanPage() {
         return;
       }
       
-      // Validate file size (max 10MB)
       if (selectedFile.size > 10 * 1024 * 1024) {
         setError('Ukuran file maksimal 10MB');
         return;
@@ -135,6 +166,66 @@ export default function LaporanPage() {
     }
   };
 
+  const handleGenerateReport = async () => {
+    try {
+      setGenerating(true);
+      setError('');
+
+      const response = await fetch('/api/pelaksana/laporan/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bulan: genBulan || null,
+          tahun: genTahun,
+          kro_id: genKroId || null,
+          status: genStatus || null,
+        }),
+      });
+
+      if (response.ok) {
+        // Get the blob from response
+        const blob = await response.blob();
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Get filename from Content-Disposition header or generate one
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let fileName = 'Laporan_Kegiatan.docx';
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="(.+)"/);
+          if (match) {
+            fileName = match[1];
+          }
+        }
+        
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        setSuccess('Laporan berhasil di-generate dan didownload');
+        setShowGenerateModal(false);
+        resetGenerateForm();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const data = await response.json();
+        console.log('Generate error response:', data);
+        setError(data.details || data.error || 'Gagal generate laporan');
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      setError('Terjadi kesalahan saat generate laporan');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!selectedLaporan) return;
     
@@ -167,6 +258,13 @@ export default function LaporanPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const resetGenerateForm = () => {
+    setGenBulan('');
+    setGenTahun(new Date().getFullYear());
+    setGenKroId('');
+    setGenStatus('');
   };
 
   const openDeleteModal = (laporan: Laporan) => {
@@ -205,18 +303,29 @@ export default function LaporanPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Upload Laporan</h1>
-          <p className="text-gray-600">Kelola dan upload laporan kinerja Anda</p>
+          <h1 className="text-2xl font-bold text-gray-800">Laporan</h1>
+          <p className="text-gray-600">Kelola, upload, dan generate laporan kegiatan</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-          </svg>
-          Upload Laporan
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowGenerateModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clipRule="evenodd" />
+            </svg>
+            Generate Laporan
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+            Upload Laporan
+          </button>
+        </div>
       </div>
 
       {/* Success/Error Messages */}
@@ -225,7 +334,7 @@ export default function LaporanPage() {
           {success}
         </div>
       )}
-      {error && !showModal && (
+      {error && !showModal && !showGenerateModal && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
@@ -233,17 +342,32 @@ export default function LaporanPage() {
 
       {/* Filter */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">Filter Tahun:</label>
-          <select
-            value={filterTahun}
-            onChange={(e) => setFilterTahun(Number(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {years.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Bulan:</label>
+            <select
+              value={filterBulan}
+              onChange={(e) => setFilterBulan(e.target.value ? Number(e.target.value) : '')}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Semua Bulan</option>
+              {BULAN_NAMES.map((bulan, index) => (
+                <option key={index} value={index + 1}>{bulan}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Tahun:</label>
+            <select
+              value={filterTahun}
+              onChange={(e) => setFilterTahun(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {years.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -259,13 +383,24 @@ export default function LaporanPage() {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-gray-600">Belum ada laporan untuk tahun {filterTahun}</p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-4 text-blue-600 hover:text-blue-800"
-            >
-              Upload laporan pertama Anda
-            </button>
+            <p className="text-gray-600">
+              Belum ada laporan untuk {filterBulan ? `${BULAN_NAMES[filterBulan - 1]} ` : ''}{filterTahun}
+            </p>
+            <div className="mt-4 flex justify-center gap-4">
+              <button
+                onClick={() => setShowGenerateModal(true)}
+                className="text-green-600 hover:text-green-800"
+              >
+                Generate laporan otomatis
+              </button>
+              <span className="text-gray-400">atau</span>
+              <button
+                onClick={() => setShowModal(true)}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                Upload laporan manual
+              </button>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -337,6 +472,126 @@ export default function LaporanPage() {
           </div>
         )}
       </div>
+
+      {/* Generate Report Modal */}
+      {showGenerateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-800">Generate Laporan Word</h2>
+              <button
+                onClick={() => { setShowGenerateModal(false); resetGenerateForm(); setError(''); }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-4">
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>📝 Generate Laporan Otomatis</strong><br/>
+                  Sistem akan mengambil semua data kegiatan dan generate laporan dalam format Word (.docx) berdasarkan filter yang dipilih.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
+                  <select
+                    value={genBulan}
+                    onChange={(e) => setGenBulan(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Semua Bulan</option>
+                    {BULAN_NAMES.map((bulan, index) => (
+                      <option key={index} value={index + 1}>{bulan}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tahun <span className="text-red-500">*</span></label>
+                  <select
+                    value={genTahun}
+                    onChange={(e) => setGenTahun(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    {years.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">KRO</label>
+                <select
+                  value={genKroId}
+                  onChange={(e) => setGenKroId(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Semua KRO</option>
+                  {kroList.map((kro) => (
+                    <option key={kro.id} value={kro.id}>{kro.kode} - {kro.nama}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status Kegiatan</label>
+                <select
+                  value={genStatus}
+                  onChange={(e) => setGenStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Semua Status</option>
+                  <option value="belum_mulai">Belum Mulai</option>
+                  <option value="berjalan">Berjalan</option>
+                  <option value="selesai">Selesai</option>
+                  <option value="tertunda">Tertunda</option>
+                </select>
+              </div>
+              
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowGenerateModal(false); resetGenerateForm(); setError(''); }}
+                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleGenerateReport}
+                  disabled={generating}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 flex items-center gap-2"
+                >
+                  {generating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                      Generate & Download
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {showModal && (
