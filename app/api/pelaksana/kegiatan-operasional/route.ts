@@ -2,38 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-
-// Helper function to calculate kinerja score
-function calculateKinerjaScore(
-  capaianOutput: number,
-  ketepataWaktu: number,
-  serapanAnggaran: number,
-  kualitasOutput: number,
-  penyelesaianKendala: number
-) {
-  // Bobot indikator
-  const bobot = {
-    capaianOutput: 0.30,
-    ketepatanWaktu: 0.20,
-    serapanAnggaran: 0.20,
-    kualitasOutput: 0.20,
-    penyelesaianKendala: 0.10,
-  };
-
-  const skor = 
-    (capaianOutput * bobot.capaianOutput) +
-    (ketepataWaktu * bobot.ketepatanWaktu) +
-    (serapanAnggaran * bobot.serapanAnggaran) +
-    (kualitasOutput * bobot.kualitasOutput) +
-    (penyelesaianKendala * bobot.penyelesaianKendala);
-
-  let status = 'Belum dinilai';
-  if (skor >= 80) status = 'Sukses';
-  else if (skor >= 60) status = 'Perlu Perhatian';
-  else if (skor > 0) status = 'Bermasalah';
-
-  return { skor: Math.round(skor), status };
-}
+import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // GET - List kegiatan operasional tim
 export async function GET(request: NextRequest) {
@@ -68,17 +37,20 @@ export async function GET(request: NextRequest) {
 
     const timId = userRows[0].tim_id;
 
-    // Build query with optional filters
+    // Build query with optional filters - include new monitoring fields
     let query = `SELECT 
         ko.id,
         ko.nama,
         ko.deskripsi,
         ko.tanggal_mulai,
         ko.tanggal_selesai,
+        ko.tanggal_realisasi_selesai,
         ko.target_output,
+        ko.output_realisasi,
         ko.satuan_output,
         ko.anggaran_pagu,
         ko.status,
+        ko.status_verifikasi,
         ko.created_at,
         ko.kro_id,
         ko.mitra_id,
@@ -121,17 +93,8 @@ export async function GET(request: NextRequest) {
     // Get kegiatan with calculated scores
     const [kegiatan] = await pool.query<RowDataPacket[]>(query, params);
 
-    // Calculate scores for each kegiatan
+    // Calculate scores for each kegiatan using rule-based calculator
     const kegiatanWithScores = await Promise.all(kegiatan.map(async (k) => {
-      // Get latest progres
-      const [progres] = await pool.query<RowDataPacket[]>(
-        `SELECT capaian_output, ketepatan_waktu, kualitas_output 
-         FROM progres_kegiatan 
-         WHERE kegiatan_operasional_id = ? 
-         ORDER BY tanggal_update DESC LIMIT 1`,
-        [k.id]
-      );
-
       // Get kendala stats
       const [kendalaStats] = await pool.query<RowDataPacket[]>(
         `SELECT 
@@ -157,31 +120,39 @@ export async function GET(request: NextRequest) {
         console.log('Could not fetch kendala list:', e);
       }
 
-      const latestProgres = progres[0] || { capaian_output: 0, ketepatan_waktu: 0, kualitas_output: 0 };
+      // Prepare data for rule-based kinerja calculator
+      const kinerjaData: KegiatanData = {
+        target_output: parseFloat(k.target_output) || 0,
+        tanggal_mulai: k.tanggal_mulai,
+        tanggal_selesai: k.tanggal_selesai,
+        anggaran_pagu: parseFloat(k.anggaran_pagu) || 0,
+        output_realisasi: parseFloat(k.output_realisasi) || 0,
+        tanggal_realisasi_selesai: k.tanggal_realisasi_selesai,
+        status_verifikasi: k.status_verifikasi || 'belum_verifikasi',
+        total_realisasi_anggaran: parseFloat(k.total_anggaran_realisasi) || 0,
+        total_kendala: parseInt(kendalaStats[0]?.total) || 0,
+        kendala_resolved: parseInt(kendalaStats[0]?.resolved) || 0,
+      };
+
+      // Calculate kinerja using the service (automatic calculation)
+      const kinerjaResult = hitungKinerjaKegiatan(kinerjaData);
+
       const realisasiAnggaran = k.anggaran_pagu > 0 
         ? (k.total_anggaran_realisasi / k.anggaran_pagu) * 100 
         : 0;
-      const penyelesaianKendala = kendalaStats[0]?.total > 0 
-        ? (kendalaStats[0].resolved / kendalaStats[0].total) * 100 
-        : 100;
-
-      const { skor, status: statusKinerja } = calculateKinerjaScore(
-        latestProgres.capaian_output,
-        latestProgres.ketepatan_waktu,
-        Math.min(realisasiAnggaran, 100),
-        latestProgres.kualitas_output,
-        penyelesaianKendala
-      );
 
       return {
         ...k,
         realisasi_anggaran: Math.min(realisasiAnggaran, 100).toFixed(1),
-        skor_kinerja: skor,
-        status_kinerja: statusKinerja,
+        skor_kinerja: kinerjaResult.skor_kinerja,
+        status_kinerja: kinerjaResult.status_kinerja,
         kendala_total: kendalaStats[0]?.total || 0,
         kendala_resolved: kendalaStats[0]?.resolved || 0,
         kendala_open: (kendalaStats[0]?.total || 0) - (kendalaStats[0]?.resolved || 0),
         kendala_list: kendalaList,
+        // Include indikator breakdown
+        indikator: kinerjaResult.indikator,
+        deviasi: kinerjaResult.deviasi,
       };
     }));
 

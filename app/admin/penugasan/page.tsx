@@ -152,7 +152,7 @@ export default function PenugasanPage() {
       case 'tinggi':
         return 'bg-red-100 text-red-700';
       case 'sedang':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-amber-100 text-amber-700';
       default:
         return 'bg-green-100 text-green-700';
     }

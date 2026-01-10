@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // GET - Get kegiatan detail
 export async function GET(
@@ -150,61 +151,112 @@ export async function GET(
       }
     }));
 
-    // Calculate scores
-    const latestProgres = progres[0] || { capaian_output: 0, ketepatan_waktu: 0, kualitas_output: 0 };
-    const latestRealisasiFisik = realisasiFisik[0]?.persentase || 0;
+    // Prepare data for automatic kinerja calculation
+    const kegiatanDetail = kegiatan[0];
     const totalAnggaran = realisasiAnggaran.reduce((sum, r) => sum + parseFloat(r.jumlah), 0);
-    const paguAnggaran = kegiatan[0].anggaran_pagu || 0;
-    const realisasiAnggaranPersen = paguAnggaran > 0 ? (totalAnggaran / paguAnggaran) * 100 : 0;
-    
     const totalKendala = kendala.length;
     const resolvedKendala = kendala.filter(k => k.status === 'resolved').length;
-    const penyelesaianKendala = totalKendala > 0 ? (resolvedKendala / totalKendala) * 100 : 100;
+    
+    // Parse target_output as number (could be string in DB)
+    const targetOutputNum = parseFloat(kegiatanDetail.target_output) || 0;
+    const outputRealisasiNum = parseFloat(kegiatanDetail.output_realisasi) || 0;
 
-    // Calculate weighted score
-    const bobot = {
-      capaianOutput: 0.30,
-      ketepatanWaktu: 0.20,
-      serapanAnggaran: 0.20,
-      kualitasOutput: 0.20,
-      penyelesaianKendala: 0.10,
+    // Prepare data for kinerja calculator (rule-based evaluation)
+    const kinerjaData: KegiatanData = {
+      target_output: targetOutputNum,
+      tanggal_mulai: kegiatanDetail.tanggal_mulai,
+      tanggal_selesai: kegiatanDetail.tanggal_selesai,
+      anggaran_pagu: parseFloat(kegiatanDetail.anggaran_pagu) || 0,
+      output_realisasi: outputRealisasiNum,
+      tanggal_realisasi_selesai: kegiatanDetail.tanggal_realisasi_selesai,
+      status_verifikasi: kegiatanDetail.status_verifikasi || 'belum_verifikasi',
+      total_realisasi_anggaran: totalAnggaran,
+      total_kendala: totalKendala,
+      kendala_resolved: resolvedKendala,
     };
 
-    const skor = 
-      (latestProgres.capaian_output * bobot.capaianOutput) +
-      (latestProgres.ketepatan_waktu * bobot.ketepatanWaktu) +
-      (Math.min(realisasiAnggaranPersen, 100) * bobot.serapanAnggaran) +
-      (latestProgres.kualitas_output * bobot.kualitasOutput) +
-      (penyelesaianKendala * bobot.penyelesaianKendala);
+    // Calculate kinerja using rule-based service (automatic calculation)
+    const kinerjaResult = hitungKinerjaKegiatan(kinerjaData);
 
-    let statusKinerja = 'Belum dinilai';
-    if (skor >= 80) statusKinerja = 'Sukses';
-    else if (skor >= 60) statusKinerja = 'Perlu Perhatian';
-    else if (skor > 0) statusKinerja = 'Bermasalah';
+    // Calculate realisasi fisik persen from output
+    const latestRealisasiFisik = realisasiFisik[0]?.persentase || 0;
+    const realisasiOutputPersen = targetOutputNum > 0 
+      ? (outputRealisasiNum / targetOutputNum) * 100 
+      : 0;
+    
+    // Use the higher value between realisasi_fisik table and calculated from output
+    const finalRealisasiFisikPersen = Math.max(latestRealisasiFisik, realisasiOutputPersen);
+    
+    const paguAnggaran = parseFloat(kegiatanDetail.anggaran_pagu) || 0;
+    const realisasiAnggaranPersen = paguAnggaran > 0 ? (totalAnggaran / paguAnggaran) * 100 : 0;
+
+    // Helper function to format date to YYYY-MM-DD without timezone issues
+    const formatDateForResponse = (date: Date | string | null): string | null => {
+      if (!date) return null;
+      if (date instanceof Date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      // If it's a string, check if it needs conversion
+      if (typeof date === 'string') {
+        if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          return date; // Already in correct format
+        }
+        // Parse and reformat
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+      return null;
+    };
+
+    // Format kegiatan dates properly to avoid timezone issues
+    const kegiatanFormatted = {
+      ...kegiatan[0],
+      tanggal_mulai: formatDateForResponse(kegiatan[0].tanggal_mulai),
+      tanggal_selesai: formatDateForResponse(kegiatan[0].tanggal_selesai),
+      tanggal_realisasi_selesai: formatDateForResponse(kegiatan[0].tanggal_realisasi_selesai),
+    };
 
     return NextResponse.json({
-      kegiatan: kegiatan[0],
+      kegiatan: kegiatanFormatted,
       progres,
       realisasi_fisik: realisasiFisik,
       realisasi_anggaran: realisasiAnggaran,
       kendala: kendalaWithTindakLanjut,
       summary: {
-        realisasi_fisik_persen: latestRealisasiFisik,
+        // Data realisasi
+        realisasi_fisik_persen: Math.min(finalRealisasiFisikPersen, 100),
         realisasi_anggaran_nominal: totalAnggaran,
         realisasi_anggaran_persen: Math.min(realisasiAnggaranPersen, 100).toFixed(1),
+        output_realisasi: outputRealisasiNum,
+        target_output: targetOutputNum,
+        
+        // Kendala summary
         total_kendala: totalKendala,
         kendala_resolved: resolvedKendala,
         kendala_pending: totalKendala - resolvedKendala,
-        penyelesaian_kendala_persen: penyelesaianKendala.toFixed(1),
-        skor_kinerja: Math.round(skor),
-        status_kinerja: statusKinerja,
+        penyelesaian_kendala_persen: kinerjaResult.indikator.penyelesaian_kendala.toFixed(1),
+        
+        // Kinerja result (auto-calculated by service)
+        skor_kinerja: kinerjaResult.skor_kinerja,
+        status_kinerja: kinerjaResult.status_kinerja,
+        
+        // Indikator detail (auto-calculated)
         indikator: {
-          capaian_output: latestProgres.capaian_output,
-          ketepatan_waktu: latestProgres.ketepatan_waktu,
-          serapan_anggaran: Math.min(realisasiAnggaranPersen, 100),
-          kualitas_output: latestProgres.kualitas_output,
-          penyelesaian_kendala: penyelesaianKendala,
-        }
+          capaian_output: kinerjaResult.indikator.capaian_output,
+          ketepatan_waktu: kinerjaResult.indikator.ketepatan_waktu,
+          serapan_anggaran: kinerjaResult.indikator.serapan_anggaran,
+          kualitas_output: kinerjaResult.indikator.kualitas_output,
+          penyelesaian_kendala: kinerjaResult.indikator.penyelesaian_kendala,
+        },
+        
+        // Deviasi (auto-calculated)
+        deviasi: kinerjaResult.deviasi,
       }
     });
   } catch (error) {
@@ -255,11 +307,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 });
     }
 
-    const { nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, kro_id, mitra_id } = await request.json();
+    const { 
+      nama, deskripsi, tanggal_mulai, tanggal_selesai, 
+      target_output, satuan_output, anggaran_pagu, status, 
+      kro_id, mitra_id,
+      // New fields for raw data monitoring
+      output_realisasi, tanggal_realisasi_selesai, status_verifikasi
+    } = await request.json();
 
     // Get current kegiatan data to preserve fields that are not being updated
     const [currentData] = await pool.query<RowDataPacket[]>(
-      'SELECT kro_id, mitra_id, tanggal_mulai, tanggal_selesai FROM kegiatan_operasional WHERE id = ?',
+      `SELECT nama, deskripsi, kro_id, mitra_id, tanggal_mulai, tanggal_selesai, 
+              target_output, satuan_output, anggaran_pagu, status,
+              output_realisasi, tanggal_realisasi_selesai, status_verifikasi 
+       FROM kegiatan_operasional WHERE id = ?`,
       [id]
     );
 
@@ -268,8 +329,11 @@ export async function PUT(
     // Use current values if new values are not provided (undefined means not sent, null means explicitly cleared)
     const finalKroId = kro_id !== undefined ? kro_id : currentKegiatan.kro_id;
     const finalMitraId = mitra_id !== undefined ? mitra_id : currentKegiatan.mitra_id;
-    const finalTanggalMulai = tanggal_mulai || currentKegiatan.tanggal_mulai;
-    const finalTanggalSelesai = tanggal_selesai || currentKegiatan.tanggal_selesai;
+    const finalTanggalMulai = tanggal_mulai && tanggal_mulai !== '' ? tanggal_mulai : currentKegiatan.tanggal_mulai;
+    const finalTanggalSelesai = tanggal_selesai !== undefined ? tanggal_selesai : currentKegiatan.tanggal_selesai;
+    const finalOutputRealisasi = output_realisasi !== undefined ? output_realisasi : currentKegiatan.output_realisasi;
+    const finalTanggalRealisasiSelesai = tanggal_realisasi_selesai !== undefined ? tanggal_realisasi_selesai : currentKegiatan.tanggal_realisasi_selesai;
+    const finalStatusVerifikasi = status_verifikasi !== undefined ? status_verifikasi : currentKegiatan.status_verifikasi;
 
     // Check if mitra is available (not assigned to another active kegiatan in overlapping dates)
     if (finalMitraId && finalTanggalMulai && finalTanggalSelesai) {
@@ -295,21 +359,32 @@ export async function PUT(
       }
     }
 
+    // Prepare final values - use current if new value is not provided or is empty string
+    const finalNama = nama !== undefined && nama !== '' ? nama : currentKegiatan.nama;
+    const finalDeskripsi = deskripsi !== undefined ? deskripsi : currentKegiatan.deskripsi;
+    const finalTargetOutput = target_output !== undefined && target_output !== null ? target_output : currentKegiatan.target_output;
+    const finalSatuanOutput = satuan_output !== undefined && satuan_output !== '' ? satuan_output : currentKegiatan.satuan_output;
+    const finalAnggaranPagu = anggaran_pagu !== undefined && anggaran_pagu !== null ? anggaran_pagu : currentKegiatan.anggaran_pagu;
+    const finalStatus = status !== undefined && status !== '' ? status : currentKegiatan.status;
+
     await pool.query<ResultSetHeader>(
       `UPDATE kegiatan_operasional SET
-        nama = COALESCE(?, nama),
-        deskripsi = COALESCE(?, deskripsi),
-        tanggal_mulai = COALESCE(?, tanggal_mulai),
-        tanggal_selesai = COALESCE(?, tanggal_selesai),
-        target_output = COALESCE(?, target_output),
-        satuan_output = COALESCE(?, satuan_output),
-        anggaran_pagu = COALESCE(?, anggaran_pagu),
-        status = COALESCE(?, status),
+        nama = ?,
+        deskripsi = ?,
+        tanggal_mulai = ?,
+        tanggal_selesai = ?,
+        target_output = ?,
+        satuan_output = ?,
+        anggaran_pagu = ?,
+        status = ?,
         kro_id = ?,
         mitra_id = ?,
+        output_realisasi = ?,
+        tanggal_realisasi_selesai = ?,
+        status_verifikasi = ?,
         updated_at = NOW()
       WHERE id = ?`,
-      [nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, finalKroId, finalMitraId, id]
+      [finalNama, finalDeskripsi, finalTanggalMulai, finalTanggalSelesai, finalTargetOutput, finalSatuanOutput, finalAnggaranPagu, finalStatus, finalKroId, finalMitraId, finalOutputRealisasi, finalTanggalRealisasiSelesai, finalStatusVerifikasi, id]
     );
 
     return NextResponse.json({ message: 'Kegiatan berhasil diupdate' });

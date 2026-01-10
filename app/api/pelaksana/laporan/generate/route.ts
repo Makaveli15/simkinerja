@@ -693,7 +693,7 @@ export async function POST(request: Request) {
                     width: { size: 8, type: WidthType.PERCENTAGE },
                   }),
                   new TableCell({
-                    children: [new Paragraph({ children: [new TextRun({ text: 'Pagu', bold: true })], alignment: AlignmentType.CENTER })],
+                    children: [new Paragraph({ children: [new TextRun({ text: 'Target Anggaran', bold: true })], alignment: AlignmentType.CENTER })],
                     shading: { fill: 'CCCCCC' },
                     borders: tableBorders,
                     width: { size: 12, type: WidthType.PERCENTAGE },

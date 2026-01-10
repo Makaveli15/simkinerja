@@ -36,6 +36,10 @@ interface Kegiatan {
   kendala_resolved: number;
   kendala_open: number;
   kendala_list: KendalaItem[];
+  // New fields for progress calculation
+  target_output: number;
+  output_realisasi: number;
+  satuan_output: string;
 }
 
 interface KRO {
@@ -135,9 +139,9 @@ export default function KegiatanPage() {
         return 'bg-blue-100 text-blue-700';
       case 'belum_mulai':
         return 'bg-gray-100 text-gray-700';
-      case 'bermasalah':
-        return 'bg-yellow-100 text-yellow-700';
       case 'tertunda':
+        return 'bg-amber-100 text-amber-700';
+      case 'bermasalah':
         return 'bg-red-100 text-red-700';
       default:
         return 'bg-gray-100 text-gray-700';
@@ -157,7 +161,7 @@ export default function KegiatanPage() {
 
   const getKinerjaBadge = (skor: number) => {
     if (skor >= 80) return 'bg-green-100 text-green-700';
-    if (skor >= 60) return 'bg-yellow-100 text-yellow-700';
+    if (skor >= 60) return 'bg-amber-100 text-amber-700';
     if (skor > 0) return 'bg-red-100 text-red-700';
     return 'bg-gray-100 text-gray-700';
   };
@@ -306,7 +310,10 @@ export default function KegiatanPage() {
           'Realisasi Anggaran (Rp)': realisasiAnggaranNominal,
           'Realisasi Anggaran (%)': realisasiAnggaranPersen,
           'Sisa Anggaran (Rp)': sisaAnggaran,
-          'Realisasi Fisik (%)': k.realisasi_fisik || 0,
+          'Target Output': k.target_output || 0,
+          'Output Realisasi': k.output_realisasi || 0,
+          'Satuan Output': k.satuan_output || '-',
+          'Progres Output (%)': k.target_output > 0 ? Math.round(Math.min((k.output_realisasi || 0) / k.target_output * 100, 100)) : 0,
           'Kendala Total': k.kendala_total || 0,
           'Kendala Selesai': k.kendala_resolved || 0,
           'Kendala Belum Selesai': k.kendala_open || 0,
@@ -417,8 +424,11 @@ export default function KegiatanPage() {
       const avgKinerja = dataForExport.length > 0 
         ? (dataForExport.reduce((sum, k) => sum + (k.skor_kinerja || 0), 0) / dataForExport.length).toFixed(1)
         : 0;
-      const avgFisik = dataForExport.length > 0 
-        ? (dataForExport.reduce((sum, k) => sum + (k.realisasi_fisik || 0), 0) / dataForExport.length).toFixed(1)
+      const avgProgres = dataForExport.length > 0 
+        ? (dataForExport.reduce((sum, k) => {
+            const progres = k.target_output > 0 ? Math.min((k.output_realisasi || 0) / k.target_output * 100, 100) : 0;
+            return sum + progres;
+          }, 0) / dataForExport.length).toFixed(1)
         : 0;
 
       const htmlContent = `
@@ -448,11 +458,12 @@ export default function KegiatanPage() {
             .status { padding: 2px 6px; border-radius: 10px; font-size: 8px; font-weight: bold; white-space: nowrap; }
             .status-berjalan { background: #dbeafe; color: #1d4ed8; }
             .status-selesai { background: #dcfce7; color: #15803d; }
-            .status-tertunda { background: #fee2e2; color: #b91c1c; }
+            .status-tertunda { background: #fef3c7; color: #b45309; }
+            .status-bermasalah { background: #fee2e2; color: #b91c1c; }
             .status-belum_mulai { background: #f3f4f6; color: #4b5563; }
             .kinerja { padding: 2px 6px; border-radius: 10px; font-size: 8px; font-weight: bold; }
             .kinerja-sukses { background: #dcfce7; color: #15803d; }
-            .kinerja-perhatian { background: #fef9c3; color: #a16207; }
+            .kinerja-perhatian { background: #fef3c7; color: #b45309; }
             .kinerja-bermasalah { background: #fee2e2; color: #b91c1c; }
             .section-title { font-size: 12px; font-weight: bold; margin: 15px 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid #ddd; }
             .footer { text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; color: #666; font-size: 9px; }
@@ -507,8 +518,8 @@ export default function KegiatanPage() {
               <div class="value">${avgKinerja}</div>
             </div>
             <div class="summary-item">
-              <div class="label">Rata-rata Fisik</div>
-              <div class="value">${avgFisik}%</div>
+              <div class="label">Rata-rata Progres Output</div>
+              <div class="value">${avgProgres}%</div>
             </div>
             <div class="summary-item">
               <div class="label">Total Target</div>
@@ -551,7 +562,7 @@ export default function KegiatanPage() {
                 <th style="width: 65px;">Periode</th>
                 <th style="width: 80px;" class="text-right">Target (Rp)</th>
                 <th style="width: 80px;" class="text-right">Realisasi (Rp)</th>
-                <th style="width: 35px;" class="text-center">Fisik</th>
+                <th style="width: 50px;" class="text-center">Progres</th>
                 <th style="width: 55px;" class="text-center">Kendala</th>
                 <th style="width: 50px;" class="text-center">Kinerja</th>
                 <th style="width: 70px;">Mitra</th>
@@ -564,6 +575,7 @@ export default function KegiatanPage() {
                 const realisasiNominal = (pagu * realisasiPersen) / 100;
                 const kinerjaBg = k.skor_kinerja >= 80 ? 'sukses' : k.skor_kinerja >= 60 ? 'perhatian' : k.skor_kinerja > 0 ? 'bermasalah' : '';
                 const hasKendala = (k.kendala_open || 0) > 0;
+                const progresOutput = k.target_output > 0 ? Math.round(Math.min((k.output_realisasi || 0) / k.target_output * 100, 100)) : 0;
                 return `
                 <tr>
                   <td class="text-center">${index + 1}</td>
@@ -573,7 +585,7 @@ export default function KegiatanPage() {
                   <td>${formatDate(k.tanggal_mulai)}<br><small style="color:#666">s/d ${formatDate(k.tanggal_selesai)}</small></td>
                   <td class="text-right">${formatCurrency(pagu)}</td>
                   <td class="text-right">${formatCurrency(realisasiNominal)}<br><small style="color:#666">(${realisasiPersen}%)</small></td>
-                  <td class="text-center">${k.realisasi_fisik || 0}%</td>
+                  <td class="text-center">${progresOutput}%<br><small style="color:#666">${Math.round(k.output_realisasi || 0)}/${Math.round(k.target_output || 0)}</small></td>
                   <td class="text-center">${k.kendala_total > 0 ? `<span style="color: ${hasKendala ? '#dc2626' : '#16a34a'}; font-weight: bold;">${k.kendala_resolved || 0}/${k.kendala_total}</span>` : '-'}</td>
                   <td class="text-center"><span class="kinerja ${kinerjaBg ? 'kinerja-' + kinerjaBg : ''}">${k.skor_kinerja || 0}</span><br><small style="color:#666">${k.status_kinerja || '-'}</small></td>
                   <td>${k.mitra_nama || '-'}</td>
@@ -583,7 +595,7 @@ export default function KegiatanPage() {
                 <td colspan="5" class="text-right"><strong>TOTAL</strong></td>
                 <td class="text-right"><strong>${formatCurrency(totalPagu)}</strong></td>
                 <td class="text-right"><strong>${formatCurrency(totalRealisasiAnggaran)}</strong></td>
-                <td class="text-center"><strong>${avgFisik}%</strong></td>
+                <td class="text-center"><strong>${avgProgres}%</strong></td>
                 <td class="text-center"><strong>${dataForExport.reduce((sum, k) => sum + (k.kendala_resolved || 0), 0)}/${dataForExport.reduce((sum, k) => sum + (k.kendala_total || 0), 0)}</strong></td>
                 <td class="text-center"><strong>${avgKinerja}</strong></td>
                 <td></td>
@@ -1033,17 +1045,34 @@ export default function KegiatanPage() {
                           <span className="text-sm font-medium text-gray-900">{formatCurrency(k.anggaran_pagu || 0)}</span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="w-24">
-                            <div className="flex items-center justify-between text-xs mb-1">
-                              <span className="text-gray-500">Fisik</span>
-                              <span className="font-medium">{k.realisasi_fisik || 0}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                                style={{ width: `${k.realisasi_fisik || 0}%` }}
-                              />
-                            </div>
+                          <div className="w-28">
+                            {(() => {
+                              const progres = k.target_output > 0 
+                                ? Math.min((k.output_realisasi || 0) / k.target_output * 100, 100) 
+                                : 0;
+                              return (
+                                <>
+                                  <div className="flex items-center justify-between text-xs mb-1">
+                                    <span className="text-gray-500">Output</span>
+                                    <span className="font-medium">{Math.round(progres)}%</span>
+                                  </div>
+                                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full rounded-full transition-all duration-300 ${
+                                        progres >= 100 ? 'bg-green-500' : 
+                                        progres >= 75 ? 'bg-blue-500' : 
+                                        progres >= 50 ? 'bg-yellow-500' : 
+                                        progres >= 25 ? 'bg-orange-500' : 'bg-red-400'
+                                      }`}
+                                      style={{ width: `${progres}%` }}
+                                    />
+                                  </div>
+                                  <div className="text-xs text-gray-400 mt-0.5">
+                                    {Math.round(k.output_realisasi || 0)}/{Math.round(k.target_output || 0)} {k.satuan_output || ''}
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="px-6 py-4">

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
+import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // Generate monthly chart data
 function generateMonthlyData() {
@@ -58,7 +59,7 @@ export async function GET() {
 
     const timId = userRows[0].tim_id;
 
-    // Get kegiatan operasional for the team with KRO info
+    // Get kegiatan operasional for the team with KRO info and new monitoring fields
     const [kegiatan] = await pool.query<RowDataPacket[]>(
       `SELECT 
         ko.id,
@@ -67,7 +68,11 @@ export async function GET() {
         ko.status,
         ko.tanggal_mulai,
         ko.tanggal_selesai,
+        ko.tanggal_realisasi_selesai,
         ko.anggaran_pagu,
+        ko.target_output,
+        ko.output_realisasi,
+        ko.status_verifikasi,
         ko.kro_id,
         kro.kode as kro_kode,
         kro.nama as kro_nama
@@ -109,52 +114,45 @@ export async function GET() {
       [timId]
     );
 
-    // Calculate average kinerja score
+    // Calculate average kinerja score using rule-based calculator
     let totalSkor = 0;
-    let countWithSkor = 0;
+    let countWithData = 0;
 
     for (const k of kegiatan) {
-      const [progres] = await pool.query<RowDataPacket[]>(
-        `SELECT capaian_output, ketepatan_waktu, kualitas_output 
-         FROM progres_kegiatan 
-         WHERE kegiatan_operasional_id = ? 
-         ORDER BY tanggal_update DESC LIMIT 1`,
+      // Get realisasi anggaran for this kegiatan
+      const [anggaranTotal] = await pool.query<RowDataPacket[]>(
+        `SELECT COALESCE(SUM(jumlah), 0) as total FROM realisasi_anggaran WHERE kegiatan_operasional_id = ?`,
         [k.id]
       );
 
-      if (progres.length > 0) {
-        const [anggaranTotal] = await pool.query<RowDataPacket[]>(
-          `SELECT COALESCE(SUM(jumlah), 0) as total FROM realisasi_anggaran WHERE kegiatan_operasional_id = ?`,
-          [k.id]
-        );
+      // Get kendala stats for this kegiatan
+      const [kendala] = await pool.query<RowDataPacket[]>(
+        `SELECT COUNT(*) as total, SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved 
+         FROM kendala_kegiatan WHERE kegiatan_operasional_id = ?`,
+        [k.id]
+      );
 
-        const [kendala] = await pool.query<RowDataPacket[]>(
-          `SELECT COUNT(*) as total, SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved 
-           FROM kendala_kegiatan WHERE kegiatan_operasional_id = ?`,
-          [k.id]
-        );
+      // Prepare data for kinerja calculator
+      const kinerjaData: KegiatanData = {
+        target_output: parseFloat(k.target_output) || 0,
+        tanggal_mulai: k.tanggal_mulai,
+        tanggal_selesai: k.tanggal_selesai,
+        anggaran_pagu: parseFloat(k.anggaran_pagu) || 0,
+        output_realisasi: parseFloat(k.output_realisasi) || 0,
+        tanggal_realisasi_selesai: k.tanggal_realisasi_selesai,
+        status_verifikasi: k.status_verifikasi || 'belum_verifikasi',
+        total_realisasi_anggaran: parseFloat(anggaranTotal[0].total) || 0,
+        total_kendala: parseInt(kendala[0].total) || 0,
+        kendala_resolved: parseInt(kendala[0].resolved) || 0,
+      };
 
-        const p = progres[0];
-        const realisasiAnggaran = k.anggaran_pagu > 0 
-          ? (parseFloat(anggaranTotal[0].total) / parseFloat(k.anggaran_pagu)) * 100 
-          : 0;
-        const penyelesaianKendala = kendala[0].total > 0 
-          ? (kendala[0].resolved / kendala[0].total) * 100 
-          : 100;
-
-        const skor = 
-          (p.capaian_output * 0.30) +
-          (p.ketepatan_waktu * 0.20) +
-          (Math.min(realisasiAnggaran, 100) * 0.20) +
-          (p.kualitas_output * 0.20) +
-          (penyelesaianKendala * 0.10);
-
-        totalSkor += skor;
-        countWithSkor++;
-      }
+      // Calculate kinerja using the service
+      const kinerjaResult = hitungKinerjaKegiatan(kinerjaData);
+      totalSkor += kinerjaResult.skor_kinerja;
+      countWithData++;
     }
 
-    const avgSkor = countWithSkor > 0 ? Math.round(totalSkor / countWithSkor) : 0;
+    const avgSkor = countWithData > 0 ? Math.round(totalSkor / countWithData) : 0;
 
     // Generate chart data
     const monthlyData = generateMonthlyData();

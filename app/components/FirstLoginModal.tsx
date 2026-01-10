@@ -5,9 +5,10 @@ import { useState } from 'react';
 interface FirstLoginModalProps {
   isOpen: boolean;
   onSuccess: () => void;
+  apiEndpoint?: string;
 }
 
-export default function FirstLoginModal({ isOpen, onSuccess }: FirstLoginModalProps) {
+export default function FirstLoginModal({ isOpen, onSuccess, apiEndpoint = '/api/pelaksana/change-password' }: FirstLoginModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordData, setPasswordData] = useState({
@@ -34,7 +35,7 @@ export default function FirstLoginModal({ isOpen, onSuccess }: FirstLoginModalPr
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/pelaksana/change-password', {
+      const res = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(passwordData),

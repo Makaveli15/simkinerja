@@ -350,15 +350,11 @@ export default function TambahKegiatanPage() {
                 required
               >
                 <option value="dokumen">Dokumen</option>
-                <option value="laporan">Laporan</option>
-                <option value="kegiatan">Kegiatan</option>
-                <option value="orang">Orang</option>
-                <option value="unit">Unit</option>
-                <option value="paket">Paket</option>
-                <option value="kali">Kali</option>
-                <option value="buah">Buah</option>
-                <option value="responden">Responden</option>
-                <option value="kuesioner">Kuesioner</option>
+                <option value="publikasi">Publikasi</option>
+                <option value="layanan">Layanan</option>
+                <option value="wilayah">Wilayah</option>
+                <option value="data">Data</option>
+                <option value="peta">Peta</option>
               </select>
             </div>
           </div>

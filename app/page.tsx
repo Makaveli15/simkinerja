@@ -40,6 +40,8 @@ export default function LoginPage() {
       // successful login - redirect based on role
       if (data?.role === 'admin') {
         router.push('/admin/dashboard');
+      } else if (data?.role === 'pimpinan') {
+        router.push('/pimpinan/dashboard');
       } else if (data?.role === 'pelaksana') {
         router.push('/pelaksana/dashboard');
       } else {

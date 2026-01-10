@@ -120,13 +120,13 @@ export default function PelaksanaDashboard() {
         setProgresData(data.progresChart || []);
         setAnggaranData(data.anggaranChart || []);
         
-        // Set status chart data
+        // Set status chart data with consistent colors
         setStatusData([
-          { name: 'Selesai', value: data.stats.kegiatanSelesai, color: '#10B981' },
-          { name: 'Berjalan', value: data.stats.kegiatanBerjalan, color: '#3B82F6' },
-          { name: 'Belum Mulai', value: data.stats.kegiatanBelum, color: '#9CA3AF' },
-          { name: 'Tertunda', value: data.stats.kegiatanTertunda, color: '#EF4444' },
-          { name: 'Bermasalah', value: data.stats.kegiatanBermasalah, color: '#efef44ff' },
+          { name: 'Selesai', value: data.stats.kegiatanSelesai, color: '#10B981' },     // green-500
+          { name: 'Berjalan', value: data.stats.kegiatanBerjalan, color: '#3B82F6' },   // blue-500
+          { name: 'Belum Mulai', value: data.stats.kegiatanBelum, color: '#9CA3AF' },   // gray-400
+          { name: 'Tertunda', value: data.stats.kegiatanTertunda, color: '#F59E0B' },   // amber-500
+          { name: 'Bermasalah', value: data.stats.kegiatanBermasalah, color: '#EF4444' }, // red-500
         ].filter(d => d.value > 0));
       }
     } catch (error) {
@@ -163,9 +163,9 @@ export default function PelaksanaDashboard() {
       case 'belum_mulai':
         return 'bg-gray-100 text-gray-700';
       case 'tertunda':
-        return 'bg-red-100 text-red-700';
+        return 'bg-amber-100 text-amber-700';
       case 'bermasalah':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-red-100 text-red-700';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -184,7 +184,7 @@ export default function PelaksanaDashboard() {
 
   const getSkorKinerjaBadge = (skor: number) => {
     if (skor >= 80) return { bg: 'bg-green-100 text-green-700', label: 'Sukses' };
-    if (skor >= 60) return { bg: 'bg-yellow-100 text-yellow-700', label: 'Perlu Perhatian' };
+    if (skor >= 60) return { bg: 'bg-amber-100 text-amber-700', label: 'Perlu Perhatian' };
     if (skor > 0) return { bg: 'bg-red-100 text-red-700', label: 'Bermasalah' };
     return { bg: 'bg-gray-100 text-gray-700', label: 'Belum Dinilai' };
   };
