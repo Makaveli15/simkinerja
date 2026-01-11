@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
         ep.jenis_evaluasi,
         ep.isi,
         ep.created_at,
-        u.nama_lengkap as pimpinan_nama
+        COALESCE(u.nama_lengkap, u.username) as pimpinan_nama,
+        u.username as pimpinan_username
       FROM evaluasi_pimpinan ep
       JOIN users u ON ep.user_id = u.id
       WHERE ep.kegiatan_id = ?
