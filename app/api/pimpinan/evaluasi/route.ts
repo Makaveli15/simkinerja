@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { createNotificationForKegiatanTeam } from '@/lib/services/notificationService';
 
 // GET - Get all evaluasi pimpinan (read-only)
 export async function GET(req: NextRequest) {
@@ -154,6 +155,18 @@ export async function POST(req: NextRequest) {
        WHERE ep.id = ?`,
       [result.insertId]
     );
+
+    // Create notification for pelaksana team
+    const jenisLabel = jenis_evaluasi === 'catatan' ? 'Catatan' : 
+                       jenis_evaluasi === 'arahan' ? 'Arahan' : 'Rekomendasi';
+    
+    await createNotificationForKegiatanTeam(kegiatan_id, {
+      title: `${jenisLabel} Baru dari Pimpinan`,
+      message: `Pimpinan memberikan ${jenis_evaluasi} untuk kegiatan: ${newEvaluasi[0].kegiatan_nama}`,
+      type: 'evaluasi',
+      referenceId: kegiatan_id,
+      referenceType: 'kegiatan'
+    });
 
     return NextResponse.json({
       message: 'Evaluasi berhasil disimpan',

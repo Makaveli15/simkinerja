@@ -5,6 +5,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
+import { createNotificationForAllPimpinan } from '@/lib/services/notificationService';
 
 // GET - Get dokumen output for a kegiatan
 export async function GET(req: NextRequest) {
@@ -159,6 +160,29 @@ export async function POST(req: NextRequest) {
       JOIN users u ON d.uploaded_by = u.id
       WHERE d.id = ?
     `, [result.insertId]);
+
+    // Get kegiatan name for notification
+    const [kegiatanInfo] = await pool.query<RowDataPacket[]>(
+      'SELECT nama FROM kegiatan_operasional WHERE id = ?',
+      [kegiatan_id]
+    );
+    const kegiatanNama = kegiatanInfo[0]?.nama || 'Kegiatan';
+
+    // Get uploader name
+    const [uploaderInfo] = await pool.query<RowDataPacket[]>(
+      'SELECT nama_lengkap FROM users WHERE id = ?',
+      [payload.id]
+    );
+    const uploaderNama = uploaderInfo[0]?.nama_lengkap || 'Pelaksana';
+
+    // Create notification for all pimpinan
+    await createNotificationForAllPimpinan({
+      title: '📄 Permintaan Validasi Dokumen',
+      message: `${uploaderNama} mengajukan dokumen "${file.name}" untuk kegiatan "${kegiatanNama}" yang perlu divalidasi`,
+      type: 'permintaan_validasi',
+      referenceId: parseInt(kegiatan_id),
+      referenceType: 'kegiatan'
+    });
 
     return NextResponse.json({
       message: 'Dokumen berhasil diupload',

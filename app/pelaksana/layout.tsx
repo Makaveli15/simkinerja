@@ -22,6 +22,8 @@ interface Notification {
   time: string;
   type: string;
   read: boolean;
+  referenceId?: number;
+  referenceType?: string;
 }
 
 export default function PelaksanaLayout({
@@ -164,25 +166,82 @@ export default function PelaksanaLayout({
   };
 
   const markAsRead = async (id: string) => {
-    const readNotifications = JSON.parse(localStorage.getItem(`readNotifications_${user?.id}`) || '[]');
-    if (!readNotifications.includes(id)) {
-      readNotifications.push(id);
-      localStorage.setItem(`readNotifications_${user?.id}`, JSON.stringify(readNotifications));
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+    try {
+      const res = await fetch('/api/pelaksana/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_read', notificationId: id }),
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Error marking notification:', error);
     }
   };
 
   const markAllAsRead = async () => {
-    const allIds = notifications.map(n => n.id);
-    localStorage.setItem(`readNotifications_${user?.id}`, JSON.stringify(allIds));
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
+    try {
+      const res = await fetch('/api/pelaksana/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_all_read' }),
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error('Error marking all notifications:', error);
+    }
+  };
+
+  const getNotificationLink = (notif: Notification): string => {
+    const id = notif.referenceId;
+    const refType = notif.referenceType;
+    
+    // Prioritas berdasarkan referenceType jika ada
+    if (refType === 'kegiatan' && id) {
+      return `/pelaksana/kegiatan/${id}`;
+    }
+    if (refType === 'dokumen' && id) {
+      return `/pelaksana/kegiatan/${id}`;
+    }
+    if (refType === 'evaluasi' && id) {
+      return `/pelaksana/kegiatan/${id}`;
+    }
+    
+    // Fallback berdasarkan type notifikasi
+    switch (notif.type) {
+      case 'tugas':
+      case 'deadline':
+      case 'kegiatan':
+      case 'kendala':
+        return id ? `/pelaksana/kegiatan/${id}` : '/pelaksana/kegiatan';
+      case 'evaluasi':
+      case 'validasi':
+        return id ? `/pelaksana/kegiatan/${id}` : '/pelaksana/kegiatan';
+      case 'laporan':
+        return '/pelaksana/laporan';
+      case 'jadwal':
+        return '/pelaksana/jadwal';
+      default:
+        return '/pelaksana/dashboard';
+    }
+  };
+
+  const handleNotificationClick = (notif: Notification) => {
+    markAsRead(notif.id);
+    setIsNotifOpen(false);
+    const link = getNotificationLink(notif);
+    router.push(link);
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'tugas':
+      case 'kegiatan':
         return (
           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
             <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,6 +254,30 @@ export default function PelaksanaLayout({
           <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
             <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        );
+      case 'evaluasi':
+        return (
+          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </div>
+        );
+      case 'validasi':
+        return (
+          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        );
+      case 'kendala':
+        return (
+          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
         );
@@ -348,7 +431,7 @@ export default function PelaksanaLayout({
                         notifications.map((notif) => (
                           <div
                             key={notif.id}
-                            onClick={() => markAsRead(notif.id)}
+                            onClick={() => handleNotificationClick(notif)}
                             className={`p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 ${
                               !notif.read ? 'bg-blue-50/50' : ''
                             }`}

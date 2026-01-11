@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { createNotification } from '@/lib/services/notificationService';
 
 // GET - Get dokumen output for review (pimpinan)
 export async function GET(req: NextRequest) {
@@ -141,6 +142,25 @@ export async function PATCH(req: NextRequest) {
         ['revisi', dokumenCheck[0].kegiatan_id]
       );
     }
+
+    // Get kegiatan name for notification
+    const [kegiatanInfo] = await pool.query<RowDataPacket[]>(
+      'SELECT nama FROM kegiatan_operasional WHERE id = ?',
+      [dokumenCheck[0].kegiatan_id]
+    );
+    const kegiatanNama = kegiatanInfo[0]?.nama || 'Kegiatan';
+
+    // Create notification for pelaksana who uploaded the document
+    await createNotification({
+      userId: dokumenCheck[0].uploaded_by,
+      title: status_review === 'diterima' ? '✅ Dokumen Disetujui' : '❌ Dokumen Ditolak',
+      message: status_review === 'diterima' 
+        ? `Dokumen "${dokumenCheck[0].nama_file}" untuk kegiatan "${kegiatanNama}" telah disetujui oleh pimpinan`
+        : `Dokumen "${dokumenCheck[0].nama_file}" untuk kegiatan "${kegiatanNama}" ditolak. ${catatan_reviewer ? 'Catatan: ' + catatan_reviewer : 'Silakan perbaiki dan upload ulang.'}`,
+      type: 'validasi',
+      referenceId: dokumenCheck[0].kegiatan_id,
+      referenceType: 'kegiatan'
+    });
 
     // Get updated dokumen
     const [updatedDokumen] = await pool.query<RowDataPacket[]>(`

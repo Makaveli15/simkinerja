@@ -22,6 +22,8 @@ interface Notification {
   time: string;
   type: string;
   read: boolean;
+  referenceId?: number;
+  referenceType?: string;
 }
 
 export default function PimpinanLayout({
@@ -66,8 +68,8 @@ export default function PimpinanLayout({
       )
     },
     { 
-      href: '/pimpinan/laporan', 
-      label: 'Laporan Kinerja', 
+      href: '/pimpinan/statistik', 
+      label: 'Statistik Kinerja', 
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -75,14 +77,23 @@ export default function PimpinanLayout({
       )
     },
     { 
-      href: '/pimpinan/evaluasi', 
-      label: 'Evaluasi & Tindak Lanjut', 
+      href: '/pimpinan/laporan', 
+      label: 'Laporan', 
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
         </svg>
       )
     },
+    // { 
+    //   href: '/pimpinan/evaluasi', 
+    //   label: 'Evaluasi & Tindak Lanjut', 
+    //   icon: (
+    //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    //     </svg>
+    //   )
+    // },
   ];
 
   // Fetch user profile
@@ -189,12 +200,56 @@ export default function PimpinanLayout({
     return `${days} hari lalu`;
   };
 
+  const getNotificationLink = (notif: Notification): string => {
+    const id = notif.referenceId;
+    const refType = notif.referenceType;
+    
+    // Prioritas berdasarkan referenceType jika ada
+    if (refType === 'kegiatan' && id) {
+      return `/pimpinan/kegiatan/${id}`;
+    }
+    if (refType === 'dokumen' && id) {
+      return `/pimpinan/kegiatan/${id}`;
+    }
+    if (refType === 'evaluasi') {
+      return '/pimpinan/evaluasi';
+    }
+    
+    // Fallback berdasarkan type notifikasi
+    switch (notif.type) {
+      case 'kegiatan':
+      case 'permintaan_validasi':
+      case 'validasi':
+      case 'verifikasi':
+      case 'deadline':
+      case 'kendala':
+        return id ? `/pimpinan/kegiatan/${id}` : '/pimpinan/kegiatan';
+      case 'evaluasi':
+        return '/pimpinan/evaluasi';
+      case 'laporan':
+        return '/pimpinan/laporan';
+      default:
+        return '/pimpinan/dashboard';
+    }
+  };
+
+  const handleNotificationClick = (notif: Notification) => {
+    markAsRead(notif.id);
+    setIsNotifOpen(false);
+    const link = getNotificationLink(notif);
+    router.push(link);
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'kegiatan': return '📋';
       case 'evaluasi': return '📝';
       case 'verifikasi': return '✅';
+      case 'validasi': return '✅';
+      case 'permintaan_validasi': return '📄';
       case 'laporan': return '📊';
+      case 'deadline': return '⏰';
+      case 'kendala': return '⚠️';
       default: return '📌';
     }
   };
@@ -205,7 +260,7 @@ export default function PimpinanLayout({
       const res = await fetch('/api/pimpinan/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationId }),
+        body: JSON.stringify({ action: 'mark_read', notificationId }),
       });
       if (res.ok) {
         fetchNotifications();
@@ -221,7 +276,7 @@ export default function PimpinanLayout({
       const res = await fetch('/api/pimpinan/notifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markAll: true }),
+        body: JSON.stringify({ action: 'mark_all_read' }),
       });
       if (res.ok) {
         fetchNotifications();
@@ -232,7 +287,7 @@ export default function PimpinanLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-sky-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50" suppressHydrationWarning>
       {/* First Login Modal */}
       {showFirstLoginModal && (
         <FirstLoginModal 
@@ -372,7 +427,8 @@ export default function PimpinanLayout({
                         notifications.map((notif) => (
                           <div 
                             key={notif.id} 
-                            className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${notif.read ? 'opacity-60' : ''}`}
+                            onClick={() => handleNotificationClick(notif)}
+                            className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${notif.read ? 'opacity-60' : ''}`}
                           >
                             <div className="flex items-start gap-3">
                               <span className="text-xl">{getTypeIcon(notif.type)}</span>
@@ -388,7 +444,7 @@ export default function PimpinanLayout({
                                   <p className="text-gray-400 text-xs">{formatTimeAgo(notif.time)}</p>
                                   {!notif.read && (
                                     <button
-                                      onClick={() => markAsRead(notif.id)}
+                                      onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
                                       className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
                                     >
                                       Tandai dibaca

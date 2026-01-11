@@ -21,6 +21,8 @@ interface Notification {
   time: string;
   type: string;
   read: boolean;
+  referenceId?: number;
+  referenceType?: string;
 }
 
 interface SearchResult {
@@ -284,6 +286,31 @@ export default function AdminLayout({
     return `${days} hari lalu`;
   };
 
+  const getNotificationLink = (notif: Notification): string => {
+    const id = notif.referenceId || notif.id.split('-')[1];
+    switch (notif.type) {
+      case 'user':
+        return '/admin/users';
+      case 'kegiatan':
+        return '/admin/kegiatan';
+      case 'mitra':
+        return '/admin/mitra';
+      case 'tim':
+        return '/admin/tim';
+      case 'kro':
+        return '/admin/kro';
+      default:
+        return '/admin/dashboard';
+    }
+  };
+
+  const handleNotificationClick = (notif: Notification) => {
+    markAsRead(notif.id);
+    setIsNotifOpen(false);
+    const link = getNotificationLink(notif);
+    router.push(link);
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'user':
@@ -516,7 +543,8 @@ export default function AdminLayout({
                         notifications.map((notif) => (
                           <div 
                             key={notif.id} 
-                            className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${notif.read ? 'opacity-60' : ''}`}
+                            onClick={() => handleNotificationClick(notif)}
+                            className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${notif.read ? 'opacity-60' : ''}`}
                           >
                             <div className="flex items-start gap-3">
                               <span className="text-xl">{getTypeIcon(notif.type)}</span>
@@ -532,7 +560,7 @@ export default function AdminLayout({
                                   <p className="text-gray-400 text-xs">{formatTimeAgo(notif.time)}</p>
                                   {!notif.read && (
                                     <button
-                                      onClick={() => markAsRead(notif.id)}
+                                      onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
                                       className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
                                     >
                                       Tandai dibaca

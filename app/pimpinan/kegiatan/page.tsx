@@ -25,6 +25,7 @@ interface Kegiatan {
   status_kinerja: string;
   capaian_output_persen: number;
   realisasi_anggaran_persen: number;
+  total_kendala?: number;
 }
 
 interface FilterData {
@@ -231,20 +232,29 @@ export default function PimpinanKegiatanPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kegiatan</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tim</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">KRO</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Skor</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status Kinerja</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Verifikasi</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tim</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Kegiatan</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Kendala</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Capaian</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Anggaran</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Kinerja</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Skor</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Verifikasi</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredKegiatan.map((kg) => (
                   <tr key={kg.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-4">
+                      <span className="px-2 py-1 text-xs font-medium rounded bg-blue-50 text-blue-700">
+                        {kg.kro_kode}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-gray-700">{kg.tim_nama || '-'}</span>
+                    </td>
                     <td className="px-4 py-4">
                       <div className="max-w-xs">
                         <p className="font-medium text-gray-900 truncate">{kg.nama}</p>
@@ -253,24 +263,15 @@ export default function PimpinanKegiatanPage() {
                         </p>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-gray-700">{kg.tim_nama || '-'}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="px-2 py-1 text-xs font-medium rounded bg-blue-50 text-blue-700">
-                        {kg.kro_kode}
-                      </span>
+                    <td className="px-4 py-4 text-center">
+                      {getStatusBadge(kg.status)}
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className={`text-xl font-bold ${getSkorColor(kg.skor_kinerja)}`}>
-                        {kg.skor_kinerja}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      {getStatusKinerjaBadge(kg.status_kinerja)}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      {getVerifikasiBadge(kg.status_verifikasi)}
+                      {kg.total_kendala && kg.total_kendala > 0 ? (
+                        <span className="text-sm text-gray-700">{kg.total_kendala} kendala</span>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-center">
                       <div className="flex flex-col items-center">
@@ -284,15 +285,15 @@ export default function PimpinanKegiatanPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <div className="flex flex-col items-center">
-                        <span className="text-sm font-medium text-gray-900">{kg.realisasi_anggaran_persen}%</span>
-                        <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
-                          <div 
-                            className="h-full bg-green-500 rounded-full"
-                            style={{ width: `${Math.min(kg.realisasi_anggaran_persen, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
+                      {getStatusKinerjaBadge(kg.status_kinerja)}
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span className={`text-xl font-bold ${getSkorColor(kg.skor_kinerja)}`}>
+                        {kg.skor_kinerja}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      {getVerifikasiBadge(kg.status_verifikasi)}
                     </td>
                     <td className="px-4 py-4 text-center">
                       <Link

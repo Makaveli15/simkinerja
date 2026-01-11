@@ -62,6 +62,8 @@ export async function GET() {
         time: u.created_at,
         type: 'user',
         read: readIds.has(`user-${u.id}`),
+        referenceId: u.id,
+        referenceType: 'user',
       })),
       ...recentKegiatan.map((k: RowDataPacket) => ({
         id: `kegiatan-${k.id}`,
@@ -70,6 +72,8 @@ export async function GET() {
         time: k.created_at,
         type: 'kegiatan',
         read: readIds.has(`kegiatan-${k.id}`),
+        referenceId: k.id,
+        referenceType: 'kegiatan',
       })),
       ...recentMitra.map((m: RowDataPacket) => ({
         id: `mitra-${m.id}`,
@@ -78,6 +82,8 @@ export async function GET() {
         time: m.created_at,
         type: 'mitra',
         read: readIds.has(`mitra-${m.id}`),
+        referenceId: m.id,
+        referenceType: 'mitra',
       })),
     ]
     .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())

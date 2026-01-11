@@ -35,14 +35,14 @@ export async function GET(req: NextRequest) {
         ko.tim_id,
         ko.kro_id,
         ko.target_output,
-        ko.output_realisasi,
+        COALESCE(ko.output_realisasi, 0) as output_realisasi,
         ko.satuan_output,
         ko.tanggal_mulai,
         ko.tanggal_selesai,
         ko.tanggal_realisasi_selesai,
         ko.anggaran_pagu,
         ko.status,
-        ko.status_verifikasi,
+        COALESCE(ko.status_verifikasi, 'belum_verifikasi') as status_verifikasi,
         t.nama as tim_nama,
         kro.kode as kro_kode,
         kro.nama as kro_nama,
@@ -156,16 +156,53 @@ export async function GET(req: NextRequest) {
       const avgSkor = timKegiatan.length > 0 
         ? timKegiatan.reduce((sum, k) => sum + k.skor_kinerja, 0) / timKegiatan.length 
         : 0;
+      const timPagu = timKegiatan.reduce((sum, k) => sum + (parseFloat(k.anggaran_pagu) || 0), 0);
+      const timRealisasi = timKegiatan.reduce((sum, k) => sum + (parseFloat(k.total_realisasi_anggaran) || 0), 0);
       
       return {
         tim_id: tim.id,
         tim_nama: tim.nama,
         total_kegiatan: timKegiatan.length,
+        kegiatan_selesai: timKegiatan.filter(k => k.status === 'selesai').length,
         rata_rata_skor: Math.round(avgSkor * 100) / 100,
+        total_pagu: timPagu,
+        total_realisasi: timRealisasi,
         sukses: timKegiatan.filter(k => k.status_kinerja === 'Sukses').length,
         bermasalah: timKegiatan.filter(k => k.status_kinerja === 'Bermasalah').length
       };
     });
+
+    // Pelaksana Performance Summary
+    const [pelaksanaRows] = await pool.query<RowDataPacket[]>(`
+      SELECT 
+        u.id, 
+        u.nama_lengkap, 
+        u.tim_id,
+        t.nama as tim_nama
+      FROM users u
+      LEFT JOIN tim t ON u.tim_id = t.id
+      WHERE u.role = 'pelaksana'
+    `);
+
+    // Get kegiatan created by each pelaksana (using created_by field)
+    const pelaksanaPerformance = pelaksanaRows.map(pelaksana => {
+      // Get kegiatan created by this pelaksana or assigned to their tim
+      const pelaksanaKegiatan = kegiatanWithKinerja.filter(k => 
+        k.tim_id === pelaksana.tim_id
+      );
+      const avgSkor = pelaksanaKegiatan.length > 0 
+        ? pelaksanaKegiatan.reduce((sum, k) => sum + k.skor_kinerja, 0) / pelaksanaKegiatan.length 
+        : 0;
+      
+      return {
+        pelaksana_id: pelaksana.id,
+        nama_lengkap: pelaksana.nama_lengkap,
+        tim_nama: pelaksana.tim_nama,
+        total_kegiatan: pelaksanaKegiatan.length,
+        kegiatan_selesai: pelaksanaKegiatan.filter(k => k.status === 'selesai').length,
+        rata_skor: Math.round(avgSkor * 100) / 100
+      };
+    }).filter(p => p.total_kegiatan > 0).sort((a, b) => b.rata_skor - a.rata_skor);
 
     // KRO Performance Summary  
     const [kroRows] = await pool.query<RowDataPacket[]>(`SELECT id, kode, nama FROM kro`);
@@ -211,7 +248,8 @@ export async function GET(req: NextRequest) {
         tim_nama: k.tim_nama,
         status: k.status,
         skor: k.skor_kinerja,
-        kendala: k.total_kendala > 0 ? `${k.total_kendala} kendala` : '-'
+        kendala: k.total_kendala > 0 ? `${k.total_kendala} kendala` : '-',
+        jumlah_kendala: k.total_kendala
       }));
 
     // Calculate overall average score
@@ -299,7 +337,10 @@ export async function GET(req: NextRequest) {
       timPerformance: timPerformance.map(t => ({
         tim_nama: t.tim_nama,
         total_kegiatan: t.total_kegiatan,
-        rata_skor: t.rata_rata_skor
+        kegiatan_selesai: t.kegiatan_selesai,
+        rata_skor: t.rata_rata_skor,
+        total_pagu: t.total_pagu,
+        total_realisasi: t.total_realisasi
       })),
       kroPerformance: kroPerformance.map(k => ({
         kro_kode: k.kro_kode,
@@ -307,6 +348,7 @@ export async function GET(req: NextRequest) {
         total_kegiatan: k.total_kegiatan,
         rata_skor: k.rata_rata_skor
       })),
+      pelaksanaPerformance: pelaksanaPerformance,
       kegiatanBermasalah: kegiatanBermasalah,
       kendala_utama: kendalaRows,
       recent_activities: recentActivities,

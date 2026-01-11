@@ -57,6 +57,7 @@ interface KegiatanBermasalah {
   status: string;
   skor: number;
   kendala: string;
+  jumlah_kendala?: number;
 }
 
 interface ProgresData {
@@ -139,7 +140,7 @@ export default function PimpinanDashboard() {
   const getSkorColor = (skor: number) => {
     if (skor >= 80) return 'text-green-600 bg-green-100';
     if (skor >= 60) return 'text-blue-600 bg-blue-100';
-    if (skor >= 40) return 'text-amber-600 bg-amber-100';
+    if (skor >= 40) return 'text-yellow-600 bg-yellow-100';
     return 'text-red-600 bg-red-100';
   };
 
@@ -148,6 +149,25 @@ export default function PimpinanDashboard() {
     if (skor >= 60) return 'Baik';
     if (skor >= 40) return 'Cukup';
     return 'Kurang';
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'selesai':
+        return 'bg-green-100 text-green-700';
+      case 'berjalan':
+        return 'bg-blue-100 text-blue-700';
+      case 'belum_dimulai':
+      case 'belum dimulai':
+      case 'belum_mulai':
+        return 'bg-gray-100 text-gray-700';
+      case 'tertunda':
+        return 'bg-amber-100 text-amber-700';
+      case 'bermasalah':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
   };
 
   if (loading) {
@@ -451,7 +471,7 @@ export default function PimpinanDashboard() {
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Tim</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Skor</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Kendala</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Kendala</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Aksi</th>
                 </tr>
               </thead>
@@ -463,7 +483,7 @@ export default function PimpinanDashboard() {
                     </td>
                     <td className="py-3 px-4 text-gray-600">{kegiatan.tim_nama || '-'}</td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(kegiatan.status)}`}>
                         {kegiatan.status}
                       </span>
                     </td>
@@ -472,8 +492,12 @@ export default function PimpinanDashboard() {
                         {Math.round(kegiatan.skor)}% - {getSkorLabel(kegiatan.skor)}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <p className="text-sm text-gray-600 truncate max-w-[200px]">{kegiatan.kendala || '-'}</p>
+                    <td className="py-3 px-4 text-center">
+                      {kegiatan.jumlah_kendala && kegiatan.jumlah_kendala > 0 ? (
+                        <span className="text-sm text-gray-700">{kegiatan.jumlah_kendala} kendala</span>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <Link
