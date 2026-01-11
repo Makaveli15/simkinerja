@@ -3,6 +3,23 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { 
+  LuChevronLeft, 
+  LuSquarePen, 
+  LuTrash2, 
+  LuInfo, 
+  LuTimer, 
+  LuFileText, 
+  LuPlus, 
+  LuX, 
+  LuCalendar,
+  LuCheck,
+  LuDownload,
+  LuUpload,
+  LuShieldCheck,
+  LuLoader,
+  LuCircleAlert
+} from 'react-icons/lu';
 
 interface KegiatanDetail {
   id: number;
@@ -442,9 +459,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <Link href="/pelaksana/kegiatan" className="text-blue-600 hover:text-blue-800 flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <LuChevronLeft className="w-5 h-5" />
             Kembali ke Daftar Kegiatan
           </Link>
 
@@ -460,15 +475,11 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 </span>
                 
                 <button onClick={() => setShowEditModal(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
+                  <LuSquarePen className="w-4 h-4" />
                   Edit
                 </button>
                 <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
+                  <LuTrash2 className="w-4 h-4" />
                   Hapus
                 </button>
               </div>
@@ -486,9 +497,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
             {/* Tabel KRO */}
             <div className="mt-6 border-t pt-4">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                <LuFileText className="w-4 h-4 text-blue-600" />
                 Klasifikasi Rincian Output (KRO)
               </h3>
               <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -511,9 +520,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         <td className="px-4 py-3 text-sm text-gray-900">{kegiatan.kro_nama}</td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
+                            <LuCheck className="w-3 h-3 mr-1" />
                             Terkait
                           </span>
                         </td>
@@ -522,9 +529,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                       <tr>
                         <td colSpan={3} className="px-4 py-6 text-center">
                           <div className="flex flex-col items-center text-gray-500">
-                            <svg className="w-8 h-8 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <LuFileText className="w-8 h-8 text-gray-300 mb-2" />
                             <p className="text-sm">Belum ada KRO yang terkait</p>
                             <p className="text-xs text-gray-400 mt-1">Klik tombol Edit untuk menambahkan KRO</p>
                           </div>
@@ -900,9 +905,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 {/* Panduan Pengisian */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <LuInfo className="w-5 h-5" />
                     Panduan Perhitungan Ketepatan Waktu
                   </h4>
                   <ul className="text-sm text-blue-700 space-y-1.5 ml-7">
@@ -1189,9 +1192,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                 {ev.pimpinan_nama || 'Pimpinan'}
                               </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
+                                <LuShieldCheck className="w-3 h-3" />
                                 Pimpinan
                               </p>
                             </div>
@@ -1245,9 +1246,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
             <div className="px-6 py-4 border-b bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
+                  <LuSquarePen className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-white">Edit Kegiatan</h3>
               </div>
@@ -1256,9 +1255,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 onClick={() => { setShowEditModal(false); setError(''); setSuccess(''); }}
                 className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <LuX className="w-5 h-5" />
               </button>
             </div>
 
@@ -1268,9 +1265,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
               {success && (
                 <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-3">
                   <div className="p-1 bg-green-100 rounded-full">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                    <LuCheck className="w-5 h-5 text-green-600" />
                   </div>
                   <span className="font-medium">{success}</span>
                 </div>
@@ -1280,9 +1275,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
               {error && (
                 <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-3">
                   <div className="p-1 bg-red-100 rounded-full">
-                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <LuCircleAlert className="w-5 h-5 text-red-600" />
                   </div>
                   <span>{error}</span>
                 </div>
@@ -1451,17 +1444,12 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   >
                     {submitting ? (
                       <>
-                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                        <LuLoader className="animate-spin h-4 w-4 text-white" />
                         <span>Menyimpan...</span>
                       </>
                     ) : (
                       <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
+                        <LuCheck className="w-4 h-4" />
                         <span>Simpan Perubahan</span>
                       </>
                     )}

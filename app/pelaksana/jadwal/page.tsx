@@ -3,6 +3,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Pagination from '../../components/Pagination';
+import { 
+  LuInfo, 
+  LuChevronLeft, 
+  LuRefreshCw, 
+  LuList, 
+  LuCalendar, 
+  LuChevronRight, 
+  LuClipboard 
+} from 'react-icons/lu';
 
 interface Kegiatan {
   id: number;
@@ -304,397 +313,380 @@ export default function JadwalPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500">Memuat data...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Notification Toast */}
-        {notification && (
-          <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{notification}</span>
-          </div>
-        )}
+    <div className="space-y-6">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
+          <LuInfo className="w-5 h-5" />
+          <span>{notification}</span>
+        </div>
+      )}
 
-        {/* Header */}
-        <div className="mb-6">
-          <Link href="/pelaksana/dashboard" className="text-blue-600 hover:text-blue-800 flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Kembali ke Dashboard
-          </Link>
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Jadwal Kegiatan</h1>
-            <p className="text-gray-600">Pantau jadwal kegiatan</p>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuCalendar className="w-6 h-6" />
+              </div>
+              Jadwal Kegiatan
+            </h1>
+            <p className="text-blue-100 mt-2">Pantau jadwal kegiatan</p>
           </div>
         </div>
+      </div>
 
-        {/* Real-time Status Bar */}
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-100 rounded-xl p-4 mb-6">
-          <div className="flex flex-wrap justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
-              {/* Auto-refresh Toggle */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setAutoRefresh(!autoRefresh)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+      {/* Real-time Status Bar */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <div className="flex items-center gap-4">
+            {/* Auto-refresh Toggle */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  autoRefresh ? 'bg-green-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    autoRefresh ? 'translate-x-6' : 'translate-x-1'
                   }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      autoRefresh ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                <span className="text-sm text-gray-700">Auto-refresh</span>
-              </div>
-
-              {/* Refresh Button */}
-              <button
-                onClick={handleManualRefresh}
-                disabled={refreshing}
-                className={`flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors ${
-                  refreshing ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                <svg 
-                  className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {refreshing ? 'Memperbarui...' : 'Refresh'}
+                />
               </button>
+              <span className="text-sm text-gray-700">Auto-refresh</span>
             </div>
 
-            {/* Last Updated */}
-            <div className="flex items-center gap-2 text-sm">
-              <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-              <span className="text-gray-600">
-                {lastUpdated ? (
-                  <>Terakhir diperbarui: <span className="font-medium text-gray-800">{formatTime(lastUpdated)}</span></>
-                ) : (
-                  'Memuat data...'
-                )}
-              </span>
-              {autoRefresh && (
-                <span className="text-xs text-gray-500">(auto setiap 30 detik)</span>
+            {/* Refresh Button */}
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              className={`flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg text-sm hover:bg-gray-200 transition-colors ${
+                refreshing ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              <LuRefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Memperbarui...' : 'Refresh'}
+            </button>
+          </div>
+
+          {/* Last Updated */}
+          <div className="flex items-center gap-2 text-sm">
+            <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span className="text-gray-600">
+              {lastUpdated ? (
+                <>Terakhir diperbarui: <span className="font-medium text-gray-800">{formatTime(lastUpdated)}</span></>
+              ) : (
+                'Memuat data...'
               )}
-            </div>
+            </span>
+            {autoRefresh && (
+              <span className="text-xs text-gray-500">(auto setiap 30 detik)</span>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Controls */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <div className="flex flex-wrap justify-between items-center gap-4">
-            {/* View Toggle */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+      {/* Controls */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          {/* View Toggle */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <LuList className="w-5 h-5" />
+                Tabel
+              </span>
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                viewMode === 'calendar' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <LuCalendar className="w-5 h-5" />
+                Kalender
+              </span>
+            </button>
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Filter Bulan */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Bulan:</label>
+              <select
+                value={filterBulan}
+                onChange={e => setFilterBulan(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm"
               >
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                  Tabel
-                </span>
+                <option value="semua">Semua Bulan</option>
+                {BULAN_NAMES.map((nama, index) => (
+                  <option key={index} value={index + 1}>{nama}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filter Tahun */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Tahun:</label>
+              <select
+                value={filterTahun}
+                onChange={e => setFilterTahun(Number(e.target.value))}
+                className="px-3 py-2 border rounded-lg text-sm"
+              >
+                {tahunOptions.map(tahun => (
+                  <option key={tahun} value={tahun}>{tahun}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Status:</label>
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm"
+              >
+                <option value="semua">Semua</option>
+                <option value="belum_mulai">Belum Mulai</option>
+                <option value="berjalan">Berjalan</option>
+                <option value="selesai">Selesai</option>
+                <option value="tertunda">Tertunda</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Calendar Navigation (only for calendar view) */}
+          {viewMode === 'calendar' && (
+            <div className="flex items-center gap-4">
+              <button
+                onClick={prevMonth}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <LuChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="font-medium text-gray-900 min-w-[150px] text-center">
+                {BULAN_NAMES[currentMonth]} {currentYear}
+              </span>
+              <button
+                onClick={nextMonth}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <LuChevronRight className="w-5 h-5" />
               </button>
               <button
-                onClick={() => setViewMode('calendar')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  viewMode === 'calendar' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                onClick={goToToday}
+                className="px-3 py-1 text-sm bg-gray-100 rounded-lg hover:bg-gray-200"
               >
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Kalender
-                </span>
+                Hari Ini
               </button>
             </div>
-
-            {/* Filters */}
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Filter Bulan */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Bulan:</label>
-                <select
-                  value={filterBulan}
-                  onChange={e => setFilterBulan(e.target.value)}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  <option value="semua">Semua Bulan</option>
-                  {BULAN_NAMES.map((nama, index) => (
-                    <option key={index} value={index + 1}>{nama}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filter Tahun */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Tahun:</label>
-                <select
-                  value={filterTahun}
-                  onChange={e => setFilterTahun(Number(e.target.value))}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  {tahunOptions.map(tahun => (
-                    <option key={tahun} value={tahun}>{tahun}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Status:</label>
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-lg text-sm"
-                >
-                  <option value="semua">Semua</option>
-                  <option value="belum_mulai">Belum Mulai</option>
-                  <option value="berjalan">Berjalan</option>
-                  <option value="selesai">Selesai</option>
-                  <option value="tertunda">Tertunda</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Calendar Navigation (only for calendar view) */}
-            {viewMode === 'calendar' && (
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={prevMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <span className="font-medium text-gray-900 min-w-[150px] text-center">
-                  {BULAN_NAMES[currentMonth]} {currentYear}
-                </span>
-                <button
-                  onClick={nextMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={goToToday}
-                  className="px-3 py-1 text-sm bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                  Hari Ini
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
+      </div>
 
-        {/* Statistics Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Kegiatan</p>
-                <p className="text-xl font-bold text-gray-900">{kegiatan.length}</p>
-              </div>
+      {/* Statistics Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <LuClipboard className="w-5 h-5 text-blue-600" />
             </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Berjalan</p>
-                <p className="text-xl font-bold text-blue-600">{kegiatan.filter(k => k.status === 'berjalan').length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Selesai</p>
-                <p className="text-xl font-bold text-green-600">{kegiatan.filter(k => k.status === 'selesai').length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Tertunda</p>
-                <p className="text-xl font-bold text-yellow-600">{kegiatan.filter(k => k.status === 'tertunda').length}</p>
-              </div>
+            <div>
+              <p className="text-sm text-gray-600">Total Kegiatan</p>
+              <p className="text-xl font-bold text-gray-900">{kegiatan.length}</p>
             </div>
           </div>
         </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Berjalan</p>
+              <p className="text-xl font-bold text-blue-600">{kegiatan.filter(k => k.status === 'berjalan').length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Selesai</p>
+              <p className="text-xl font-bold text-green-600">{kegiatan.filter(k => k.status === 'selesai').length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Tertunda</p>
+              <p className="text-xl font-bold text-yellow-600">{kegiatan.filter(k => k.status === 'tertunda').length}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Content */}
-        {viewMode === 'table' ? (
-          /* Table View */
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            {sortedKegiatan.length === 0 ? (
-              <p className="text-center text-gray-500 py-12">Tidak ada kegiatan</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Kegiatan</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">KRO</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal Mulai</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal Selesai</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Durasi</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Sisa Hari</th>
-                      <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {paginatedKegiatan.map(kg => {
-                      const daysRemaining = getDaysRemaining(kg.tanggal_selesai);
-                      const startDate = new Date(kg.tanggal_mulai);
-                      const endDate = new Date(kg.tanggal_selesai);
-                      const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                      
-                      return (
-                        <tr key={kg.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3">
-                            <Link href={`/pelaksana/kegiatan/${kg.id}`} className="font-medium text-blue-600 hover:underline">
-                              {kg.nama}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="text-blue-600">[{kg.kro_kode}]</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm">{formatDate(kg.tanggal_mulai)}</td>
-                          <td className="px-4 py-3 text-sm">{formatDate(kg.tanggal_selesai)}</td>
-                          <td className="px-4 py-3 text-center text-sm">{duration} hari</td>
-                          <td className="px-4 py-3 text-center">
-                            {kg.status === 'selesai' ? (
-                              <span className="text-green-600 text-sm">-</span>
-                            ) : daysRemaining < 0 ? (
-                              <span className="text-red-600 text-sm font-medium">Lewat {Math.abs(daysRemaining)} hari</span>
-                            ) : daysRemaining === 0 ? (
-                              <span className="text-orange-600 text-sm font-medium">Hari ini!</span>
-                            ) : daysRemaining <= 7 ? (
-                              <span className="text-orange-600 text-sm font-medium">{daysRemaining} hari</span>
-                            ) : (
-                              <span className="text-gray-600 text-sm">{daysRemaining} hari</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(kg.status)}`}>
-                              {getStatusLabel(kg.status)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+      {/* Content */}
+      {viewMode === 'table' ? (
+        /* Table View */
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          {sortedKegiatan.length === 0 ? (
+            <p className="text-center text-gray-500 py-12">Tidak ada kegiatan</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Kegiatan</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">KRO</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal Mulai</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal Selesai</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Durasi</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Sisa Hari</th>
+                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {paginatedKegiatan.map(kg => {
+                    const daysRemaining = getDaysRemaining(kg.tanggal_selesai);
+                    const startDate = new Date(kg.tanggal_mulai);
+                    const endDate = new Date(kg.tanggal_selesai);
+                    const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    return (
+                      <tr key={kg.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <Link href={`/pelaksana/kegiatan/${kg.id}`} className="font-medium text-blue-600 hover:underline">
+                            {kg.nama}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="text-blue-600">[{kg.kro_kode}]</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm">{formatDate(kg.tanggal_mulai)}</td>
+                        <td className="px-4 py-3 text-sm">{formatDate(kg.tanggal_selesai)}</td>
+                        <td className="px-4 py-3 text-center text-sm">{duration} hari</td>
+                        <td className="px-4 py-3 text-center">
+                          {kg.status === 'selesai' ? (
+                            <span className="text-green-600 text-sm">-</span>
+                          ) : daysRemaining < 0 ? (
+                            <span className="text-red-600 text-sm font-medium">Lewat {Math.abs(daysRemaining)} hari</span>
+                          ) : daysRemaining === 0 ? (
+                            <span className="text-orange-600 text-sm font-medium">Hari ini!</span>
+                          ) : daysRemaining <= 7 ? (
+                            <span className="text-orange-600 text-sm font-medium">{daysRemaining} hari</span>
+                          ) : (
+                            <span className="text-gray-600 text-sm">{daysRemaining} hari</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(kg.status)}`}>
+                            {getStatusLabel(kg.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {/* Pagination */}
+          {sortedKegiatan.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={sortedKegiatan.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={(value) => {
+                setItemsPerPage(value);
+                setCurrentPage(1);
+              }}
+            />
+          )}
+        </div>
+      ) : (
+        /* Calendar View */
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Calendar Header */}
+          <div className="grid grid-cols-7 bg-gray-100">
+            {HARI_NAMES.map(day => (
+              <div key={day} className="px-2 py-3 text-center text-sm font-medium text-gray-700">
+                {day}
               </div>
-            )}
-            
-            {/* Pagination */}
-            {sortedKegiatan.length > 0 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={sortedKegiatan.length}
-                itemsPerPage={itemsPerPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={(value) => {
-                  setItemsPerPage(value);
-                  setCurrentPage(1);
-                }}
-              />
-            )}
+            ))}
           </div>
-        ) : (
-          /* Calendar View */
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            {/* Calendar Header */}
-            <div className="grid grid-cols-7 bg-gray-100">
-              {HARI_NAMES.map(day => (
-                <div key={day} className="px-2 py-3 text-center text-sm font-medium text-gray-700">
-                  {day}
-                </div>
-              ))}
-            </div>
 
-            {/* Calendar Grid */}
-            <div className="grid grid-cols-7">
-              {renderCalendar()}
-            </div>
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7">
+            {renderCalendar()}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Upcoming Deadlines */}
-        <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Deadline Mendatang</h3>
-          <div className="space-y-3">
-            {filteredKegiatan
-              .filter(kg => kg.status !== 'selesai')
-              .sort((a, b) => new Date(a.tanggal_selesai).getTime() - new Date(b.tanggal_selesai).getTime())
-              .slice(0, 5)
-              .map(kg => {
-                const daysRemaining = getDaysRemaining(kg.tanggal_selesai);
-                return (
-                  <div key={kg.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <Link href={`/pelaksana/kegiatan/${kg.id}`} className="font-medium text-gray-900 hover:text-blue-600">
-                        {kg.nama}
-                      </Link>
-                      <p className="text-sm text-gray-500">Deadline: {formatDate(kg.tanggal_selesai)}</p>
-                    </div>
-                    <div className="text-right">
-                      {daysRemaining < 0 ? (
-                        <span className="text-red-600 font-medium">Lewat {Math.abs(daysRemaining)} hari</span>
-                      ) : daysRemaining === 0 ? (
-                        <span className="text-orange-600 font-medium">Hari ini!</span>
-                      ) : (
-                        <span className={`font-medium ${daysRemaining <= 7 ? 'text-orange-600' : 'text-gray-600'}`}>
-                          {daysRemaining} hari lagi
-                        </span>
-                      )}
-                    </div>
+      {/* Upcoming Deadlines */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 className="font-semibold text-gray-900 mb-4">Deadline Mendatang</h3>
+        <div className="space-y-3">
+          {filteredKegiatan
+            .filter(kg => kg.status !== 'selesai')
+            .sort((a, b) => new Date(a.tanggal_selesai).getTime() - new Date(b.tanggal_selesai).getTime())
+            .slice(0, 5)
+            .map(kg => {
+              const daysRemaining = getDaysRemaining(kg.tanggal_selesai);
+              return (
+                <div key={kg.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <Link href={`/pelaksana/kegiatan/${kg.id}`} className="font-medium text-gray-900 hover:text-blue-600">
+                      {kg.nama}
+                    </Link>
+                    <p className="text-sm text-gray-500">Deadline: {formatDate(kg.tanggal_selesai)}</p>
                   </div>
-                );
-              })}
-            {filteredKegiatan.filter(kg => kg.status !== 'selesai').length === 0 && (
-              <p className="text-gray-500 text-center py-4">Tidak ada deadline mendatang</p>
-            )}
-          </div>
+                  <div className="text-right">
+                    {daysRemaining < 0 ? (
+                      <span className="text-red-600 font-medium">Lewat {Math.abs(daysRemaining)} hari</span>
+                    ) : daysRemaining === 0 ? (
+                      <span className="text-orange-600 font-medium">Hari ini!</span>
+                    ) : (
+                      <span className={`font-medium ${daysRemaining <= 7 ? 'text-orange-600' : 'text-gray-600'}`}>
+                        {daysRemaining} hari lagi
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          {filteredKegiatan.filter(kg => kg.status !== 'selesai').length === 0 && (
+            <p className="text-gray-500 text-center py-4">Tidak ada deadline mendatang</p>
+          )}
         </div>
       </div>
     </div>

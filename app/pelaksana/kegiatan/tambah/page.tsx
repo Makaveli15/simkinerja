@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { LuChevronLeft, LuLoader, LuPlus } from 'react-icons/lu';
 
 interface KRO {
   id: number;
@@ -209,13 +210,18 @@ export default function TambahKegiatanPage() {
             href="/pelaksana/kegiatan"
             className="text-blue-600 hover:text-blue-800 flex items-center gap-2 mb-4"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <LuChevronLeft className="w-5 h-5" />
             Kembali ke Daftar Kegiatan
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Tambah Kegiatan Baru</h1>
-          <p className="text-gray-600">Buat kegiatan baru dengan memilih KRO terkait</p>
+          <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuPlus className="w-6 h-6" />
+              </div>
+              Tambah Kegiatan Baru
+            </h1>
+            <p className="text-blue-100 mt-2">Buat kegiatan baru dengan memilih KRO terkait</p>
+          </div>
         </div>
 
         {/* Form */}
@@ -461,10 +467,7 @@ export default function TambahKegiatanPage() {
             >
               {submitting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
+                  <LuLoader className="animate-spin h-5 w-5" />
                   Menyimpan...
                 </span>
               ) : (

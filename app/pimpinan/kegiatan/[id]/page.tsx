@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { LuCircleAlert, LuChevronLeft, LuCircleCheck, LuPlus, LuCheck } from 'react-icons/lu';
 
 interface KegiatanDetail {
   id: number;
@@ -327,16 +328,12 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
     return (
       <div className="text-center py-12 bg-white rounded-xl shadow-sm border p-8">
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <LuCircleAlert className="w-8 h-8 text-gray-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Kegiatan tidak ditemukan</h3>
         <p className="text-gray-500 mb-4">Kegiatan dengan ID {kegiatanId} tidak ada atau sudah dihapus.</p>
         <Link href="/pimpinan/kegiatan" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
+          <LuChevronLeft className="w-4 h-4" />
           Kembali ke daftar kegiatan
         </Link>
       </div>
@@ -1033,9 +1030,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
             <div className="space-y-4">
               {kendala.length === 0 ? (
                 <div className="text-center py-8 bg-green-50 rounded-lg">
-                  <svg className="w-12 h-12 text-green-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <LuCircleCheck className="w-12 h-12 text-green-400 mx-auto mb-2" />
                   <p className="text-green-600 font-medium">Tidak ada kendala</p>
                 </div>
               ) : (
@@ -1485,9 +1480,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   onClick={() => setShowEvaluasiForm(!showEvaluasiForm)}
                   className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
+                  <LuPlus className="w-4 h-4" />
                   Tambah Evaluasi
                 </button>
               </div>
@@ -1543,9 +1536,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                         {submittingEvaluasi ? (
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
+                          <LuCheck className="w-4 h-4" />
                         )}
                         Simpan Evaluasi
                       </button>

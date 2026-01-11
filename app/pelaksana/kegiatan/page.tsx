@@ -3,6 +3,14 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Pagination from '@/app/components/Pagination';
+import {
+  LuFileSpreadsheet,
+  LuFileText,
+  LuPlus,
+  LuSearch,
+  LuFolderOpen,
+  LuClipboard
+} from 'react-icons/lu';
 
 interface KendalaItem {
   id: number;
@@ -866,44 +874,45 @@ export default function KegiatanPage() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Daftar Kegiatan</h1>
-          <p className="text-gray-500 mt-1">Kelola kegiatan tim Anda</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Export Buttons */}
-          <button
-            onClick={() => openExportModal('excel')}
-            disabled={exporting || filteredKegiatan.length === 0}
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Export ke Excel"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="hidden sm:inline">Excel</span>
-          </button>
-          <button
-            onClick={() => openExportModal('pdf')}
-            disabled={exporting || filteredKegiatan.length === 0}
-            className="inline-flex items-center gap-2 px-3 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Export ke PDF"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <span className="hidden sm:inline">PDF</span>
-          </button>
-          <Link
-            href="/pelaksana/kegiatan/tambah"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-lg shadow-blue-500/30"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Tambah Kegiatan
-          </Link>
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuClipboard className="w-6 h-6" />
+              </div>
+              Daftar Kegiatan
+            </h1>
+            <p className="text-blue-100 mt-2">Kelola kegiatan tim Anda</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Export Buttons */}
+            <button
+              onClick={() => openExportModal('excel')}
+              disabled={exporting || filteredKegiatan.length === 0}
+              className="inline-flex items-center gap-2 px-3 py-2.5 bg-white/20 text-white rounded-xl hover:bg-white/30 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export ke Excel"
+            >
+              <LuFileSpreadsheet className="w-5 h-5" />
+              <span className="hidden sm:inline">Excel</span>
+            </button>
+            <button
+              onClick={() => openExportModal('pdf')}
+              disabled={exporting || filteredKegiatan.length === 0}
+              className="inline-flex items-center gap-2 px-3 py-2.5 bg-white/20 text-white rounded-xl hover:bg-white/30 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Export ke PDF"
+            >
+              <LuFileText className="w-5 h-5" />
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+            <Link
+              href="/pelaksana/kegiatan/tambah"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-colors font-medium shadow-lg"
+            >
+              <LuPlus className="w-5 h-5" />
+              Tambah Kegiatan
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -912,9 +921,7 @@ export default function KegiatanPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
               placeholder="Cari kegiatan..."
@@ -982,9 +989,7 @@ export default function KegiatanPage() {
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
+                    <LuFolderOpen className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">{kroName}</h3>
@@ -1123,9 +1128,7 @@ export default function KegiatanPage() {
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+            <LuClipboard className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Kegiatan</h3>
           <p className="text-gray-500 mb-6">Mulai dengan menambahkan kegiatan pertama Anda</p>
@@ -1133,9 +1136,7 @@ export default function KegiatanPage() {
             href="/pelaksana/kegiatan/tambah"
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
+            <LuPlus className="w-4 h-4" />
             Tambah Kegiatan
           </Link>
         </div>

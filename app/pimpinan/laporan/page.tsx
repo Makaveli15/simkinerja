@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Pagination from '../../components/Pagination';
+import { LuFileText, LuSearch, LuDownload } from 'react-icons/lu';
 
 interface Laporan {
   id: number;
@@ -99,33 +100,25 @@ export default function PimpinanLaporanPage() {
     if (ext === 'pdf') {
       return (
         <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-          </svg>
+          <LuFileText className="w-5 h-5 text-red-600" />
         </div>
       );
     } else if (ext === 'doc' || ext === 'docx') {
       return (
         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-          </svg>
+          <LuFileText className="w-5 h-5 text-blue-600" />
         </div>
       );
     } else if (ext === 'xls' || ext === 'xlsx') {
       return (
         <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-          <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-          </svg>
+          <LuFileText className="w-5 h-5 text-green-600" />
         </div>
       );
     }
     return (
       <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-        <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-        </svg>
+        <LuFileText className="w-5 h-5 text-gray-600" />
       </div>
     );
   };
@@ -146,13 +139,20 @@ export default function PimpinanLaporanPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Laporan Pelaksana</h1>
-          <p className="text-gray-500 mt-1">Lihat laporan yang diunggah oleh pelaksana</p>
-        </div>
-        <div className="text-sm text-gray-500">
-          Total: <span className="font-semibold text-blue-600">{filteredLaporan.length}</span> laporan
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuFileText className="w-6 h-6" />
+              </div>
+              Laporan Pelaksana
+            </h1>
+            <p className="text-blue-100 mt-2">Lihat laporan yang diunggah oleh pelaksana</p>
+          </div>
+          <div className="px-4 py-2 bg-white/20 rounded-lg text-sm">
+            Total: <span className="font-semibold">{filteredLaporan.length}</span> laporan
+          </div>
         </div>
       </div>
 
@@ -162,9 +162,7 @@ export default function PimpinanLaporanPage() {
           {/* Search */}
           <div className="md:col-span-2">
             <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Cari judul, pelaksana, tim..."
@@ -230,9 +228,7 @@ export default function PimpinanLaporanPage() {
         </div>
       ) : filteredLaporan.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
-          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
+          <LuFileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-1">Belum ada laporan</h3>
           <p className="text-gray-500">Tidak ditemukan laporan sesuai filter yang dipilih</p>
         </div>
@@ -286,9 +282,7 @@ export default function PimpinanLaporanPage() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
+                        <LuDownload className="w-4 h-4" />
                         Download
                       </a>
                     </td>

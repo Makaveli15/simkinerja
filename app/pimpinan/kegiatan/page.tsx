@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { LuSearch, LuClipboard, LuEye } from 'react-icons/lu';
 
 interface Kegiatan {
   id: number;
@@ -145,13 +146,20 @@ export default function PimpinanKegiatanPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Monitoring Kegiatan</h1>
-          <p className="text-gray-600 mt-1">Pantau seluruh kegiatan dari semua tim</p>
-        </div>
-        <div className="text-sm text-gray-500">
-          Total: <span className="font-semibold text-blue-600">{filteredKegiatan.length}</span> kegiatan
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuClipboard className="w-6 h-6" />
+              </div>
+              Monitoring Kegiatan
+            </h1>
+            <p className="text-blue-100 mt-2">Pantau seluruh kegiatan dari semua tim</p>
+          </div>
+          <div className="px-4 py-2 bg-white/20 rounded-lg text-sm">
+            Total: <span className="font-semibold">{filteredKegiatan.length}</span> kegiatan
+          </div>
         </div>
       </div>
 
@@ -161,9 +169,7 @@ export default function PimpinanKegiatanPage() {
           {/* Search */}
           <div className="md:col-span-2">
             <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Cari kegiatan, tim, KRO..."
@@ -220,9 +226,7 @@ export default function PimpinanKegiatanPage() {
         </div>
       ) : filteredKegiatan.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
-          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
+          <LuClipboard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-1">Tidak ada kegiatan</h3>
           <p className="text-gray-500">Tidak ditemukan kegiatan sesuai filter yang dipilih</p>
         </div>
@@ -300,10 +304,7 @@ export default function PimpinanKegiatanPage() {
                         href={`/pimpinan/kegiatan/${kg.id}`}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                        <LuEye className="w-4 h-4" />
                         Detail
                       </Link>
                     </td>

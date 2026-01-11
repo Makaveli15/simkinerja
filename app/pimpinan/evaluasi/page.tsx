@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { 
+  LuPlus, 
+  LuCircleCheck, 
+  LuSquarePen, 
+  LuCheck, 
+  LuSearch, 
+  LuUser, 
+  LuEye 
+} from 'react-icons/lu';
 
 interface Evaluasi {
   id: number;
@@ -149,28 +158,31 @@ export default function PimpinanEvaluasiPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Evaluasi & Tindak Lanjut</h1>
-          <p className="text-gray-600 mt-1">Berikan catatan, arahan, dan rekomendasi untuk kegiatan</p>
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuSquarePen className="w-6 h-6" />
+              </div>
+              Evaluasi & Tindak Lanjut
+            </h1>
+            <p className="text-blue-100 mt-2">Berikan catatan, arahan, dan rekomendasi untuk kegiatan</p>
+          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-white text-blue-600 font-medium rounded-lg hover:bg-blue-50 flex items-center gap-2 shadow-lg"
+          >
+            <LuPlus className="w-5 h-5" />
+            Tambah Evaluasi
+          </button>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Tambah Evaluasi
-        </button>
       </div>
 
       {/* Alert Messages */}
       {success && (
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+          <LuCircleCheck className="w-5 h-5" />
           {success}
         </div>
       )}
@@ -226,9 +238,7 @@ export default function PimpinanEvaluasiPage() {
       {showForm && (
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-indigo-200 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
+            <LuSquarePen className="w-5 h-5 text-blue-600" />
             Tambah Evaluasi Baru
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -298,9 +308,7 @@ export default function PimpinanEvaluasiPage() {
                 {submitting ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                  <LuCheck className="w-4 h-4" />
                 )}
                 Simpan Evaluasi
               </button>
@@ -315,9 +323,7 @@ export default function PimpinanEvaluasiPage() {
           {/* Search */}
           <div className="md:col-span-1">
             <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 placeholder="Cari evaluasi..."
@@ -373,9 +379,7 @@ export default function PimpinanEvaluasiPage() {
         </div>
       ) : filteredEvaluasi.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
-          <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
+          <LuSquarePen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-1">Belum ada evaluasi</h3>
           <p className="text-gray-500 mb-4">Mulai dengan menambahkan catatan, arahan, atau rekomendasi</p>
           <button
@@ -415,9 +419,7 @@ export default function PimpinanEvaluasiPage() {
                   </div>
 
                   <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                    <LuUser className="w-4 h-4" />
                     <span>Oleh: {e.pimpinan_nama}</span>
                   </div>
                 </div>
@@ -427,10 +429,7 @@ export default function PimpinanEvaluasiPage() {
                     href={`/pimpinan/kegiatan/${e.kegiatan_id}`}
                     className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 flex items-center gap-1"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                    <LuEye className="w-4 h-4" />
                     Lihat Kegiatan
                   </Link>
                 </div>

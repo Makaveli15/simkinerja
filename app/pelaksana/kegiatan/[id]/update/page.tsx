@@ -2,6 +2,16 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import {
+  LuTriangleAlert,
+  LuChevronLeft,
+  LuCheck,
+  LuX,
+  LuCircleX,
+  LuCircleCheck,
+  LuInfo,
+  LuFileText
+} from 'react-icons/lu';
 
 // Helper function untuk format angka (hilangkan desimal jika tidak perlu)
 const formatNumber = (num: number | string | undefined): string => {
@@ -734,9 +744,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <LuTriangleAlert className="w-8 h-8 text-red-600" />
           </div>
           <p className="text-gray-600 mb-4">{error || 'Kegiatan tidak ditemukan'}</p>
           <Link href="/pelaksana/kegiatan" className="text-blue-600 hover:underline">Kembali ke Daftar Kegiatan</Link>
@@ -760,9 +768,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
         {/* Header */}
         <div className="mb-6">
           <Link href={`/pelaksana/kegiatan/${kegiatanId}`} className="text-blue-600 hover:text-blue-800 flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            <LuChevronLeft className="w-5 h-5" />
             Kembali ke Detail Kegiatan
           </Link>
           
@@ -797,9 +803,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                     <span>{status.icon}</span>
                     {status.label}
                     {currentStatus === status.value && (
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
+                      <LuCheck className="w-4 h-4" />
                     )}
                   </button>
                 ))}
@@ -860,9 +864,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
         {/* Alert Messages */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-3">
-            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
+            <LuCircleX className="w-5 h-5 flex-shrink-0" />
             {error}
             <button onClick={() => setError('')} className="ml-auto text-red-500 hover:text-red-700">×</button>
           </div>
@@ -870,9 +872,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
 
         {success && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-3">
-            <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
+            <LuCircleCheck className="w-5 h-5 flex-shrink-0" />
             {success}
             <button onClick={() => setSuccess('')} className="ml-auto text-green-500 hover:text-green-700">×</button>
           </div>
@@ -1000,9 +1000,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                           </>
                         ) : (
                           <>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
+                            <LuCheck className="w-4 h-4" />
                             Simpan Progres
                           </>
                         )}
@@ -1021,9 +1019,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                   
                   {progres.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg">
-                      <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
+                      <LuFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500">Belum ada riwayat progres</p>
                       <p className="text-sm text-gray-400 mt-1">Gunakan form di atas untuk mencatat progres pertama</p>
                     </div>
@@ -1177,9 +1173,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                         type="submit"
                         className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
+                        <LuCheck className="w-4 h-4" />
                         Simpan Tanggal
                       </button>
                       
@@ -1205,9 +1199,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                           }}
                           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
+                          <LuX className="w-4 h-4" />
                           Hapus
                         </button>
                       )}
@@ -1218,9 +1210,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                 {/* Panduan Pengisian */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <LuInfo className="w-5 h-5" />
                     Panduan Perhitungan Ketepatan Waktu
                   </h4>
                   <ul className="text-sm text-blue-700 space-y-1.5 ml-7">
@@ -1350,9 +1340,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
+                      <LuTriangleAlert className="w-5 h-5 text-amber-600" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-medium text-amber-800">Penyelesaian Kendala Mempengaruhi Skor Kinerja</h4>

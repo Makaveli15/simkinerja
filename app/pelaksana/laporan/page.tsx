@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Pagination from '../../components/Pagination';
+import { 
+  LuFilePlus, 
+  LuUpload, 
+  LuFileText, 
+  LuDownload, 
+  LuTrash2, 
+  LuX,
+  LuCloudUpload
+} from 'react-icons/lu';
 
 interface Laporan {
   id: number;
@@ -304,30 +313,33 @@ export default function LaporanPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Laporan</h1>
-          <p className="text-gray-600">Kelola, upload, dan generate laporan kegiatan</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V8z" clipRule="evenodd" />
-            </svg>
-            Generate Laporan
-          </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-            Upload Laporan
-          </button>
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuFileText className="w-6 h-6" />
+              </div>
+              Laporan
+            </h1>
+            <p className="text-blue-100 mt-2">Kelola, upload, dan generate laporan kegiatan</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors flex items-center gap-2"
+            >
+              <LuFilePlus className="h-5 w-5" />
+              Generate Laporan
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <LuUpload className="h-5 w-5" />
+              Upload Laporan
+            </button>
+          </div>
         </div>
       </div>
 
@@ -383,9 +395,7 @@ export default function LaporanPage() {
           </div>
         ) : laporanList.length === 0 ? (
           <div className="p-8 text-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <LuFileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600">
               Belum ada laporan untuk {filterBulan ? `${BULAN_NAMES[filterBulan - 1]} ` : ''}{filterTahun}
             </p>
@@ -456,18 +466,14 @@ export default function LaporanPage() {
                           className="text-blue-600 hover:text-blue-800 p-1"
                           title="Download"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
+                          <LuDownload className="h-5 w-5" />
                         </a>
                         <button
                           onClick={() => openDeleteModal(laporan)}
                           className="text-red-600 hover:text-red-800 p-1"
                           title="Hapus"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
+                          <LuTrash2 className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
@@ -505,9 +511,7 @@ export default function LaporanPage() {
                 onClick={() => { setShowGenerateModal(false); resetGenerateForm(); setError(''); }}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <LuX className="h-6 w-6" />
               </button>
             </div>
             
@@ -602,9 +606,7 @@ export default function LaporanPage() {
                     </>
                   ) : (
                     <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
+                      <LuDownload className="h-5 w-5" />
                       Generate & Download
                     </>
                   )}
@@ -617,17 +619,20 @@ export default function LaporanPage() {
 
       {/* Upload Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-800">Upload Laporan</h2>
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <LuUpload className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white">Upload Laporan</h3>
+              </div>
               <button
                 onClick={() => { setShowModal(false); resetForm(); setError(''); }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <LuX className="w-5 h-5" />
               </button>
             </div>
             
@@ -696,9 +701,7 @@ export default function LaporanPage() {
                 </label>
                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-blue-500 transition-colors">
                   <div className="space-y-1 text-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                      <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <LuCloudUpload className="mx-auto h-12 w-12 text-gray-400" />
                     <div className="flex text-sm text-gray-600">
                       <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
                         <span>Pilih file</span>
@@ -753,12 +756,10 @@ export default function LaporanPage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedLaporan && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6">
             <div className="text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              <LuTrash2 className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Hapus Laporan?</h3>
               <p className="text-gray-600 mb-6">
                 Apakah Anda yakin ingin menghapus laporan &quot;{selectedLaporan.judul}&quot;? Tindakan ini tidak dapat dibatalkan.

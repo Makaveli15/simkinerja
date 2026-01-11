@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Pagination from '../../components/Pagination';
+import { LuPlus, LuUsers, LuTrendingUp, LuSearch, LuSquarePen, LuTrash2, LuChevronRight, LuX, LuUserPlus } from 'react-icons/lu';
 
 interface Member {
   id: number;
@@ -168,20 +169,25 @@ export default function TimPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen Tim</h1>
-          <p className="text-gray-500 mt-1">Kelola tim kerja dalam sistem</p>
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuUsers className="w-6 h-6" />
+              </div>
+              Manajemen Tim
+            </h1>
+            <p className="text-blue-100 mt-2">Kelola tim kerja dalam sistem</p>
+          </div>
+          <button
+            onClick={openAddModal}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all shadow-lg font-medium"
+          >
+            <LuPlus className="w-5 h-5" />
+            Tambah Tim
+          </button>
         </div>
-        <button
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30 font-medium"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Tambah Tim
-        </button>
       </div>
 
       {/* Stats Card */}
@@ -189,9 +195,7 @@ export default function TimPage() {
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+              <LuUsers className="w-6 h-6 text-white" />
             </div>
             <div>
               <p className="text-3xl font-bold text-gray-900">{timList.length}</p>
@@ -202,9 +206,7 @@ export default function TimPage() {
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
           <div className="flex items-center gap-3 h-full">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
+              <LuTrendingUp className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-gray-500 mb-1">Tim Aktif</p>
@@ -228,9 +230,7 @@ export default function TimPage() {
       {/* Search */}
       <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
         <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder="Cari nama atau deskripsi tim..."
@@ -263,18 +263,14 @@ export default function TimPage() {
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                     title="Edit"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
+                    <LuSquarePen className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(tim.id, tim.nama)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     title="Hapus"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    <LuTrash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -313,9 +309,7 @@ export default function TimPage() {
                       {tim.memberCount} Anggota
                     </span>
                   </div>
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <LuChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
               </div>
               
@@ -346,9 +340,7 @@ export default function TimPage() {
 
       {filteredTim.length === 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
+          <LuUsers className="mx-auto h-12 w-12 text-gray-400" />
           <p className="mt-4 text-gray-500">Tidak ada tim ditemukan</p>
         </div>
       )}
@@ -366,9 +358,7 @@ export default function TimPage() {
                   onClick={() => setShowModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <LuX className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
             </div>
@@ -434,9 +424,7 @@ export default function TimPage() {
                   onClick={() => setShowMembersModal(false)}
                   className="p-2 hover:bg-white/20 rounded-lg transition-colors text-white"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <LuX className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -479,9 +467,7 @@ export default function TimPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m9 5.197v1" />
-                  </svg>
+                  <LuUserPlus className="mx-auto h-12 w-12 text-gray-400" />
                   <p className="mt-4 text-gray-500">Belum ada anggota di tim ini</p>
                   <p className="text-sm text-gray-400">Tambahkan user dan tetapkan ke tim ini</p>
                 </div>

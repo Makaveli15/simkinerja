@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { LuUser, LuLock, LuLoader, LuInfo } from 'react-icons/lu';
 
 interface User {
   id: number;
@@ -253,9 +254,7 @@ export default function ProfilePage() {
                 }`}
               >
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+                  <LuUser className="w-5 h-5" />
                   Edit Profil
                 </span>
               </button>
@@ -268,9 +267,7 @@ export default function ProfilePage() {
                 }`}
               >
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+                  <LuLock className="w-5 h-5" />
                   Ganti Password
                 </span>
               </button>
@@ -389,10 +386,7 @@ export default function ProfilePage() {
                     >
                       {isSaving ? (
                         <span className="flex items-center gap-2">
-                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                          </svg>
+                          <LuLoader className="animate-spin w-4 h-4" />
                           Menyimpan...
                         </span>
                       ) : (
@@ -406,9 +400,7 @@ export default function ProfilePage() {
                   {/* Info */}
                   <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                     <div className="flex gap-3">
-                      <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <LuInfo className="w-5 h-5 text-blue-600 mt-0.5" />
                       <div>
                         <p className="text-sm font-medium text-blue-800">Keamanan Akun</p>
                         <p className="text-xs text-blue-600 mt-1">Gunakan password yang kuat dengan kombinasi huruf, angka, dan simbol. Minimal 6 karakter.</p>
@@ -475,10 +467,7 @@ export default function ProfilePage() {
                     >
                       {isChangingPassword ? (
                         <span className="flex items-center gap-2">
-                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                          </svg>
+                          <LuLoader className="animate-spin w-4 h-4" />
                           Mengubah...
                         </span>
                       ) : (
