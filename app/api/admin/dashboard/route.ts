@@ -35,16 +35,6 @@ export async function GET() {
       'SELECT COUNT(*) as total FROM mitra'
     );
 
-    // Get total Kegiatan
-    const [kegiatanCount] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as total FROM kegiatan'
-    );
-
-    // Get total budget from kegiatan
-    const [totalBudget] = await pool.query<RowDataPacket[]>(
-      'SELECT COALESCE(SUM(anggaran), 0) as total FROM kegiatan'
-    );
-
     // Get users by role
     const [usersByRole] = await pool.query<RowDataPacket[]>(
       'SELECT role, COUNT(*) as count FROM users GROUP BY role'
@@ -67,15 +57,6 @@ export async function GET() {
        LIMIT 5`
     );
 
-    // Get recent kegiatan
-    const [recentKegiatan] = await pool.query<RowDataPacket[]>(
-      `SELECT k.id, k.kode, k.nama, k.anggaran, kr.nama as kro_nama, k.created_at 
-       FROM kegiatan k 
-       LEFT JOIN kro kr ON k.kro_id = kr.id 
-       ORDER BY k.created_at DESC 
-       LIMIT 5`
-    );
-
     return NextResponse.json({
       stats: {
         totalUsers: usersCount[0].total,
@@ -83,13 +64,10 @@ export async function GET() {
         totalTim: timCount[0].total,
         totalKro: kroCount[0].total,
         totalMitra: mitraCount[0].total,
-        totalKegiatan: kegiatanCount[0].total,
-        totalBudget: totalBudget[0].total,
       },
       usersByRole,
       usersByTim,
       recentUsers,
-      recentKegiatan,
     });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);

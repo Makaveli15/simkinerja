@@ -7,9 +7,7 @@ interface DashboardStats {
   totalTim: number;
   totalKro: number;
   totalMitra: number;
-  totalKegiatan: number;
   activeUsers: number;
-  totalBudget: number;
 }
 
 interface DashboardData {
@@ -17,7 +15,6 @@ interface DashboardData {
   usersByRole: { role: string; count: number }[];
   usersByTim: { tim_nama: string; count: number }[];
   recentUsers: { id: number; username: string; email: string; role: string; created_at: string }[];
-  recentKegiatan: { id: number; kode: string; nama: string; anggaran: number; created_at: string }[];
 }
 
 export default function DashboardPage() {
@@ -41,15 +38,6 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
   };
 
   const formatDate = (dateStr: string) => {
@@ -249,38 +237,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {/* Recent Kegiatan */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900">Kegiatan Terbaru</h3>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {data?.recentKegiatan?.map((kegiatan) => (
-              <div key={kegiatan.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="inline-flex px-2.5 py-1 text-xs font-mono font-semibold rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                        {kegiatan.kode}
-                      </span>
-                    </div>
-                    <p className="font-medium text-gray-900 truncate">{kegiatan.nama}</p>
-                    <p className="text-xs text-gray-400 mt-1">{formatDate(kegiatan.created_at)}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-semibold text-gray-900">{formatCurrency(kegiatan.anggaran)}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {(!data?.recentKegiatan || data.recentKegiatan.length === 0) && (
-              <div className="px-6 py-8 text-center text-gray-400">
-                Tidak ada data kegiatan
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Quick Actions */}
@@ -311,13 +267,13 @@ export default function DashboardPage() {
             </div>
             <span className="text-sm font-medium text-gray-700">Tambah Mitra</span>
           </a>
-          <a href="/admin/kegiatan" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors group">
+          <a href="/admin/kro" className="flex flex-col items-center gap-3 p-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition-colors group">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <span className="text-sm font-medium text-gray-700">Tambah Kegiatan</span>
+            <span className="text-sm font-medium text-gray-700">Kelola KRO</span>
           </a>
         </div>
       </div>
