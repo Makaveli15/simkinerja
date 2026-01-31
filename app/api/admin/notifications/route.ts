@@ -46,10 +46,6 @@ export async function GET() {
       `SELECT id, username, 'user_created' as type, created_at FROM users ORDER BY created_at DESC LIMIT 3`
     );
 
-    const [recentKegiatan] = await pool.query<RowDataPacket[]>(
-      `SELECT id, nama, 'kegiatan_created' as type, created_at FROM kegiatan ORDER BY created_at DESC LIMIT 3`
-    );
-
     const [recentMitra] = await pool.query<RowDataPacket[]>(
       `SELECT id, nama, 'mitra_created' as type, created_at FROM mitra ORDER BY created_at DESC LIMIT 3`
     );
@@ -64,16 +60,6 @@ export async function GET() {
         read: readIds.has(`user-${u.id}`),
         referenceId: u.id,
         referenceType: 'user',
-      })),
-      ...recentKegiatan.map((k: RowDataPacket) => ({
-        id: `kegiatan-${k.id}`,
-        title: 'Kegiatan Baru',
-        message: `${k.nama} telah ditambahkan`,
-        time: k.created_at,
-        type: 'kegiatan',
-        read: readIds.has(`kegiatan-${k.id}`),
-        referenceId: k.id,
-        referenceType: 'kegiatan',
       })),
       ...recentMitra.map((m: RowDataPacket) => ({
         id: `mitra-${m.id}`,
@@ -113,16 +99,12 @@ export async function POST(request: NextRequest) {
       const [recentUsers] = await pool.query<RowDataPacket[]>(
         `SELECT id FROM users ORDER BY created_at DESC LIMIT 3`
       );
-      const [recentKegiatan] = await pool.query<RowDataPacket[]>(
-        `SELECT id FROM kegiatan ORDER BY created_at DESC LIMIT 3`
-      );
       const [recentMitra] = await pool.query<RowDataPacket[]>(
         `SELECT id FROM mitra ORDER BY created_at DESC LIMIT 3`
       );
 
       const allIds = [
         ...recentUsers.map((u: RowDataPacket) => `user-${u.id}`),
-        ...recentKegiatan.map((k: RowDataPacket) => `kegiatan-${k.id}`),
         ...recentMitra.map((m: RowDataPacket) => `mitra-${m.id}`),
       ];
 

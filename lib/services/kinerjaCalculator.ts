@@ -15,7 +15,7 @@
  */
 
 export interface KegiatanData {
-  // Data Target (dari kegiatan_operasional)
+  // Data Target (dari kegiatan)
   target_output: number;
   tanggal_mulai: string | Date | null;    // Tanggal mulai kegiatan
   tanggal_selesai: string | Date | null;  // Target selesai

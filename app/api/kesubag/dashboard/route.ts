@@ -46,10 +46,10 @@ export async function GET(req: NextRequest) {
         t.nama as tim_nama,
         kro.kode as kro_kode,
         kro.nama as kro_nama,
-        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_operasional_id = ko.id), 0) as total_realisasi_anggaran,
-        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_operasional_id = ko.id), 0) as total_kendala,
-        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_operasional_id = ko.id AND status = 'resolved'), 0) as kendala_resolved
-      FROM kegiatan_operasional ko
+        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_realisasi_anggaran,
+        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id), 0) as total_kendala,
+        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved
+      FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       ORDER BY ko.created_at DESC
@@ -188,7 +188,7 @@ export async function GET(req: NextRequest) {
       const [progresData] = await pool.query<RowDataPacket[]>(
         `SELECT 
           AVG(CASE WHEN ko.target_output > 0 THEN (ko.output_realisasi / ko.target_output) * 100 ELSE 0 END) as avg_progres
-         FROM kegiatan_operasional ko
+         FROM kegiatan ko
          WHERE ko.updated_at BETWEEN ? AND ?`,
         [startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
       );

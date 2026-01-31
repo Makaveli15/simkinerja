@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     // Verify kegiatan exists and belongs to user's assignments
     const [kegiatanCheck] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kegiatan_operasional WHERE id = ?',
+      'SELECT id FROM kegiatan WHERE id = ?',
       [kegiatan_id]
     );
 
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
 
     // Get kegiatan name for notification
     const [kegiatanInfo] = await pool.query<RowDataPacket[]>(
-      'SELECT nama FROM kegiatan_operasional WHERE id = ?',
+      'SELECT nama FROM kegiatan WHERE id = ?',
       [kegiatan_id]
     );
     const kegiatanNama = kegiatanInfo[0]?.nama || 'Kegiatan';
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
       await createNotificationForAllKesubag({
         title: '📄 Dokumen Final Diupload',
         message: `${uploaderNama} mengupload dokumen final "${file.name}" untuk kegiatan "${kegiatanNama}". Menunggu permintaan validasi dari pelaksana.`,
-        type: 'info',
+        type: 'kegiatan',
         referenceId: parseInt(kegiatan_id),
         referenceType: 'kegiatan'
       });
@@ -248,23 +248,35 @@ export async function DELETE(req: NextRequest) {
       }, { status: 404 });
     }
 
-    // Don't allow delete if already reviewed
-    if (dokumenCheck[0].status_review !== 'pending') {
-      return NextResponse.json({ 
-        error: 'Tidak dapat menghapus dokumen yang sudah direview' 
-      }, { status: 400 });
-    }
+    const dokumen = dokumenCheck[0];
 
-    // Don't allow delete if validation already requested
-    if (dokumenCheck[0].minta_validasi === 1) {
-      return NextResponse.json({ 
-        error: 'Tidak dapat menghapus dokumen yang sudah diminta validasi' 
-      }, { status: 400 });
+    // Cek berdasarkan tipe dokumen
+    if (dokumen.tipe_dokumen === 'draft') {
+      // Untuk draft: cek apakah sudah direview oleh kesubag
+      if (dokumen.draft_status_kesubag && dokumen.draft_status_kesubag !== 'pending') {
+        return NextResponse.json({ 
+          error: 'Tidak dapat menghapus draft yang sudah direview oleh kesubag' 
+        }, { status: 400 });
+      }
+    } else {
+      // Untuk final: cek apakah sudah diminta validasi atau sudah diproses
+      if (dokumen.minta_validasi === 1) {
+        return NextResponse.json({ 
+          error: 'Tidak dapat menghapus dokumen yang sudah diminta validasi' 
+        }, { status: 400 });
+      }
+      
+      // Cek status final - jika sudah diproses, tidak boleh dihapus
+      if (dokumen.status_final && dokumen.status_final !== 'draft') {
+        return NextResponse.json({ 
+          error: 'Tidak dapat menghapus dokumen yang sudah dalam proses validasi' 
+        }, { status: 400 });
+      }
     }
 
     // Try to delete the physical file
     try {
-      const filePath = path.join(process.cwd(), 'public', dokumenCheck[0].path_file);
+      const filePath = path.join(process.cwd(), 'public', dokumen.path_file);
       if (existsSync(filePath)) {
         await unlink(filePath);
       }
@@ -307,7 +319,7 @@ export async function PATCH(req: NextRequest) {
 
     // Check if dokumen exists and belongs to user
     const [dokumenCheck] = await pool.query<RowDataPacket[]>(
-      'SELECT d.*, ko.nama as kegiatan_nama FROM dokumen_output d LEFT JOIN kegiatan_operasional ko ON d.kegiatan_id = ko.id WHERE d.id = ? AND d.uploaded_by = ?',
+      'SELECT d.*, ko.nama as kegiatan_nama FROM dokumen_output d LEFT JOIN kegiatan ko ON d.kegiatan_id = ko.id WHERE d.id = ? AND d.uploaded_by = ?',
       [dokumenId, payload.id]
     );
 
@@ -347,7 +359,7 @@ export async function PATCH(req: NextRequest) {
 
       // Update kegiatan status_verifikasi to menunggu
       await pool.query(
-        'UPDATE kegiatan_operasional SET status_verifikasi = ? WHERE id = ?',
+        'UPDATE kegiatan SET status_verifikasi = ? WHERE id = ?',
         ['menunggu', dokumen.kegiatan_id]
       );
 

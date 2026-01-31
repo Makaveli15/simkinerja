@@ -157,9 +157,9 @@ export async function POST(request: Request) {
         COALESCE(m.nama, '-') as mitra_nama,
         COALESCE(m.posisi, '-') as mitra_posisi,
         COALESCE(m.no_telp, '-') as mitra_telp,
-        (SELECT COALESCE(SUM(jumlah), 0) FROM realisasi_anggaran WHERE kegiatan_operasional_id = ko.id) as total_realisasi,
-        (SELECT persentase FROM realisasi_fisik WHERE kegiatan_operasional_id = ko.id ORDER BY tanggal_realisasi DESC LIMIT 1) as progres_fisik
-      FROM kegiatan_operasional ko
+        (SELECT COALESCE(SUM(jumlah), 0) FROM realisasi_anggaran WHERE kegiatan_id = ko.id) as total_realisasi,
+        (SELECT persentase FROM realisasi_fisik WHERE kegiatan_id = ko.id ORDER BY tanggal_realisasi DESC LIMIT 1) as progres_fisik
+      FROM kegiatan ko
       LEFT JOIN kro ON ko.kro_id = kro.id
       LEFT JOIN mitra m ON ko.mitra_id = m.id
       WHERE ko.tim_id = ?
@@ -200,16 +200,16 @@ export async function POST(request: Request) {
         `SELECT kk.*, u.username as pelapor
          FROM kendala_kegiatan kk
          LEFT JOIN users u ON kk.user_id = u.id
-         WHERE kk.kegiatan_operasional_id IN (?)
+         WHERE kk.kegiatan_id IN (?)
          ORDER BY kk.tanggal_kejadian DESC`,
         [kegiatanIds]
       );
       
       allKendala.forEach(k => {
-        if (!kendalaMap[k.kegiatan_operasional_id]) {
-          kendalaMap[k.kegiatan_operasional_id] = [];
+        if (!kendalaMap[k.kegiatan_id]) {
+          kendalaMap[k.kegiatan_id] = [];
         }
-        kendalaMap[k.kegiatan_operasional_id].push(k);
+        kendalaMap[k.kegiatan_id].push(k);
       });
     }
 

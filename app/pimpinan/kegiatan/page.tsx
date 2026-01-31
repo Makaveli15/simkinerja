@@ -27,6 +27,7 @@ interface Kegiatan {
   capaian_output_persen: number;
   realisasi_anggaran_persen: number;
   total_kendala?: number;
+  dokumen_disahkan?: number;
 }
 
 interface FilterData {
@@ -125,8 +126,26 @@ export default function PimpinanKegiatanPage() {
     }
   };
 
-  const getVerifikasiBadge = (status: string) => {
-    switch (status) {
+  const getVerifikasiBadge = (kg: Kegiatan) => {
+    const disahkan = kg.dokumen_disahkan || 0;
+    const target = Math.round(kg.target_output) || 0;
+    
+    if (target > 0) {
+      const isAllValid = disahkan >= target;
+      const hasProgress = disahkan > 0;
+      return (
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+          isAllValid ? 'bg-green-100 text-green-700' :
+          hasProgress ? 'bg-blue-100 text-blue-700' :
+          'bg-gray-100 text-gray-600'
+        }`}>
+          {isAllValid ? '✓ ' : ''}{disahkan}/{target} Valid
+        </span>
+      );
+    }
+    
+    // Fallback jika tidak ada target
+    switch (kg.status_verifikasi) {
       case 'valid':
         return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">✓ Valid</span>;
       case 'revisi':
@@ -297,7 +316,7 @@ export default function PimpinanKegiatanPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      {getVerifikasiBadge(kg.status_verifikasi)}
+                      {getVerifikasiBadge(kg)}
                     </td>
                     <td className="px-4 py-4 text-center">
                       <Link

@@ -36,7 +36,7 @@ export async function POST(
 
     // Verify kegiatan belongs to user's tim
     const [kegiatan] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kegiatan_operasional WHERE id = ? AND tim_id = ?',
+      'SELECT id FROM kegiatan WHERE id = ? AND tim_id = ?',
       [id, timId]
     );
 
@@ -53,7 +53,7 @@ export async function POST(
 
     // Verify kendala belongs to this kegiatan
     const [kendala] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kendala_kegiatan WHERE id = ? AND kegiatan_operasional_id = ?',
+      'SELECT id FROM kendala_kegiatan WHERE id = ? AND kegiatan_id = ?',
       [kendala_id, id]
     );
 

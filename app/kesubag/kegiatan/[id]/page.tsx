@@ -81,20 +81,16 @@ interface Kendala {
   tindak_lanjut: TindakLanjut[];
 }
 
-interface EvaluasiPimpinan {
+interface Evaluasi {
   id: number;
+  kegiatan_id: number;
+  role_pemberi: 'pimpinan' | 'kesubag';
   jenis_evaluasi: string;
   isi: string;
   created_at: string;
-  pimpinan_nama: string;
-}
-
-interface EvaluasiKesubag {
-  id: number;
-  jenis_evaluasi: string;
-  isi: string;
-  created_at: string;
-  kesubag_nama: string;
+  pemberi_nama: string;
+  pemberi_username: string;
+  pemberi_role: string;
 }
 
 interface DokumenOutput {
@@ -137,7 +133,7 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
   const [progres, setProgres] = useState<Progres[]>([]);
   const [realisasiAnggaran, setRealisasiAnggaran] = useState<RealisasiAnggaran[]>([]);
   const [kendala, setKendala] = useState<Kendala[]>([]);
-  const [evaluasiKesubag, setEvaluasiKesubag] = useState<EvaluasiKesubag[]>([]);
+  const [evaluasiList, setEvaluasiList] = useState<Evaluasi[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
   
   const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'waktu' | 'evaluasi'>('evaluasi-kinerja');
@@ -187,7 +183,7 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
         setProgres(data.progres);
         setRealisasiAnggaran(data.realisasi_anggaran);
         setKendala(data.kendala);
-        setEvaluasiKesubag(data.evaluasi_kesubag || []);
+        setEvaluasiList(data.evaluasi || []);
         setDokumenOutput(data.dokumen_output || []);
       }
     } catch (error) {
@@ -548,7 +544,7 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
               { id: 'dokumen', label: 'Validasi Dokumen', icon: '✅', count: dokumenOutput.length },
               { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
-              { id: 'evaluasi', label: 'Catatan Kesubag', icon: '📝', count: evaluasiKesubag.length },
+              { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasiList.filter(e => e.role_pemberi === 'kesubag').length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -738,13 +734,15 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-600">Status Verifikasi</span>
                       <span className={`font-medium ${
-                        kegiatan.status_verifikasi === 'valid' ? 'text-green-600' :
-                        kegiatan.status_verifikasi === 'revisi' ? 'text-orange-600' :
-                        kegiatan.status_verifikasi === 'menunggu' ? 'text-blue-600' : 'text-gray-500'
+                        statusVerifikasiDokumen.status === 'valid' ? 'text-green-600' :
+                        statusVerifikasiDokumen.status === 'revisi' ? 'text-orange-600' :
+                        statusVerifikasiDokumen.status === 'menunggu' ? 'text-blue-600' : 'text-gray-500'
                       }`}>
-                        {kegiatan.status_verifikasi === 'valid' ? '✓ Valid' :
-                         kegiatan.status_verifikasi === 'revisi' ? '⚠ Revisi' :
-                         kegiatan.status_verifikasi === 'menunggu' ? '⏳ Menunggu' : 'Belum'}
+                        {statusVerifikasiDokumen.target > 0 
+                          ? `${statusVerifikasiDokumen.disahkan}/${statusVerifikasiDokumen.target} Valid`
+                          : (statusVerifikasiDokumen.status === 'valid' ? '✓ Valid' :
+                             statusVerifikasiDokumen.status === 'revisi' ? '⚠ Revisi' :
+                             statusVerifikasiDokumen.status === 'menunggu' ? '⏳ Menunggu' : 'Belum')}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
@@ -1556,7 +1554,7 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
             </div>
           )}
 
-          {/* Tab: Catatan Kesubag */}
+          {/* Tab: Evaluasi Kesubag */}
           {activeTab === 'evaluasi' && (
             <div className="space-y-4">
               {/* Add Evaluasi Button */}
@@ -1566,18 +1564,18 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
                   className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2"
                 >
                   <LuPlus className="w-4 h-4" />
-                  Tambah Catatan
+                  Tambah Evaluasi
                 </button>
               </div>
 
               {/* Evaluasi Form */}
               {showEvaluasiForm && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                  <h4 className="font-semibold text-gray-900 mb-4">Tambah Catatan Baru</h4>
+                  <h4 className="font-semibold text-gray-900 mb-4">Tambah Evaluasi Baru</h4>
                   <form onSubmit={handleSubmitEvaluasi} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Jenis Catatan
+                        Jenis Evaluasi
                       </label>
                       <select
                         value={evaluasiForm.jenis_evaluasi}
@@ -1591,7 +1589,7 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Isi Catatan <span className="text-red-500">*</span>
+                        Isi Evaluasi <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         value={evaluasiForm.isi}
@@ -1602,7 +1600,7 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
                         required
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        ⚠️ Catatan tidak dapat diubah setelah disimpan
+                        ⚠️ Evaluasi tidak dapat diubah setelah disimpan
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">
@@ -1623,40 +1621,42 @@ export default function KesubagKegiatanDetailPage({ params }: { params: Promise<
                         ) : (
                           <LuCheck className="w-4 h-4" />
                         )}
-                        Simpan Catatan
+                        Simpan Evaluasi
                       </button>
                     </div>
                   </form>
                 </div>
               )}
 
-              {/* Evaluasi Kesubag List */}
-              {evaluasiKesubag.length === 0 ? (
+              {/* Evaluasi List - Hanya tampilkan evaluasi dari kesubag */}
+              {evaluasiList.filter(e => e.role_pemberi === 'kesubag').length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Belum ada catatan dari kesubag</p>
-                  <p className="text-sm text-gray-400 mt-1">Klik tombol &quot;Tambah Catatan&quot; untuk menambahkan catatan</p>
+                  <p className="text-gray-500">Belum ada evaluasi dari kesubag</p>
+                  <p className="text-sm text-gray-400 mt-1">Klik tombol &quot;Tambah Evaluasi&quot; untuk menambahkan evaluasi</p>
                 </div>
               ) : (
-                evaluasiKesubag.map((e) => (
+                evaluasiList.filter(e => e.role_pemberi === 'kesubag').map((e) => (
                   <div key={e.id} className={`border rounded-lg p-4 ${
                     e.jenis_evaluasi === 'catatan' ? 'bg-blue-50 border-blue-200' :
                     e.jenis_evaluasi === 'arahan' ? 'bg-orange-50 border-orange-200' :
                     'bg-green-50 border-green-200'
                   }`}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        e.jenis_evaluasi === 'catatan' ? 'bg-blue-100 text-blue-700' :
-                        e.jenis_evaluasi === 'arahan' ? 'bg-orange-100 text-orange-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
-                        {e.jenis_evaluasi === 'catatan' ? '📝 Catatan' :
-                         e.jenis_evaluasi === 'arahan' ? '👉 Arahan' :
-                         '💡 Rekomendasi'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          e.jenis_evaluasi === 'catatan' ? 'bg-blue-100 text-blue-700' :
+                          e.jenis_evaluasi === 'arahan' ? 'bg-orange-100 text-orange-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {e.jenis_evaluasi === 'catatan' ? '📝 Catatan' :
+                           e.jenis_evaluasi === 'arahan' ? '👉 Arahan' :
+                           '💡 Rekomendasi'}
+                        </span>
+                      </div>
                       <span className="text-xs text-gray-500">{formatDate(e.created_at)}</span>
                     </div>
                     <p className="text-gray-900 mb-2">{e.isi}</p>
-                    <p className="text-xs text-gray-600">Oleh: {e.kesubag_nama}</p>
+                    <p className="text-xs text-gray-600">Oleh: {e.pemberi_nama}</p>
                   </div>
                 ))
               )}

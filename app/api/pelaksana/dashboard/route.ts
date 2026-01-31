@@ -76,7 +76,7 @@ export async function GET() {
         ko.kro_id,
         kro.kode as kro_kode,
         kro.nama as kro_nama
-      FROM kegiatan_operasional ko
+      FROM kegiatan ko
       LEFT JOIN kro ON ko.kro_id = kro.id
       WHERE ko.tim_id = ?
       ORDER BY ko.created_at DESC`,
@@ -97,7 +97,7 @@ export async function GET() {
     const [realisasiTotal] = await pool.query<RowDataPacket[]>(
       `SELECT COALESCE(SUM(ra.jumlah), 0) as total
        FROM realisasi_anggaran ra
-       JOIN kegiatan_operasional ko ON ra.kegiatan_operasional_id = ko.id
+       JOIN kegiatan ko ON ra.kegiatan_id = ko.id
        WHERE ko.tim_id = ?`,
       [timId]
     );
@@ -109,7 +109,7 @@ export async function GET() {
         COUNT(*) as total,
         SUM(CASE WHEN kk.status = 'resolved' THEN 1 ELSE 0 END) as resolved
       FROM kendala_kegiatan kk
-      JOIN kegiatan_operasional ko ON kk.kegiatan_operasional_id = ko.id
+      JOIN kegiatan ko ON kk.kegiatan_id = ko.id
       WHERE ko.tim_id = ?`,
       [timId]
     );
@@ -121,14 +121,14 @@ export async function GET() {
     for (const k of kegiatan) {
       // Get realisasi anggaran for this kegiatan
       const [anggaranTotal] = await pool.query<RowDataPacket[]>(
-        `SELECT COALESCE(SUM(jumlah), 0) as total FROM realisasi_anggaran WHERE kegiatan_operasional_id = ?`,
+        `SELECT COALESCE(SUM(jumlah), 0) as total FROM realisasi_anggaran WHERE kegiatan_id = ?`,
         [k.id]
       );
 
       // Get kendala stats for this kegiatan
       const [kendala] = await pool.query<RowDataPacket[]>(
         `SELECT COUNT(*) as total, SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved 
-         FROM kendala_kegiatan WHERE kegiatan_operasional_id = ?`,
+         FROM kendala_kegiatan WHERE kegiatan_id = ?`,
         [k.id]
       );
 
@@ -166,7 +166,7 @@ export async function GET() {
       const [progresData] = await pool.query<RowDataPacket[]>(
         `SELECT AVG(rf.persentase) as avg_progres
          FROM realisasi_fisik rf
-         JOIN kegiatan_operasional ko ON rf.kegiatan_operasional_id = ko.id
+         JOIN kegiatan ko ON rf.kegiatan_id = ko.id
          WHERE ko.tim_id = ? AND rf.tanggal_realisasi BETWEEN ? AND ?`,
         [timId, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
       );
@@ -189,7 +189,7 @@ export async function GET() {
       const [anggaranData] = await pool.query<RowDataPacket[]>(
         `SELECT COALESCE(SUM(ra.jumlah), 0) as realisasi
          FROM realisasi_anggaran ra
-         JOIN kegiatan_operasional ko ON ra.kegiatan_operasional_id = ko.id
+         JOIN kegiatan ko ON ra.kegiatan_id = ko.id
          WHERE ko.tim_id = ? AND ra.tanggal_realisasi BETWEEN ? AND ?`,
         [timId, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]]
       );

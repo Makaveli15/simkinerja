@@ -70,9 +70,18 @@ export async function GET(req: NextRequest) {
       JOIN users u ON d.uploaded_by = u.id
       LEFT JOIN users vk ON d.validasi_by_kesubag = vk.id
       LEFT JOIN users vp ON d.validasi_by_pimpinan = vp.id
-      JOIN kegiatan_operasional ko ON d.kegiatan_id = ko.id
+      JOIN kegiatan ko ON d.kegiatan_id = ko.id
       LEFT JOIN tim t ON ko.tim_id = t.id
-      WHERE 1=1
+      WHERE (
+        -- Draft yang sudah diterima kesubag (menunggu atau sudah ada feedback pimpinan)
+        (d.tipe_dokumen = 'draft' AND d.draft_status_kesubag = 'reviewed')
+        OR
+        -- Final yang sudah divalidasi kesubag (valid atau tidak_valid yang sudah pernah sampai pimpinan)
+        (d.tipe_dokumen = 'final' AND d.minta_validasi = 1 AND d.validasi_kesubag = 'valid')
+        OR
+        -- Dokumen yang sudah disahkan (untuk histori)
+        (d.status_final = 'disahkan')
+      )
     `;
 
     const queryParams: (string | number)[] = [];
@@ -93,16 +102,21 @@ export async function GET(req: NextRequest) {
 
     const [dokumen] = await pool.query<RowDataPacket[]>(query, queryParams);
 
-    // Get summary counts with correct column names
+    // Get summary counts - hanya dokumen yang sudah diteruskan kesubag
     const [summary] = await pool.query<RowDataPacket[]>(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN tipe_dokumen = 'draft' THEN 1 ELSE 0 END) as draft_count,
-        SUM(CASE WHEN tipe_dokumen = 'final' THEN 1 ELSE 0 END) as final_count,
+        SUM(CASE WHEN tipe_dokumen = 'draft' AND draft_status_kesubag = 'reviewed' THEN 1 ELSE 0 END) as draft_count,
+        SUM(CASE WHEN tipe_dokumen = 'final' AND minta_validasi = 1 AND validasi_kesubag = 'valid' THEN 1 ELSE 0 END) as final_count,
         SUM(CASE WHEN minta_validasi = 1 AND validasi_kesubag = 'valid' AND validasi_pimpinan = 'pending' THEN 1 ELSE 0 END) as menunggu_validasi_akhir,
         SUM(CASE WHEN status_final = 'disahkan' THEN 1 ELSE 0 END) as disahkan_count,
         SUM(CASE WHEN tipe_dokumen = 'draft' AND draft_status_kesubag = 'reviewed' AND draft_feedback_pimpinan IS NULL THEN 1 ELSE 0 END) as draft_menunggu_feedback
       FROM dokumen_output
+      WHERE (
+        (tipe_dokumen = 'draft' AND draft_status_kesubag = 'reviewed')
+        OR (tipe_dokumen = 'final' AND minta_validasi = 1 AND validasi_kesubag = 'valid')
+        OR (status_final = 'disahkan')
+      )
     `);
 
     return NextResponse.json({ 
@@ -156,7 +170,7 @@ export async function PATCH(req: NextRequest) {
 
     // Get kegiatan name for notification
     const [kegiatanInfo] = await pool.query<RowDataPacket[]>(
-      'SELECT nama FROM kegiatan_operasional WHERE id = ?',
+      'SELECT nama FROM kegiatan WHERE id = ?',
       [dokumen.kegiatan_id]
     );
     const kegiatanNama = kegiatanInfo[0]?.nama || 'Kegiatan';
@@ -180,7 +194,7 @@ export async function PATCH(req: NextRequest) {
 
       // Update kegiatan status_verifikasi
       await pool.query(
-        'UPDATE kegiatan_operasional SET status_verifikasi = ? WHERE id = ?',
+        'UPDATE kegiatan SET status_verifikasi = ? WHERE id = ?',
         ['valid', dokumen.kegiatan_id]
       );
 
@@ -244,13 +258,13 @@ export async function PATCH(req: NextRequest) {
       if (action === 'valid') {
         // Jika valid, update status kegiatan ke valid
         await pool.query(
-          'UPDATE kegiatan_operasional SET status_verifikasi = ? WHERE id = ?',
+          'UPDATE kegiatan SET status_verifikasi = ? WHERE id = ?',
           ['valid', dokumen.kegiatan_id]
         );
       } else {
         // Jika invalid, set kegiatan status to revisi
         await pool.query(
-          'UPDATE kegiatan_operasional SET status_verifikasi = ? WHERE id = ?',
+          'UPDATE kegiatan SET status_verifikasi = ? WHERE id = ?',
           ['revisi', dokumen.kegiatan_id]
         );
       }

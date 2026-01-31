@@ -31,7 +31,7 @@ export async function GET(
         kro.nama as kro_nama,
         u.username as created_by_username,
         u.nama_lengkap as created_by_nama
-      FROM kegiatan_operasional ko
+      FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       LEFT JOIN users u ON ko.created_by = u.id
@@ -47,14 +47,14 @@ export async function GET(
     // Get progres history
     const [progres] = await pool.query<RowDataPacket[]>(`
       SELECT * FROM progres_kegiatan 
-      WHERE kegiatan_operasional_id = ? 
+      WHERE kegiatan_id = ? 
       ORDER BY tanggal_update DESC
     `, [kegiatanId]);
 
     // Get realisasi anggaran
     const [realisasiAnggaran] = await pool.query<RowDataPacket[]>(`
       SELECT * FROM realisasi_anggaran 
-      WHERE kegiatan_operasional_id = ? 
+      WHERE kegiatan_id = ? 
       ORDER BY tanggal_realisasi DESC
     `, [kegiatanId]);
 
@@ -63,7 +63,7 @@ export async function GET(
     try {
       const [kendalaRows] = await pool.query<RowDataPacket[]>(`
         SELECT * FROM kendala_kegiatan 
-        WHERE kegiatan_operasional_id = ?
+        WHERE kegiatan_id = ?
         ORDER BY created_at DESC
       `, [kegiatanId]);
       
@@ -87,15 +87,19 @@ export async function GET(
       kendala = [];
     }
 
-    // Get evaluasi pimpinan (may not exist yet)
+    // Get evaluasi (unified table for both pimpinan & kesubag)
     let evaluasi: RowDataPacket[] = [];
     try {
       const [evaluasiRows] = await pool.query<RowDataPacket[]>(`
-        SELECT ep.*, u.nama_lengkap as pimpinan_nama, u.username as pimpinan_username
-        FROM evaluasi_pimpinan ep
-        JOIN users u ON ep.user_id = u.id
-        WHERE ep.kegiatan_id = ?
-        ORDER BY ep.created_at DESC
+        SELECT 
+          e.*,
+          COALESCE(u.nama_lengkap, u.username) as pemberi_nama,
+          u.username as pemberi_username,
+          u.role as pemberi_role
+        FROM evaluasi e
+        JOIN users u ON e.user_id = u.id
+        WHERE e.kegiatan_id = ?
+        ORDER BY e.created_at DESC
       `, [kegiatanId]);
       evaluasi = evaluasiRows;
     } catch (err) {
@@ -103,7 +107,7 @@ export async function GET(
       evaluasi = [];
     }
 
-    // Get dokumen output for document validation
+    // Get dokumen output for document validation - hanya yang sudah diteruskan kesubag
     let dokumenOutput: RowDataPacket[] = [];
     try {
       const [dokumenRows] = await pool.query<RowDataPacket[]>(`
@@ -117,6 +121,16 @@ export async function GET(
         LEFT JOIN users uk ON do.validasi_by_kesubag = uk.id
         LEFT JOIN users up ON do.validasi_by_pimpinan = up.id
         WHERE do.kegiatan_id = ?
+          AND (
+            -- Draft yang sudah diterima kesubag
+            (do.tipe_dokumen = 'draft' AND do.draft_status_kesubag = 'reviewed')
+            OR
+            -- Final yang sudah divalidasi kesubag
+            (do.tipe_dokumen = 'final' AND do.minta_validasi = 1 AND do.validasi_kesubag = 'valid')
+            OR
+            -- Dokumen yang sudah disahkan (untuk histori)
+            (do.status_final = 'disahkan')
+          )
         ORDER BY do.uploaded_at DESC
       `, [kegiatanId]);
       dokumenOutput = dokumenRows;
@@ -245,7 +259,7 @@ export async function PATCH(
 
     // Update only status_verifikasi
     await pool.query<ResultSetHeader>(
-      'UPDATE kegiatan_operasional SET status_verifikasi = ? WHERE id = ?',
+      'UPDATE kegiatan SET status_verifikasi = ? WHERE id = ?',
       [body.status_verifikasi, kegiatanId]
     );
 

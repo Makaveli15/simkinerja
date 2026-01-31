@@ -22,7 +22,7 @@ export async function GET() {
     // Check for upcoming deadlines and create notifications if not exists
     const [deadlines] = await pool.query<RowDataPacket[]>(
       `SELECT ko.id, ko.tanggal_selesai, ko.nama as kegiatan_nama
-       FROM kegiatan_operasional ko
+       FROM kegiatan ko
        JOIN users u ON ko.tim_id = u.tim_id
        WHERE u.id = ? 
          AND ko.status NOT IN ('selesai')

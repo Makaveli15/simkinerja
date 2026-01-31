@@ -59,9 +59,9 @@ export async function GET(request: NextRequest) {
         kro.kode as kro_kode,
         kro.nama as kro_nama,
         m.nama as mitra_nama,
-        COALESCE((SELECT persentase FROM realisasi_fisik WHERE kegiatan_operasional_id = ko.id ORDER BY tanggal_realisasi DESC LIMIT 1), 0) as realisasi_fisik,
-        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_operasional_id = ko.id), 0) as total_anggaran_realisasi
-      FROM kegiatan_operasional ko
+        COALESCE((SELECT persentase FROM realisasi_fisik WHERE kegiatan_id = ko.id ORDER BY tanggal_realisasi DESC LIMIT 1), 0) as realisasi_fisik,
+        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_anggaran_realisasi
+      FROM kegiatan ko
       JOIN tim t ON ko.tim_id = t.id
       JOIN users u ON ko.created_by = u.id
       LEFT JOIN kro ON ko.kro_id = kro.id
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
           COUNT(*) as total,
           SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) as resolved
          FROM kendala_kegiatan 
-         WHERE kegiatan_operasional_id = ?`,
+         WHERE kegiatan_id = ?`,
         [k.id]
       );
 
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
         const [kendalaResult] = await pool.query<RowDataPacket[]>(
           `SELECT id, deskripsi, tingkat_dampak as tingkat_keparahan, status, tanggal_kejadian as tanggal_kendala, created_at
            FROM kendala_kegiatan 
-           WHERE kegiatan_operasional_id = ? 
+           WHERE kegiatan_id = ? 
            ORDER BY COALESCE(tanggal_kejadian, created_at, id) DESC`,
           [k.id]
         );
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
     if (mitra_id && tanggal_mulai && tanggal_selesai) {
       const [conflictingKegiatan] = await pool.query<RowDataPacket[]>(
         `SELECT id, nama, tanggal_mulai, tanggal_selesai 
-         FROM kegiatan_operasional 
+         FROM kegiatan 
          WHERE mitra_id = ? 
            AND status != 'selesai'
            AND (
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
     const roundedAnggaran = anggaran_pagu ? Math.round(Number(anggaran_pagu) * 100) / 100 : 0;
 
     const [result] = await pool.query<ResultSetHeader>(
-      `INSERT INTO kegiatan_operasional 
+      `INSERT INTO kegiatan 
        (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, kro_id, mitra_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', roundedAnggaran, finalStatus, kro_id || null, mitra_id || null]

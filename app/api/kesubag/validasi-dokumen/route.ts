@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         vk.nama_lengkap as validated_by_kesubag_nama,
         vp.nama_lengkap as validated_by_pimpinan_nama
       FROM dokumen_output d
-      LEFT JOIN kegiatan_operasional ko ON d.kegiatan_id = ko.id
+      LEFT JOIN kegiatan ko ON d.kegiatan_id = ko.id
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN users u ON d.uploaded_by = u.id
       LEFT JOIN users vk ON d.validasi_by_kesubag = vk.id
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
         d.*,
         ko.nama as kegiatan_nama
       FROM dokumen_output d
-      LEFT JOIN kegiatan_operasional ko ON d.kegiatan_id = ko.id
+      LEFT JOIN kegiatan ko ON d.kegiatan_id = ko.id
       WHERE d.id = ?
     `, [dokumenId]);
 

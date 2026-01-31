@@ -31,7 +31,7 @@ export async function GET(
         kro.nama as kro_nama,
         u.username as created_by_username,
         u.nama_lengkap as created_by_nama
-      FROM kegiatan_operasional ko
+      FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       LEFT JOIN users u ON ko.created_by = u.id
@@ -47,14 +47,14 @@ export async function GET(
     // Get progres history
     const [progres] = await pool.query<RowDataPacket[]>(`
       SELECT * FROM progres_kegiatan 
-      WHERE kegiatan_operasional_id = ? 
+      WHERE kegiatan_id = ? 
       ORDER BY tanggal_update DESC
     `, [kegiatanId]);
 
     // Get realisasi anggaran
     const [realisasiAnggaran] = await pool.query<RowDataPacket[]>(`
       SELECT * FROM realisasi_anggaran 
-      WHERE kegiatan_operasional_id = ? 
+      WHERE kegiatan_id = ? 
       ORDER BY tanggal_realisasi DESC
     `, [kegiatanId]);
 
@@ -63,7 +63,7 @@ export async function GET(
     try {
       const [kendalaRows] = await pool.query<RowDataPacket[]>(`
         SELECT * FROM kendala_kegiatan 
-        WHERE kegiatan_operasional_id = ?
+        WHERE kegiatan_id = ?
         ORDER BY created_at DESC
       `, [kegiatanId]);
       
@@ -109,37 +109,29 @@ export async function GET(
       dokumenOutput = [];
     }
 
-    // Get evaluasi kesubag
-    let evaluasiKesubag: RowDataPacket[] = [];
-    try {
-      const [evaluasiKesubagRows] = await pool.query<RowDataPacket[]>(`
-        SELECT ek.*, u.nama_lengkap as kesubag_nama, u.username as kesubag_username
-        FROM evaluasi_kesubag ek
-        JOIN users u ON ek.user_id = u.id
-        WHERE ek.kegiatan_id = ?
-        ORDER BY ek.created_at DESC
-      `, [kegiatanId]);
-      evaluasiKesubag = evaluasiKesubagRows;
-    } catch (err) {
-      console.error('Error fetching evaluasi kesubag (table may not exist):', err);
-      evaluasiKesubag = [];
-    }
-
-    // Get evaluasi pimpinan (read-only view)
-    let evaluasiPimpinan: RowDataPacket[] = [];
+    // Get evaluasi (unified table for both pimpinan & kesubag)
+    let evaluasi: RowDataPacket[] = [];
     try {
       const [evaluasiRows] = await pool.query<RowDataPacket[]>(`
-        SELECT ep.*, u.nama_lengkap as pimpinan_nama, u.username as pimpinan_username
-        FROM evaluasi_pimpinan ep
-        JOIN users u ON ep.user_id = u.id
-        WHERE ep.kegiatan_id = ?
-        ORDER BY ep.created_at DESC
+        SELECT 
+          e.*,
+          COALESCE(u.nama_lengkap, u.username) as pemberi_nama,
+          u.username as pemberi_username,
+          u.role as pemberi_role
+        FROM evaluasi e
+        JOIN users u ON e.user_id = u.id
+        WHERE e.kegiatan_id = ?
+        ORDER BY e.created_at DESC
       `, [kegiatanId]);
-      evaluasiPimpinan = evaluasiRows;
+      evaluasi = evaluasiRows;
     } catch (err) {
-      console.error('Error fetching evaluasi pimpinan (table may not exist):', err);
-      evaluasiPimpinan = [];
+      console.error('Error fetching evaluasi (table may not exist):', err);
+      evaluasi = [];
     }
+
+    // Separate evaluasi by role for backward compatibility
+    const evaluasiKesubag = evaluasi.filter((e: RowDataPacket) => e.role_pemberi === 'kesubag');
+    const evaluasiPimpinan = evaluasi.filter((e: RowDataPacket) => e.role_pemberi === 'pimpinan');
 
     // Calculate summary
     const totalRealisasiAnggaran = realisasiAnggaran.reduce(
@@ -226,8 +218,9 @@ export async function GET(
         tindak_lanjut: k.tindak_lanjut || []
       })),
       dokumen_output: dokumenOutput,
-      evaluasi_kesubag: evaluasiKesubag,
-      evaluasi_pimpinan: evaluasiPimpinan,
+      evaluasi: evaluasi, // Unified evaluasi list
+      evaluasi_kesubag: evaluasiKesubag, // Backward compatibility
+      evaluasi_pimpinan: evaluasiPimpinan, // Backward compatibility
       summary: {
         total_realisasi_anggaran: totalRealisasiAnggaran,
         realisasi_anggaran_persen: kegiatan.anggaran_pagu > 0 

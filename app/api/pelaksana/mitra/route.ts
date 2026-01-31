@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
                ko.tanggal_mulai as busy_mulai,
                ko.tanggal_selesai as busy_selesai
         FROM mitra m
-        LEFT JOIN kegiatan_operasional ko ON m.id = ko.mitra_id 
+        LEFT JOIN kegiatan ko ON m.id = ko.mitra_id 
           AND ko.status != 'selesai'
           AND (
             (ko.tanggal_mulai <= ? AND ko.tanggal_selesai >= ?)

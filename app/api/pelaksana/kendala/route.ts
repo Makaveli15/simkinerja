@@ -17,7 +17,7 @@ async function verifyAccess(authId: number, kegiatanId: number): Promise<boolean
   const timId = userRows[0].tim_id;
 
   const [kegiatan] = await pool.query<RowDataPacket[]>(
-    'SELECT id FROM kegiatan_operasional WHERE id = ? AND tim_id = ?',
+    'SELECT id FROM kegiatan WHERE id = ? AND tim_id = ?',
     [kegiatanId, timId]
   );
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO kendala_kegiatan 
-       (kegiatan_operasional_id, user_id, deskripsi, tingkat_dampak, status, tanggal_kejadian)
+       (kegiatan_id, user_id, deskripsi, tingkat_dampak, status, tanggal_kejadian)
        VALUES (?, ?, ?, ?, 'open', CURDATE())`,
       [kegiatan_id, auth.id, deskripsi, dampak]
     );
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     const [kendala] = await pool.query<RowDataPacket[]>(
       `SELECT * FROM kendala_kegiatan 
-       WHERE kegiatan_operasional_id = ? 
+       WHERE kegiatan_id = ? 
        ORDER BY 
          CASE tingkat_prioritas 
            WHEN 'tinggi' THEN 1 
@@ -170,7 +170,7 @@ export async function PUT(request: NextRequest) {
 
     // Get kegiatan_id first
     const [kendalaRow] = await pool.query<RowDataPacket[]>(
-      'SELECT kegiatan_operasional_id FROM kendala_kegiatan WHERE id = ?',
+      'SELECT kegiatan_id FROM kendala_kegiatan WHERE id = ?',
       [id]
     );
 
@@ -178,7 +178,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Kendala tidak ditemukan' }, { status: 404 });
     }
 
-    const hasAccess = await verifyAccess(auth.id, kendalaRow[0].kegiatan_operasional_id);
+    const hasAccess = await verifyAccess(auth.id, kendalaRow[0].kegiatan_id);
     if (!hasAccess) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
@@ -247,7 +247,7 @@ export async function DELETE(request: NextRequest) {
 
     // Get kegiatan_id first
     const [kendalaRow] = await pool.query<RowDataPacket[]>(
-      'SELECT kegiatan_operasional_id FROM kendala_kegiatan WHERE id = ?',
+      'SELECT kegiatan_id FROM kendala_kegiatan WHERE id = ?',
       [kendalaId]
     );
 
@@ -255,7 +255,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Kendala tidak ditemukan' }, { status: 404 });
     }
 
-    const hasAccess = await verifyAccess(auth.id, kendalaRow[0].kegiatan_operasional_id);
+    const hasAccess = await verifyAccess(auth.id, kendalaRow[0].kegiatan_id);
     if (!hasAccess) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }

@@ -46,10 +46,11 @@ export async function GET(req: NextRequest) {
         t.nama as tim_nama,
         kro.kode as kro_kode,
         kro.nama as kro_nama,
-        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_operasional_id = ko.id), 0) as total_realisasi_anggaran,
-        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_operasional_id = ko.id), 0) as total_kendala,
-        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_operasional_id = ko.id AND status = 'resolved'), 0) as kendala_resolved
-      FROM kegiatan_operasional ko
+        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_realisasi_anggaran,
+        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id), 0) as total_kendala,
+        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND status_final = 'disahkan'), 0) as dokumen_disahkan
+      FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       WHERE 1=1

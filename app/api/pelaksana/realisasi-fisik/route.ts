@@ -17,7 +17,7 @@ async function verifyAccess(authId: number, kegiatanId: number): Promise<boolean
   const timId = userRows[0].tim_id;
 
   const [kegiatan] = await pool.query<RowDataPacket[]>(
-    'SELECT id FROM kegiatan_operasional WHERE id = ? AND tim_id = ?',
+    'SELECT id FROM kegiatan WHERE id = ? AND tim_id = ?',
     [kegiatanId, timId]
   );
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO realisasi_fisik 
-       (kegiatan_operasional_id, user_id, persentase, keterangan, tanggal_realisasi)
+       (kegiatan_id, user_id, persentase, keterangan, tanggal_realisasi)
        VALUES (?, ?, ?, ?, CURDATE())`,
       [kegiatan_id, auth.id, persentase, keterangan || null]
     );
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     const [realisasi] = await pool.query<RowDataPacket[]>(
       `SELECT * FROM realisasi_fisik 
-       WHERE kegiatan_operasional_id = ? 
+       WHERE kegiatan_id = ? 
        ORDER BY tanggal_realisasi DESC`,
       [kegiatanId]
     );
@@ -136,7 +136,7 @@ export async function DELETE(request: NextRequest) {
 
     // Get kegiatan_id first
     const [realisasiRow] = await pool.query<RowDataPacket[]>(
-      'SELECT kegiatan_operasional_id FROM realisasi_fisik WHERE id = ?',
+      'SELECT kegiatan_id FROM realisasi_fisik WHERE id = ?',
       [realisasiId]
     );
 
@@ -144,7 +144,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Realisasi tidak ditemukan' }, { status: 404 });
     }
 
-    const hasAccess = await verifyAccess(auth.id, realisasiRow[0].kegiatan_operasional_id);
+    const hasAccess = await verifyAccess(auth.id, realisasiRow[0].kegiatan_id);
     if (!hasAccess) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }

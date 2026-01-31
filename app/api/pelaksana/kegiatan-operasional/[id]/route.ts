@@ -45,7 +45,7 @@ export async function GET(
         k.kode as kro_kode,
         k.nama as kro_nama,
         m.nama as mitra_nama
-      FROM kegiatan_operasional ko
+      FROM kegiatan ko
       JOIN tim t ON ko.tim_id = t.id
       JOIN users u ON ko.created_by = u.id
       LEFT JOIN kro k ON ko.kro_id = k.id
@@ -57,7 +57,7 @@ export async function GET(
     if (kegiatan.length === 0) {
       // Debug: check if kegiatan exists at all
       const [anyKegiatan] = await pool.query<RowDataPacket[]>(
-        'SELECT id, tim_id, created_by FROM kegiatan_operasional WHERE id = ?',
+        'SELECT id, tim_id, created_by FROM kegiatan WHERE id = ?',
         [id]
       );
       console.log('Debug - Kegiatan check:', { 
@@ -74,7 +74,7 @@ export async function GET(
     try {
       const [progresResult] = await pool.query<RowDataPacket[]>(
         `SELECT * FROM progres_kegiatan 
-         WHERE kegiatan_operasional_id = ? 
+         WHERE kegiatan_id = ? 
          ORDER BY tanggal_update DESC`,
         [id]
       );
@@ -88,7 +88,7 @@ export async function GET(
     try {
       const [fisikResult] = await pool.query<RowDataPacket[]>(
         `SELECT * FROM realisasi_fisik 
-         WHERE kegiatan_operasional_id = ? 
+         WHERE kegiatan_id = ? 
          ORDER BY tanggal_realisasi DESC`,
         [id]
       );
@@ -102,7 +102,7 @@ export async function GET(
     try {
       const [anggaranResult] = await pool.query<RowDataPacket[]>(
         `SELECT * FROM realisasi_anggaran 
-         WHERE kegiatan_operasional_id = ? 
+         WHERE kegiatan_id = ? 
          ORDER BY tanggal_realisasi DESC`,
         [id]
       );
@@ -116,7 +116,7 @@ export async function GET(
     try {
       const [kendalaResult] = await pool.query<RowDataPacket[]>(
         `SELECT * FROM kendala_kegiatan 
-         WHERE kegiatan_operasional_id = ? 
+         WHERE kegiatan_id = ? 
          ORDER BY COALESCE(tanggal_kendala, created_at, id) DESC`,
         [id]
       );
@@ -126,7 +126,7 @@ export async function GET(
       try {
         const [kendalaResult] = await pool.query<RowDataPacket[]>(
           `SELECT * FROM kendala_kegiatan 
-           WHERE kegiatan_operasional_id = ? 
+           WHERE kegiatan_id = ? 
            ORDER BY id DESC`,
           [id]
         );
@@ -166,7 +166,7 @@ export async function GET(
           SUM(CASE WHEN status_final IN ('menunggu_kesubag', 'menunggu_pimpinan') THEN 1 ELSE 0 END) as final_menunggu,
           SUM(CASE WHEN status_final = 'revisi' OR validasi_kesubag = 'tidak_valid' OR validasi_pimpinan = 'tidak_valid' THEN 1 ELSE 0 END) as final_revisi
         FROM dokumen_output 
-        WHERE kegiatan_operasional_id = ? AND tipe_dokumen = 'final' AND minta_validasi = 1`,
+        WHERE kegiatan_id = ? AND tipe_dokumen = 'final' AND minta_validasi = 1`,
         [id]
       );
       if (dokumenResult.length > 0) {
@@ -331,7 +331,7 @@ export async function PUT(
 
     // Check ownership
     const [existing] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kegiatan_operasional WHERE id = ? AND tim_id = ?',
+      'SELECT id FROM kegiatan WHERE id = ? AND tim_id = ?',
       [id, timId]
     );
 
@@ -352,7 +352,7 @@ export async function PUT(
       `SELECT nama, deskripsi, kro_id, mitra_id, tanggal_mulai, tanggal_selesai, 
               target_output, satuan_output, anggaran_pagu, status,
               output_realisasi, tanggal_realisasi_selesai, status_verifikasi 
-       FROM kegiatan_operasional WHERE id = ?`,
+       FROM kegiatan WHERE id = ?`,
       [id]
     );
 
@@ -371,7 +371,7 @@ export async function PUT(
     if (finalMitraId && finalTanggalMulai && finalTanggalSelesai) {
       const [conflictingKegiatan] = await pool.query<RowDataPacket[]>(
         `SELECT ko.id, ko.nama, ko.tanggal_mulai, ko.tanggal_selesai 
-         FROM kegiatan_operasional ko
+         FROM kegiatan ko
          WHERE ko.mitra_id = ? 
            AND ko.id != ?
            AND ko.status != 'selesai'
@@ -403,7 +403,7 @@ export async function PUT(
     const finalStatus = status !== undefined && status !== '' ? status : currentKegiatan.status;
 
     await pool.query<ResultSetHeader>(
-      `UPDATE kegiatan_operasional SET
+      `UPDATE kegiatan SET
         nama = ?,
         deskripsi = ?,
         tanggal_mulai = ?,
@@ -463,7 +463,7 @@ export async function DELETE(
 
     // Check ownership
     const [existing] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kegiatan_operasional WHERE id = ? AND tim_id = ?',
+      'SELECT id FROM kegiatan WHERE id = ? AND tim_id = ?',
       [id, timId]
     );
 
@@ -473,7 +473,7 @@ export async function DELETE(
 
     // Delete related data first (cascading delete)
     const [kendalaRows] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kendala_kegiatan WHERE kegiatan_operasional_id = ?',
+      'SELECT id FROM kendala_kegiatan WHERE kegiatan_id = ?',
       [id]
     );
 
@@ -481,11 +481,11 @@ export async function DELETE(
       await pool.query('DELETE FROM tindak_lanjut WHERE kendala_id = ?', [k.id]);
     }
 
-    await pool.query('DELETE FROM kendala_kegiatan WHERE kegiatan_operasional_id = ?', [id]);
-    await pool.query('DELETE FROM realisasi_anggaran WHERE kegiatan_operasional_id = ?', [id]);
-    await pool.query('DELETE FROM realisasi_fisik WHERE kegiatan_operasional_id = ?', [id]);
-    await pool.query('DELETE FROM progres_kegiatan WHERE kegiatan_operasional_id = ?', [id]);
-    await pool.query('DELETE FROM kegiatan_operasional WHERE id = ?', [id]);
+    await pool.query('DELETE FROM kendala_kegiatan WHERE kegiatan_id = ?', [id]);
+    await pool.query('DELETE FROM realisasi_anggaran WHERE kegiatan_id = ?', [id]);
+    await pool.query('DELETE FROM realisasi_fisik WHERE kegiatan_id = ?', [id]);
+    await pool.query('DELETE FROM progres_kegiatan WHERE kegiatan_id = ?', [id]);
+    await pool.query('DELETE FROM kegiatan WHERE id = ?', [id]);
 
     return NextResponse.json({ message: 'Kegiatan berhasil dihapus' });
   } catch (error) {

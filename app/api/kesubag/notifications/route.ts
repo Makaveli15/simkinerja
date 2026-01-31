@@ -23,7 +23,7 @@ export async function GET() {
     const [pendingDocs] = await pool.query<RowDataPacket[]>(
       `SELECT d.id, d.nama_file, d.uploaded_at, d.kegiatan_id, ko.nama as kegiatan_nama, u.nama_lengkap as uploader_nama
        FROM dokumen_output d
-       JOIN kegiatan_operasional ko ON d.kegiatan_id = ko.id
+       JOIN kegiatan ko ON d.kegiatan_id = ko.id
        JOIN users u ON d.uploaded_by = u.id
        WHERE d.status_kesubag = 'pending'
        ORDER BY d.uploaded_at DESC

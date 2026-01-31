@@ -145,7 +145,7 @@ export async function createNotificationForKegiatanTeam(
   try {
     // Get tim_id from kegiatan
     const [kegiatan] = await pool.query<RowDataPacket[]>(
-      'SELECT tim_id FROM kegiatan_operasional WHERE id = ?',
+      'SELECT tim_id FROM kegiatan WHERE id = ?',
       [kegiatanId]
     );
 

@@ -36,7 +36,7 @@ export async function POST(
 
     // Verify kegiatan belongs to user's tim
     const [kegiatan] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kegiatan_operasional WHERE id = ? AND tim_id = ?',
+      'SELECT id FROM kegiatan WHERE id = ? AND tim_id = ?',
       [id, timId]
     );
 
@@ -52,7 +52,7 @@ export async function POST(
     }
 
     const [result] = await pool.query<ResultSetHeader>(
-      `INSERT INTO realisasi_anggaran (kegiatan_operasional_id, tanggal_realisasi, jumlah, keterangan)
+      `INSERT INTO realisasi_anggaran (kegiatan_id, tanggal_realisasi, jumlah, keterangan)
        VALUES (?, ?, ?, ?)`,
       [id, tanggal_realisasi, jumlah, keterangan || null]
     );

@@ -79,10 +79,14 @@ interface Kendala {
 
 interface Evaluasi {
   id: number;
+  kegiatan_id: number;
+  role_pemberi: 'pimpinan' | 'kesubag';
   jenis_evaluasi: string;
   isi: string;
   created_at: string;
-  pimpinan_nama: string;
+  pemberi_nama: string;
+  pemberi_username: string;
+  pemberi_role: string;
 }
 
 interface DokumenOutput {
@@ -645,7 +649,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
               { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
               { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
-              { id: 'evaluasi', label: 'Catatan Pimpinan', icon: '📝', count: evaluasi.length },
+              { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasi.filter(e => e.role_pemberi === 'pimpinan').length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -835,13 +839,15 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-600">Status Verifikasi</span>
                       <span className={`font-medium ${
-                        kegiatan.status_verifikasi === 'valid' ? 'text-green-600' :
-                        kegiatan.status_verifikasi === 'revisi' ? 'text-orange-600' :
-                        kegiatan.status_verifikasi === 'menunggu' ? 'text-blue-600' : 'text-gray-500'
+                        statusVerifikasiDokumen.status === 'valid' ? 'text-green-600' :
+                        statusVerifikasiDokumen.status === 'revisi' ? 'text-orange-600' :
+                        statusVerifikasiDokumen.status === 'menunggu' ? 'text-blue-600' : 'text-gray-500'
                       }`}>
-                        {kegiatan.status_verifikasi === 'valid' ? '✓ Valid' :
-                         kegiatan.status_verifikasi === 'revisi' ? '⚠ Revisi' :
-                         kegiatan.status_verifikasi === 'menunggu' ? '⏳ Menunggu' : 'Belum'}
+                        {statusVerifikasiDokumen.target > 0 
+                          ? `${statusVerifikasiDokumen.disahkan}/${statusVerifikasiDokumen.target} Valid`
+                          : (statusVerifikasiDokumen.status === 'valid' ? '✓ Valid' :
+                             statusVerifikasiDokumen.status === 'revisi' ? '⚠ Revisi' :
+                             statusVerifikasiDokumen.status === 'menunggu' ? '⏳ Menunggu' : 'Belum')}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
@@ -1764,32 +1770,34 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                 </div>
               )}
 
-              {/* Evaluasi List */}
-              {evaluasi.length === 0 ? (
+              {/* Evaluasi List - Hanya tampilkan evaluasi dari pimpinan */}
+              {evaluasi.filter(e => e.role_pemberi === 'pimpinan').length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
                   <p className="text-gray-500">Belum ada evaluasi dari pimpinan</p>
                 </div>
               ) : (
-                evaluasi.map((e) => (
+                evaluasi.filter(e => e.role_pemberi === 'pimpinan').map((e) => (
                   <div key={e.id} className={`border rounded-lg p-4 ${
                     e.jenis_evaluasi === 'catatan' ? 'bg-blue-50 border-blue-200' :
                     e.jenis_evaluasi === 'arahan' ? 'bg-orange-50 border-orange-200' :
                     'bg-green-50 border-green-200'
                   }`}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        e.jenis_evaluasi === 'catatan' ? 'bg-blue-100 text-blue-700' :
-                        e.jenis_evaluasi === 'arahan' ? 'bg-orange-100 text-orange-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
-                        {e.jenis_evaluasi === 'catatan' ? '📝 Catatan' :
-                         e.jenis_evaluasi === 'arahan' ? '👉 Arahan' :
-                         '💡 Rekomendasi'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          e.jenis_evaluasi === 'catatan' ? 'bg-blue-100 text-blue-700' :
+                          e.jenis_evaluasi === 'arahan' ? 'bg-orange-100 text-orange-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {e.jenis_evaluasi === 'catatan' ? '📝 Catatan' :
+                           e.jenis_evaluasi === 'arahan' ? '👉 Arahan' :
+                           '💡 Rekomendasi'}
+                        </span>
+                      </div>
                       <span className="text-xs text-gray-500">{formatDate(e.created_at)}</span>
                     </div>
                     <p className="text-gray-900 mb-2">{e.isi}</p>
-                    <p className="text-xs text-gray-600">Oleh: {e.pimpinan_nama}</p>
+                    <p className="text-xs text-gray-600">Oleh: {e.pemberi_nama}</p>
                   </div>
                 ))
               )}

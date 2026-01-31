@@ -33,7 +33,7 @@ interface KegiatanDetail {
   satuan_output: string;
   anggaran_pagu: number;
   status: string;
-  status_verifikasi?: 'belum_verifikasi' | 'menunggu' | 'valid' | 'revisi';
+  status_verifikasi?: 'belum_verifikasi' | 'menunggu' | 'valid' | 'ditolak';
   tim_id: number;
   tim_nama: string;
   created_by: number;
@@ -122,15 +122,18 @@ interface Mitra {
   alamat: string;
 }
 
-type TabType = 'evaluasi' | 'progres' | 'realisasi-anggaran' | 'kendala' | 'verifikasi' | 'waktu' | 'catatan-pimpinan';
+type TabType = 'evaluasi' | 'progres' | 'realisasi-anggaran' | 'kendala' | 'verifikasi' | 'waktu' | 'catatan';
 
-interface EvaluasiPimpinan {
+interface Evaluasi {
   id: number;
   kegiatan_id: number;
+  role_pemberi: 'pimpinan' | 'kesubag';
   jenis_evaluasi: 'catatan' | 'arahan' | 'rekomendasi';
   isi: string;
   created_at: string;
-  pimpinan_nama: string;
+  pemberi_nama: string;
+  pemberi_username: string;
+  pemberi_role: string;
 }
 
 interface DokumenOutput {
@@ -164,7 +167,7 @@ interface DokumenOutput {
   validasi_feedback_pimpinan?: string;
   validasi_by_pimpinan?: number;
   validasi_at_pimpinan?: string;
-  status_final?: 'draft' | 'menunggu_kesubag' | 'menunggu_pimpinan' | 'revisi' | 'disahkan';
+  status_final?: 'draft' | 'menunggu_kesubag' | 'menunggu_pimpinan' | 'ditolak' | 'disahkan';
   // Joined names
   validated_by_kesubag_nama?: string;
   validated_by_pimpinan_nama?: string;
@@ -181,7 +184,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
   const [realisasiAnggaran, setRealisasiAnggaran] = useState<RealisasiAnggaran[]>([]);
   const [kendala, setKendala] = useState<Kendala[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
-  const [evaluasiPimpinan, setEvaluasiPimpinan] = useState<EvaluasiPimpinan[]>([]);
+  const [evaluasiList, setEvaluasiList] = useState<Evaluasi[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [kroList, setKroList] = useState<KRO[]>([]);
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
@@ -212,7 +215,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     fetchKROList();
     fetchMitraList();
     fetchDokumenOutput();
-    fetchEvaluasiPimpinan();
+    fetchEvaluasi();
   }, [kegiatanId]);
 
   const fetchDokumenOutput = async () => {
@@ -227,15 +230,15 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const fetchEvaluasiPimpinan = async () => {
+  const fetchEvaluasi = async () => {
     try {
       const res = await fetch(`/api/pelaksana/evaluasi?kegiatan_id=${kegiatanId}`);
       if (res.ok) {
         const data = await res.json();
-        setEvaluasiPimpinan(data.evaluasi || []);
+        setEvaluasiList(data.evaluasi || []);
       }
     } catch (error) {
-      console.error('Error fetching evaluasi pimpinan:', error);
+      console.error('Error fetching evaluasi:', error);
     }
   };
 
@@ -313,7 +316,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     // Hitung jumlah yang sudah disahkan
     const jumlahDisahkan = dokumenFinalValidasi.filter(d => d.status_final === 'disahkan').length;
     const jumlahDitolak = dokumenFinalValidasi.filter(
-      d => d.validasi_kesubag === 'tidak_valid' || d.validasi_pimpinan === 'tidak_valid' || d.status_final === 'revisi'
+      d => d.validasi_kesubag === 'tidak_valid' || d.validasi_pimpinan === 'tidak_valid' || d.status_final === 'ditolak'
     ).length;
     const totalValidasi = dokumenFinalValidasi.length;
     
@@ -329,7 +332,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     }
     
     if (jumlahDitolak > 0) {
-      return { status: 'revisi', disahkan: jumlahDisahkan, target: targetOutput, ditolak: jumlahDitolak };
+      return { status: 'ditolak', disahkan: jumlahDisahkan, target: targetOutput, ditolak: jumlahDitolak };
     }
     
     return { status: 'menunggu', disahkan: jumlahDisahkan, target: targetOutput };
@@ -557,7 +560,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     { id: 'kendala' as TabType, label: 'Kendala', icon: '⚠️', count: kendala.length },
     { id: 'verifikasi' as TabType, label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
     { id: 'waktu' as TabType, label: 'Waktu Penyelesaian', icon: '⏰' },
-    { id: 'catatan-pimpinan' as TabType, label: 'Catatan Pimpinan', icon: '📝', count: evaluasiPimpinan.length },
+    { id: 'catatan' as TabType, label: 'Evaluasi', icon: '📝', count: evaluasiList.length },
   ];
 
   // Helper functions for dokumen
@@ -749,16 +752,16 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     <div className="flex items-center gap-3">
                       <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
                         statusVerifikasiDokumen.status === 'valid' ? 'bg-green-100 text-green-800' :
-                        statusVerifikasiDokumen.status === 'revisi' ? 'bg-red-100 text-red-800' :
+                        statusVerifikasiDokumen.status === 'ditolak' ? 'bg-red-100 text-red-800' :
                         statusVerifikasiDokumen.status === 'menunggu' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
                         {statusVerifikasiDokumen.status === 'valid' && '✅ '}
-                        {statusVerifikasiDokumen.status === 'revisi' && '❌ '}
+                        {statusVerifikasiDokumen.status === 'ditolak' && '❌ '}
                         {statusVerifikasiDokumen.status === 'menunggu' && '⏳ '}
                         {statusVerifikasiDokumen.status === 'belum_verifikasi' && '⏸️ '}
                         {statusVerifikasiDokumen.status === 'valid' ? 'Semua Valid' :
-                         statusVerifikasiDokumen.status === 'revisi' ? 'Ada yang Perlu Revisi' :
+                         statusVerifikasiDokumen.status === 'ditolak' ? 'Ada yang Perlu Revisi' :
                          statusVerifikasiDokumen.status === 'menunggu' ? 'Menunggu Validasi' :
                          'Belum Ada Dokumen'}
                       </span>
@@ -774,7 +777,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         <div 
                           className={`h-3 rounded-full transition-all duration-300 ${
                             statusVerifikasiDokumen.status === 'valid' ? 'bg-green-500' :
-                            statusVerifikasiDokumen.status === 'revisi' ? 'bg-orange-500' :
+                            statusVerifikasiDokumen.status === 'ditolak' ? 'bg-orange-500' :
                             'bg-blue-500'
                           }`}
                           style={{ width: `${Math.min((statusVerifikasiDokumen.disahkan / statusVerifikasiDokumen.target) * 100, 100)}%` }}
@@ -905,17 +908,17 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                       <p className="text-xs font-semibold text-gray-600 mb-2">📝 Alur Review Draft:</p>
                                       <div className="flex flex-wrap items-center gap-2 text-xs">
                                         <div className={`px-2 py-1 rounded flex items-center gap-1 ${
-                                          doc.draft_status_kesubag === 'reviewed' ? 'bg-green-100 text-green-700' :
-                                          doc.draft_status_kesubag === 'revisi' ? 'bg-red-100 text-red-700' :
+                                          doc.draft_status_kesubag === 'diterima' ? 'bg-green-100 text-green-700' :
+                                          doc.draft_status_kesubag === 'ditolak' ? 'bg-red-100 text-red-700' :
                                           'bg-yellow-100 text-yellow-700'
                                         }`}>
                                           <span>Kesubag:</span>
                                           <span className="font-medium">
-                                            {doc.draft_status_kesubag === 'reviewed' ? '✅ Diterima' :
-                                             doc.draft_status_kesubag === 'revisi' ? '❌ Revisi' : '⏳ Pending'}
+                                            {doc.draft_status_kesubag === 'diterima' ? '✅ Diterima' :
+                                             doc.draft_status_kesubag === 'ditolak' ? '❌ Revisi' : '⏳ Pending'}
                                           </span>
                                         </div>
-                                        {doc.draft_status_kesubag === 'reviewed' && (
+                                        {doc.draft_status_kesubag === 'diterima' && (
                                           <>
                                             <span className="text-gray-400">→</span>
                                             <div className={`px-2 py-1 rounded flex items-center gap-1 ${
@@ -930,9 +933,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                         )}
                                       </div>
                                       <p className="text-xs text-gray-500 mt-2 italic">
-                                        {doc.draft_status_kesubag === 'revisi' 
+                                        {doc.draft_status_kesubag === 'ditolak' 
                                           ? '⚠️ Draft ditolak, silakan upload ulang dokumen perbaikan'
-                                          : doc.draft_status_kesubag === 'reviewed'
+                                          : doc.draft_status_kesubag === 'diterima'
                                           ? '✓ Draft diterima kesubag, menunggu review pimpinan'
                                           : '⏳ Draft sedang direview oleh kesubag'}
                                       </p>
@@ -1422,23 +1425,23 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            {/* Tab: Catatan Pimpinan */}
-            {activeTab === 'catatan-pimpinan' && (
+            {/* Tab: Evaluasi */}
+            {activeTab === 'catatan' && (
               <div>
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-2">Catatan dari Pimpinan</h3>
-                  <p className="text-sm text-gray-600">Catatan, arahan, dan rekomendasi dari pimpinan untuk kegiatan ini.</p>
+                  <h3 className="font-semibold text-gray-900 mb-2">Evaluasi</h3>
+                  <p className="text-sm text-gray-600">Evaluasi, arahan, dan rekomendasi dari pimpinan dan kesubag untuk kegiatan ini.</p>
                 </div>
 
-                {evaluasiPimpinan.length === 0 ? (
+                {evaluasiList.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-xl">
                     <div className="text-5xl mb-4">📝</div>
-                    <p className="text-gray-500 mb-2">Belum ada catatan dari pimpinan</p>
-                    <p className="text-sm text-gray-400">Catatan akan muncul di sini ketika pimpinan memberikan evaluasi</p>
+                    <p className="text-gray-500 mb-2">Belum ada evaluasi</p>
+                    <p className="text-sm text-gray-400">Evaluasi akan muncul di sini ketika pimpinan atau kesubag memberikan evaluasi</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {evaluasiPimpinan.map((ev) => (
+                    {evaluasiList.map((ev) => (
                       <div key={ev.id} className={`p-5 rounded-xl border-l-4 ${
                         ev.jenis_evaluasi === 'arahan' 
                           ? 'bg-blue-50 border-blue-500' 
@@ -1459,6 +1462,13 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                ev.jenis_evaluasi === 'rekomendasi' ? '💡 Rekomendasi' :
                                '📝 Catatan'}
                             </span>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              ev.role_pemberi === 'pimpinan' 
+                                ? 'bg-indigo-100 text-indigo-700' 
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Kesubag'}
+                            </span>
                           </div>
                           <span className="text-xs text-gray-500">
                             {formatDate(ev.created_at)}
@@ -1471,18 +1481,22 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         
                         <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-sm">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${
+                              ev.role_pemberi === 'pimpinan' 
+                                ? 'bg-gradient-to-br from-blue-500 to-indigo-600' 
+                                : 'bg-gradient-to-br from-amber-500 to-orange-600'
+                            }`}>
                               <span className="text-white font-semibold text-sm">
-                                {ev.pimpinan_nama?.charAt(0)?.toUpperCase() || 'P'}
+                                {ev.pemberi_nama?.charAt(0)?.toUpperCase() || (ev.role_pemberi === 'pimpinan' ? 'P' : 'K')}
                               </span>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-900">
-                                {ev.pimpinan_nama || 'Pimpinan'}
+                                {ev.pemberi_nama || (ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Kesubag')}
                               </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1">
                                 <LuShieldCheck className="w-3 h-3" />
-                                Pimpinan
+                                {ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Kepala Sub Bagian'}
                               </p>
                             </div>
                           </div>
@@ -1496,25 +1510,39 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 )}
 
                 {/* Summary */}
-                {evaluasiPimpinan.length > 0 && (
+                {evaluasiList.length > 0 && (
                   <div className="mt-6 p-4 bg-blue-50 rounded-xl">
                     <h4 className="font-medium text-blue-800 mb-3">Ringkasan Catatan</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="bg-white rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-indigo-600">
+                          {evaluasiList.filter(e => e.role_pemberi === 'pimpinan').length}
+                        </p>
+                        <p className="text-xs text-gray-500">Dari Pimpinan</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-amber-600">
+                          {evaluasiList.filter(e => e.role_pemberi === 'kesubag').length}
+                        </p>
+                        <p className="text-xs text-gray-500">Dari Kesubag</p>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="bg-white rounded-lg p-3 text-center">
                         <p className="text-2xl font-bold text-gray-700">
-                          {evaluasiPimpinan.filter(e => e.jenis_evaluasi === 'catatan').length}
+                          {evaluasiList.filter(e => e.jenis_evaluasi === 'catatan').length}
                         </p>
                         <p className="text-xs text-gray-500">Catatan</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center">
                         <p className="text-2xl font-bold text-blue-600">
-                          {evaluasiPimpinan.filter(e => e.jenis_evaluasi === 'arahan').length}
+                          {evaluasiList.filter(e => e.jenis_evaluasi === 'arahan').length}
                         </p>
                         <p className="text-xs text-gray-500">Arahan</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center">
                         <p className="text-2xl font-bold text-green-600">
-                          {evaluasiPimpinan.filter(e => e.jenis_evaluasi === 'rekomendasi').length}
+                          {evaluasiList.filter(e => e.jenis_evaluasi === 'rekomendasi').length}
                         </p>
                         <p className="text-xs text-gray-500">Rekomendasi</p>
                       </div>

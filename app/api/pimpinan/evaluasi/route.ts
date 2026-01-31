@@ -3,7 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { createNotificationForKegiatanTeam } from '@/lib/services/notificationService';
 
-// GET - Get all evaluasi pimpinan (read-only)
+// GET - Get all evaluasi pimpinan
 export async function GET(req: NextRequest) {
   try {
     const cookie = req.cookies.get('auth')?.value;
@@ -20,27 +20,28 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const kegiatan_id = searchParams.get('kegiatan_id');
     const tim_id = searchParams.get('tim_id');
-    const jenis = searchParams.get('jenis'); // catatan, arahan, rekomendasi
+    const jenis = searchParams.get('jenis');
 
     let query = `
       SELECT 
-        ep.*,
-        u.nama_lengkap as pimpinan_nama,
-        u.username as pimpinan_username,
+        e.*,
+        u.nama_lengkap as pemberi_nama,
+        u.username as pemberi_username,
+        u.role as pemberi_role,
         ko.nama as kegiatan_nama,
         ko.status as kegiatan_status,
         t.nama as tim_nama
-      FROM evaluasi_pimpinan ep
-      JOIN users u ON ep.user_id = u.id
-      JOIN kegiatan_operasional ko ON ep.kegiatan_id = ko.id
+      FROM evaluasi e
+      JOIN users u ON e.user_id = u.id
+      JOIN kegiatan ko ON e.kegiatan_id = ko.id
       LEFT JOIN tim t ON ko.tim_id = t.id
-      WHERE 1=1
+      WHERE e.role_pemberi = 'pimpinan'
     `;
 
     const queryParams: (string | number)[] = [];
 
     if (kegiatan_id) {
-      query += ' AND ep.kegiatan_id = ?';
+      query += ' AND e.kegiatan_id = ?';
       queryParams.push(kegiatan_id);
     }
 
@@ -50,18 +51,18 @@ export async function GET(req: NextRequest) {
     }
 
     if (jenis) {
-      query += ' AND ep.jenis_evaluasi = ?';
+      query += ' AND e.jenis_evaluasi = ?';
       queryParams.push(jenis);
     }
 
-    query += ' ORDER BY ep.created_at DESC';
+    query += ' ORDER BY e.created_at DESC';
 
     const [evaluasi] = await pool.query<RowDataPacket[]>(query, queryParams);
 
     // Get kegiatan list for filter
     const [kegiatanList] = await pool.query<RowDataPacket[]>(`
       SELECT ko.id, ko.nama, t.nama as tim_nama 
-      FROM kegiatan_operasional ko
+      FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       ORDER BY ko.nama
     `);
@@ -74,7 +75,8 @@ export async function GET(req: NextRequest) {
       SELECT 
         jenis_evaluasi,
         COUNT(*) as total
-      FROM evaluasi_pimpinan
+      FROM evaluasi
+      WHERE role_pemberi = 'pimpinan'
       GROUP BY jenis_evaluasi
     `);
 
@@ -99,7 +101,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST - Create new evaluasi (catatan/arahan/rekomendasi) - cannot be edited after saved
+// POST - Create new evaluasi
 export async function POST(req: NextRequest) {
   try {
     const cookie = req.cookies.get('auth')?.value;
@@ -132,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     // Verify kegiatan exists
     const [kegiatanRows] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM kegiatan_operasional WHERE id = ?',
+      'SELECT id, nama FROM kegiatan WHERE id = ?',
       [kegiatan_id]
     );
 
@@ -140,19 +142,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 });
     }
 
-    // Insert evaluasi - cannot be edited after saved
+    // Insert evaluasi with role_pemberi = 'pimpinan'
     const [result] = await pool.query<ResultSetHeader>(
-      'INSERT INTO evaluasi_pimpinan (kegiatan_id, user_id, jenis_evaluasi, isi) VALUES (?, ?, ?, ?)',
-      [kegiatan_id, payload.id, jenis_evaluasi, isi.trim()]
+      'INSERT INTO evaluasi (kegiatan_id, user_id, role_pemberi, jenis_evaluasi, isi) VALUES (?, ?, ?, ?, ?)',
+      [kegiatan_id, payload.id, 'pimpinan', jenis_evaluasi, isi.trim()]
     );
 
     // Get the created evaluasi
     const [newEvaluasi] = await pool.query<RowDataPacket[]>(
-      `SELECT ep.*, u.nama_lengkap as pimpinan_nama, ko.nama as kegiatan_nama
-       FROM evaluasi_pimpinan ep
-       JOIN users u ON ep.user_id = u.id
-       JOIN kegiatan_operasional ko ON ep.kegiatan_id = ko.id
-       WHERE ep.id = ?`,
+      `SELECT e.*, u.nama_lengkap as pemberi_nama, ko.nama as kegiatan_nama
+       FROM evaluasi e
+       JOIN users u ON e.user_id = u.id
+       JOIN kegiatan ko ON e.kegiatan_id = ko.id
+       WHERE e.id = ?`,
       [result.insertId]
     );
 
@@ -162,7 +164,7 @@ export async function POST(req: NextRequest) {
     
     await createNotificationForKegiatanTeam(kegiatan_id, {
       title: `${jenisLabel} Baru dari Pimpinan`,
-      message: `Pimpinan memberikan ${jenis_evaluasi} untuk kegiatan: ${newEvaluasi[0].kegiatan_nama}`,
+      message: `Pimpinan memberikan ${jenis_evaluasi} untuk kegiatan: ${kegiatanRows[0].nama}`,
       type: 'evaluasi',
       referenceId: kegiatan_id,
       referenceType: 'kegiatan'
@@ -176,18 +178,4 @@ export async function POST(req: NextRequest) {
     console.error('Error creating evaluasi:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-// Block PUT - evaluasi cannot be edited after saved
-export async function PUT() {
-  return NextResponse.json({ 
-    error: 'Forbidden - Evaluasi pimpinan tidak dapat diubah setelah disimpan' 
-  }, { status: 403 });
-}
-
-// Block DELETE - evaluasi cannot be deleted
-export async function DELETE() {
-  return NextResponse.json({ 
-    error: 'Forbidden - Evaluasi pimpinan tidak dapat dihapus' 
-  }, { status: 403 });
 }

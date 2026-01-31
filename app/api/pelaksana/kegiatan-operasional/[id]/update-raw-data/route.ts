@@ -37,7 +37,7 @@ export async function POST(
 
     // Check ownership
     const [existing] = await pool.query<RowDataPacket[]>(
-      'SELECT id, output_realisasi, tanggal_realisasi_selesai, status_verifikasi FROM kegiatan_operasional WHERE id = ? AND tim_id = ?',
+      'SELECT id, output_realisasi, tanggal_realisasi_selesai, status_verifikasi FROM kegiatan WHERE id = ? AND tim_id = ?',
       [id, timId]
     );
 
@@ -91,7 +91,7 @@ export async function POST(
     values.push(id);
 
     await pool.query<ResultSetHeader>(
-      `UPDATE kegiatan_operasional SET ${updates.join(', ')} WHERE id = ?`,
+      `UPDATE kegiatan SET ${updates.join(', ')} WHERE id = ?`,
       values
     );
 

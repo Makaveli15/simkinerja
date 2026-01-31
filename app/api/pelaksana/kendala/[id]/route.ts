@@ -18,7 +18,7 @@ async function verifyAccess(authId: number, kendalaId: number): Promise<boolean>
 
   const [kendala] = await pool.query<RowDataPacket[]>(
     `SELECT k.id FROM kendala_kegiatan k
-     JOIN kegiatan_operasional ko ON k.kegiatan_operasional_id = ko.id
+     JOIN kegiatan ko ON k.kegiatan_id = ko.id
      WHERE k.id = ? AND ko.tim_id = ?`,
     [kendalaId, timId]
   );

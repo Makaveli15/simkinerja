@@ -19,13 +19,22 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Check for pending document validations and create notifications if not exists
+    // Check for pending document validations that have been forwarded by Kesubag
+    // Pimpinan hanya menerima notifikasi untuk dokumen yang sudah diteruskan kesubag:
+    // - Draft: draft_status_kesubag = 'reviewed' (diterima kesubag) DAN draft_feedback_pimpinan IS NULL
+    // - Final (minta_validasi=1): validasi_kesubag = 'valid' DAN validasi_pimpinan = 'pending'
     const [pendingDocs] = await pool.query<RowDataPacket[]>(
-      `SELECT d.id, d.nama_file, d.uploaded_at, d.kegiatan_id, ko.nama as kegiatan_nama, u.nama_lengkap as uploader_nama
+      `SELECT d.id, d.nama_file, d.uploaded_at, d.kegiatan_id, d.tipe_dokumen,
+              ko.nama as kegiatan_nama, u.nama_lengkap as uploader_nama
        FROM dokumen_output d
-       JOIN kegiatan_operasional ko ON d.kegiatan_id = ko.id
+       JOIN kegiatan ko ON d.kegiatan_id = ko.id
        JOIN users u ON d.uploaded_by = u.id
-       WHERE d.status_review = 'pending'
+       WHERE 
+         -- Draft yang sudah diterima kesubag dan menunggu feedback pimpinan
+         (d.tipe_dokumen = 'draft' AND d.draft_status_kesubag = 'reviewed' AND d.draft_feedback_pimpinan IS NULL)
+         OR
+         -- Final yang sudah divalidasi kesubag dan menunggu validasi pimpinan
+         (d.tipe_dokumen = 'final' AND d.minta_validasi = 1 AND d.validasi_kesubag = 'valid' AND d.validasi_pimpinan = 'pending')
        ORDER BY d.uploaded_at DESC
        LIMIT 10`
     );
@@ -39,10 +48,14 @@ export async function GET() {
       );
 
       if (existing.length === 0) {
+        // Pesan berbeda untuk draft dan final
+        const isDraft = doc.tipe_dokumen === 'draft';
         await createNotification({
           userId: auth.id,
-          title: '📄 Permintaan Validasi Dokumen',
-          message: `${doc.uploader_nama} mengajukan validasi: ${doc.nama_file} (${doc.kegiatan_nama})`,
+          title: isDraft ? '📋 Draft Menunggu Review' : '📄 Dokumen Menunggu Validasi Akhir',
+          message: isDraft 
+            ? `Draft "${doc.nama_file}" dari kegiatan "${doc.kegiatan_nama}" telah direview Kesubag dan menunggu feedback Anda.`
+            : `Dokumen "${doc.nama_file}" dari kegiatan "${doc.kegiatan_nama}" telah divalidasi Kesubag dan menunggu validasi akhir Anda.`,
           type: 'permintaan_validasi',
           referenceId: doc.id,
           referenceType: 'dokumen'
