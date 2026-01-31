@@ -59,14 +59,51 @@ export interface KinerjaResult {
   };
 }
 
-// Bobot masing-masing indikator
-const BOBOT = {
+// Interface untuk konfigurasi bobot dari database
+export interface BobotConfig {
+  CAPAIAN_OUTPUT: number;
+  KETEPATAN_WAKTU: number;
+  SERAPAN_ANGGARAN: number;
+  KUALITAS_OUTPUT: number;
+  PENYELESAIAN_KENDALA: number;
+}
+
+// Bobot default masing-masing indikator
+const DEFAULT_BOBOT: BobotConfig = {
   CAPAIAN_OUTPUT: 0.30,
   KETEPATAN_WAKTU: 0.20,
   SERAPAN_ANGGARAN: 0.20,
   KUALITAS_OUTPUT: 0.20,
   PENYELESAIAN_KENDALA: 0.10,
-} as const;
+};
+
+// Bobot yang digunakan (bisa dioverride dari database)
+let BOBOT: BobotConfig = { ...DEFAULT_BOBOT };
+
+/**
+ * Set bobot konfigurasi dari database
+ * Dipanggil saat ingin menggunakan konfigurasi dari master_indikator_kinerja
+ */
+export function setBobotConfig(config: Partial<BobotConfig>): void {
+  BOBOT = {
+    ...DEFAULT_BOBOT,
+    ...config
+  };
+}
+
+/**
+ * Reset bobot ke default
+ */
+export function resetBobotConfig(): void {
+  BOBOT = { ...DEFAULT_BOBOT };
+}
+
+/**
+ * Get current bobot configuration
+ */
+export function getBobotConfig(): BobotConfig {
+  return { ...BOBOT };
+}
 
 // Ambang batas status kinerja
 const THRESHOLD = {

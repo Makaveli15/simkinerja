@@ -1,7 +1,7 @@
 erDiagram
-    tim ||--o{ users : "has"
-    tim ||--o{ kegiatan : "has"
-    
+tim ||--o{ users : "has"
+tim ||--o{ kegiatan : "has"
+
     users ||--o{ kegiatan : "creates"
     users ||--o{ dokumen_output : "uploads"
     users ||--o{ dokumen_output : "reviews_draft_kesubag"
@@ -14,17 +14,17 @@ erDiagram
     users ||--o{ tindak_lanjut : "creates"
     users ||--o{ notifications : "receives"
     users ||--o{ upload_laporan : "uploads"
-    
+
     kro ||--o{ kegiatan : "classifies"
     mitra ||--o{ kegiatan : "assigned_to"
-    
+
     kegiatan ||--o{ dokumen_output : "has"
     kegiatan ||--o{ evaluasi : "has"
     kegiatan ||--o{ kendala_kegiatan : "has"
     kegiatan ||--o{ progres_kegiatan : "has"
     kegiatan ||--o{ realisasi_anggaran : "has"
     kegiatan ||--o{ realisasi_fisik : "has"
-    
+
     kendala_kegiatan ||--o{ tindak_lanjut : "has"
 
     tim {
@@ -33,7 +33,7 @@ erDiagram
         text deskripsi
         timestamp created_at
     }
-    
+
     users {
         int id PK
         varchar username UK
@@ -47,7 +47,7 @@ erDiagram
         longtext foto
         tinyint is_first_login
     }
-    
+
     kro {
         int id PK
         varchar kode UK
@@ -55,7 +55,7 @@ erDiagram
         text deskripsi
         timestamp created_at
     }
-    
+
     mitra {
         int id PK
         varchar nama
@@ -67,7 +67,7 @@ erDiagram
         varchar email
         timestamp created_at
     }
-    
+
     kegiatan {
         int id PK
         int tim_id FK
@@ -88,7 +88,7 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
-    
+
     dokumen_output {
         int id PK
         int kegiatan_id FK
@@ -107,7 +107,7 @@ erDiagram
         enum validasi_pimpinan "pending|valid|tidak_valid"
         enum status_final "draft|menunggu_kesubag|menunggu_pimpinan|revisi|disahkan"
     }
-    
+
     evaluasi {
         int id PK
         int kegiatan_id FK
@@ -117,7 +117,7 @@ erDiagram
         text isi
         timestamp created_at
     }
-    
+
     kendala_kegiatan {
         int id PK
         int kegiatan_id FK
@@ -128,7 +128,7 @@ erDiagram
         enum status "open|resolved"
         timestamp created_at
     }
-    
+
     tindak_lanjut {
         int id PK
         int kendala_id FK
@@ -139,7 +139,7 @@ erDiagram
         enum status "direncanakan|dalam_proses|selesai"
         timestamp created_at
     }
-    
+
     progres_kegiatan {
         int id PK
         int kegiatan_id FK
@@ -151,7 +151,7 @@ erDiagram
         text keterangan
         timestamp created_at
     }
-    
+
     realisasi_anggaran {
         int id PK
         int kegiatan_id FK
@@ -161,7 +161,7 @@ erDiagram
         text keterangan
         timestamp created_at
     }
-    
+
     realisasi_fisik {
         int id PK
         int kegiatan_id FK
@@ -171,7 +171,7 @@ erDiagram
         text keterangan
         timestamp created_at
     }
-    
+
     notifications {
         int id PK
         int user_id FK
@@ -184,14 +184,14 @@ erDiagram
         timestamp created_at
         timestamp read_at
     }
-    
+
     notifications_read {
         int id PK
         int user_id
         varchar notification_id
         timestamp read_at
     }
-    
+
     upload_laporan {
         int id PK
         int user_id FK

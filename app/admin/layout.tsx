@@ -18,7 +18,8 @@ import {
   LuMenu,
   LuUser,
   LuLogOut,
-  LuX
+  LuX,
+  LuGauge
 } from 'react-icons/lu';
 
 interface User {
@@ -101,6 +102,11 @@ export default function AdminLayout({
       href: '/admin/mitra', 
       label: 'Data Mitra', 
       icon: <LuBriefcase className="w-5 h-5" />
+    },
+    { 
+      href: '/admin/indikator', 
+      label: 'Indikator Kinerja', 
+      icon: <LuGauge className="w-5 h-5" />
     },
     { 
       href: '/admin/settings', 
