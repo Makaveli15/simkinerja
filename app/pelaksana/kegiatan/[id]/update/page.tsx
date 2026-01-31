@@ -1504,82 +1504,6 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
             {/* Tab: Verifikasi Kualitas Output */}
             {activeTab === 'dokumen' && (
               <div className="space-y-6">
-                {/* Status Verifikasi - Header Utama */}
-                <div className={`rounded-xl p-6 ${
-                  kegiatan.status_verifikasi === 'valid' 
-                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300'
-                    : kegiatan.status_verifikasi === 'menunggu'
-                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300'
-                    : kegiatan.status_verifikasi === 'revisi'
-                    ? 'bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300'
-                    : 'bg-gradient-to-r from-gray-50 to-slate-50 border-2 border-gray-300'
-                }`}>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                        <span>✅</span> Status Verifikasi Kualitas Output
-                      </h3>
-                      <div className="flex items-center gap-3 mb-3">
-                        {kegiatan.status_verifikasi === 'valid' && (
-                          <span className="px-4 py-2 bg-green-100 text-green-700 rounded-lg font-semibold text-lg border border-green-200">
-                            ✅ VALID
-                          </span>
-                        )}
-                        {kegiatan.status_verifikasi === 'menunggu' && (
-                          <span className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-semibold text-lg border border-blue-200">
-                            📤 MENUNGGU VALIDASI
-                          </span>
-                        )}
-                        {kegiatan.status_verifikasi === 'revisi' && (
-                          <span className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg font-semibold text-lg border border-orange-200">
-                            ⚠️ PERLU REVISI
-                          </span>
-                        )}
-                        {kegiatan.status_verifikasi === 'belum_verifikasi' && (
-                          <span className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-lg border border-gray-200">
-                            ⏳ BELUM DIVERIFIKASI
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {kegiatan.status_verifikasi === 'valid' 
-                          ? '🎉 Selamat! Output kegiatan telah diverifikasi oleh pimpinan. Skor kualitas output: 100 poin.'
-                          : kegiatan.status_verifikasi === 'menunggu'
-                          ? '📋 Permintaan validasi sudah dikirim. Tunggu pimpinan mereview dokumen Anda.'
-                          : kegiatan.status_verifikasi === 'revisi'
-                          ? '📝 Pimpinan meminta revisi. Upload dokumen perbaikan dan minta validasi ulang. Skor kualitas: 50 poin.'
-                          : '📄 Upload dokumen output dan klik "Minta Validasi" untuk meminta verifikasi dari pimpinan.'}
-                      </p>
-                    </div>
-                    
-                    {/* Tombol Minta Validasi */}
-                    {kegiatan.status_verifikasi !== 'valid' && kegiatan.status_verifikasi !== 'menunggu' && (
-                      <div className="flex-shrink-0">
-                        <button
-                          onClick={handleRequestValidation}
-                          disabled={requestingValidation || dokumenOutput.length === 0}
-                          className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2 shadow-lg"
-                          title={dokumenOutput.length === 0 ? 'Upload dokumen dulu' : 'Minta validasi pimpinan'}
-                        >
-                          {requestingValidation ? (
-                            <>
-                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              Mengirim...
-                            </>
-                          ) : (
-                            <>
-                              <span>📤</span> Minta Validasi Pimpinan
-                            </>
-                          )}
-                        </button>
-                        {dokumenOutput.length === 0 && (
-                          <p className="text-xs text-orange-600 mt-2 text-center">⚠️ Upload dokumen terlebih dahulu</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
@@ -1646,7 +1570,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                             type="file"
                             id="dokumen-file"
                             onChange={(e) => setDokumenForm({ ...dokumenForm, file: e.target.files?.[0] || null })}
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar"
                             className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
                           />
                           {dokumenForm.file && (
@@ -1658,7 +1582,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                          Max 10MB. Format: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG
+                          Max 10MB. Format: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, ZIP, RAR
                         </p>
                       </div>
 

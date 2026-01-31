@@ -168,7 +168,8 @@ export default function TambahKegiatanPage() {
           tanggal_selesai: formData.tanggal_selesai || null,
           target_output: parseFloat(formData.target_output) || null,
           satuan_output: formData.satuan_output || 'dokumen',
-          anggaran_pagu: parseFloat(formData.anggaran_pagu) || 0,
+          // Use Math.round to avoid floating-point precision issues (e.g., 10000000 becoming 9999999)
+          anggaran_pagu: formData.anggaran_pagu ? Math.round(Number(formData.anggaran_pagu) * 100) / 100 : 0,
           status: formData.status,
           kro_id: parseInt(formData.kro_id),
           mitra_id: formData.mitra_id ? parseInt(formData.mitra_id) : null,

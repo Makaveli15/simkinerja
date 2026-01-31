@@ -142,11 +142,32 @@ interface DokumenOutput {
   deskripsi?: string;
   ukuran_file: number;
   tipe_file: string;
-  status_review: 'pending' | 'diterima' | 'ditolak';
-  catatan_reviewer?: string;
   uploaded_at: string;
-  reviewed_at?: string;
   uploaded_by_nama?: string;
+  // Draft review by kesubag (after migration)
+  draft_status_kesubag?: 'pending' | 'diterima' | 'ditolak';
+  draft_feedback_kesubag?: string;
+  draft_reviewed_by_kesubag?: number;
+  draft_reviewed_at_kesubag?: string;
+  // Draft feedback by pimpinan
+  draft_feedback_pimpinan?: string;
+  draft_reviewed_by_pimpinan?: number;
+  draft_reviewed_at_pimpinan?: string;
+  // Final validation workflow
+  minta_validasi?: number; // 0 or 1
+  minta_validasi_at?: string;
+  validasi_kesubag?: 'pending' | 'valid' | 'tidak_valid';
+  validasi_feedback_kesubag?: string;
+  validasi_by_kesubag?: number;
+  validasi_at_kesubag?: string;
+  validasi_pimpinan?: 'pending' | 'valid' | 'tidak_valid';
+  validasi_feedback_pimpinan?: string;
+  validasi_by_pimpinan?: number;
+  validasi_at_pimpinan?: string;
+  status_final?: 'draft' | 'menunggu_kesubag' | 'menunggu_pimpinan' | 'revisi' | 'disahkan';
+  // Joined names
+  validated_by_kesubag_nama?: string;
+  validated_by_pimpinan_nama?: string;
 }
 
 export default function DetailKegiatanPage({ params }: { params: Promise<{ id: string }> }) {
@@ -169,6 +190,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
   const [activeTab, setActiveTab] = useState<TabType>('evaluasi');
   const [showEditModal, setShowEditModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingDokumenId, setDeletingDokumenId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -216,6 +238,105 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
       console.error('Error fetching evaluasi pimpinan:', error);
     }
   };
+
+  const handleMintaValidasi = async (dokumenId: number) => {
+    if (!confirm('Apakah Anda yakin ingin mengajukan dokumen ini untuk validasi? Dokumen akan direview oleh Kesubag dan kemudian Pimpinan.')) {
+      return;
+    }
+    
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/pelaksana/dokumen-output', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dokumenId, action: 'minta_validasi' })
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        setSuccess('Permintaan validasi berhasil dikirim ke Kesubag');
+        fetchDokumenOutput(); // Refresh dokumen list
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(data.error || 'Gagal mengirim permintaan validasi');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error requesting validation:', error);
+      setError('Terjadi kesalahan saat mengirim permintaan');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handle delete dokumen
+  const handleDeleteDokumen = async (id: number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus dokumen ini? Tindakan ini tidak dapat dibatalkan.')) {
+      return;
+    }
+
+    setDeletingDokumenId(id);
+    setError('');
+
+    try {
+      const res = await fetch(`/api/pelaksana/dokumen-output?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        setSuccess('Dokumen berhasil dihapus');
+        fetchDokumenOutput();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Gagal menghapus dokumen');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error deleting dokumen:', error);
+      setError('Terjadi kesalahan saat menghapus dokumen');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setDeletingDokumenId(null);
+    }
+  };
+
+  // Hitung status verifikasi berdasarkan dokumen
+  const hitungStatusVerifikasiBerdasarkanDokumen = () => {
+    // Filter dokumen final yang sudah minta validasi
+    const dokumenFinalValidasi = dokumenOutput.filter(
+      d => d.tipe_dokumen === 'final' && d.minta_validasi === 1
+    );
+    
+    // Hitung jumlah yang sudah disahkan
+    const jumlahDisahkan = dokumenFinalValidasi.filter(d => d.status_final === 'disahkan').length;
+    const jumlahDitolak = dokumenFinalValidasi.filter(
+      d => d.validasi_kesubag === 'tidak_valid' || d.validasi_pimpinan === 'tidak_valid' || d.status_final === 'revisi'
+    ).length;
+    const totalValidasi = dokumenFinalValidasi.length;
+    
+    // Gunakan target_output jika tersedia, jika tidak gunakan total dokumen
+    const targetOutput = kegiatan?.target_output || totalValidasi;
+    
+    if (totalValidasi === 0) {
+      return { status: 'belum_verifikasi', disahkan: 0, target: targetOutput };
+    }
+    
+    if (jumlahDisahkan === targetOutput && jumlahDisahkan > 0) {
+      return { status: 'valid', disahkan: jumlahDisahkan, target: targetOutput };
+    }
+    
+    if (jumlahDitolak > 0) {
+      return { status: 'revisi', disahkan: jumlahDisahkan, target: targetOutput, ditolak: jumlahDitolak };
+    }
+    
+    return { status: 'menunggu', disahkan: jumlahDisahkan, target: targetOutput };
+  };
+
+  // Status verifikasi yang dihitung dari dokumen
+  const statusVerifikasiDokumen = hitungStatusVerifikasiBerdasarkanDokumen();
 
   const fetchKegiatan = async () => {
     try {
@@ -458,10 +579,11 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     <div className="min-h-screen bg-gray-50 p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
-          <Link href="/pelaksana/kegiatan" className="text-blue-600 hover:text-blue-800 flex items-center gap-2 mb-4">
-            <LuChevronLeft className="w-5 h-5" />
-            Kembali ke Daftar Kegiatan
-          </Link>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+            <Link href="/pelaksana/kegiatan" className="hover:text-blue-600">Kegiatan</Link>
+            <span>/</span>
+            <span className="text-gray-900">Detail</span>
+          </div>
 
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex justify-between items-start mb-4">
@@ -623,22 +745,42 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 {/* Status Verifikasi */}
                 <div className="mb-6 p-4 bg-gray-50 rounded-xl">
                   <h3 className="font-semibold text-gray-900 mb-3">Status Verifikasi</h3>
-                  <div className="flex items-center gap-3">
-                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-                      kegiatan?.status_verifikasi === 'valid' ? 'bg-green-100 text-green-800' :
-                      kegiatan?.status_verifikasi === 'revisi' ? 'bg-red-100 text-red-800' :
-                      kegiatan?.status_verifikasi === 'menunggu' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {kegiatan?.status_verifikasi === 'valid' && '✅ '}
-                      {kegiatan?.status_verifikasi === 'revisi' && '❌ '}
-                      {kegiatan?.status_verifikasi === 'menunggu' && '⏳ '}
-                      {kegiatan?.status_verifikasi === 'belum_verifikasi' && '⏸️ '}
-                      {kegiatan?.status_verifikasi === 'valid' ? 'Valid' :
-                       kegiatan?.status_verifikasi === 'revisi' ? 'Perlu Revisi' :
-                       kegiatan?.status_verifikasi === 'menunggu' ? 'Menunggu Validasi' :
-                       'Belum Diverifikasi'}
-                    </span>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+                        statusVerifikasiDokumen.status === 'valid' ? 'bg-green-100 text-green-800' :
+                        statusVerifikasiDokumen.status === 'revisi' ? 'bg-red-100 text-red-800' :
+                        statusVerifikasiDokumen.status === 'menunggu' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {statusVerifikasiDokumen.status === 'valid' && '✅ '}
+                        {statusVerifikasiDokumen.status === 'revisi' && '❌ '}
+                        {statusVerifikasiDokumen.status === 'menunggu' && '⏳ '}
+                        {statusVerifikasiDokumen.status === 'belum_verifikasi' && '⏸️ '}
+                        {statusVerifikasiDokumen.status === 'valid' ? 'Semua Valid' :
+                         statusVerifikasiDokumen.status === 'revisi' ? 'Ada yang Perlu Revisi' :
+                         statusVerifikasiDokumen.status === 'menunggu' ? 'Menunggu Validasi' :
+                         'Belum Ada Dokumen'}
+                      </span>
+                      {statusVerifikasiDokumen.target > 0 && (
+                        <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                          {statusVerifikasiDokumen.disahkan}/{statusVerifikasiDokumen.target} Disahkan
+                        </span>
+                      )}
+                    </div>
+                    {/* Progress Bar */}
+                    {statusVerifikasiDokumen.target > 0 && (
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className={`h-3 rounded-full transition-all duration-300 ${
+                            statusVerifikasiDokumen.status === 'valid' ? 'bg-green-500' :
+                            statusVerifikasiDokumen.status === 'revisi' ? 'bg-orange-500' :
+                            'bg-blue-500'
+                          }`}
+                          style={{ width: `${Math.min((statusVerifikasiDokumen.disahkan / statusVerifikasiDokumen.target) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -651,52 +793,199 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                       <p className="text-gray-500">Belum ada dokumen yang diupload</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {dokumenOutput.map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <span className="text-xl">📄</span>
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{doc.nama_file}</p>
-                              <div className="flex items-center gap-2 text-sm text-gray-500">
-                                <span>{formatDate(doc.uploaded_at)}</span>
-                                <span>•</span>
-                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                  doc.tipe_dokumen === 'final' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                  {doc.tipe_dokumen === 'final' ? 'Final' : 'Draft'}
-                                </span>
-                                {doc.status_review && (
-                                  <>
+                    <div className="space-y-4">
+                      {dokumenOutput.map((doc) => {
+                        const isDraft = doc.tipe_dokumen === 'draft';
+                        const isFinal = doc.tipe_dokumen === 'final';
+                        const mintaValidasi = doc.minta_validasi === 1;
+                        const isDisahkan = doc.status_final === 'disahkan';
+                        
+                        return (
+                          <div key={doc.id} className={`p-4 rounded-xl border ${isDisahkan ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-3 flex-1">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDisahkan ? 'bg-green-100' : 'bg-blue-100'}`}>
+                                  <span className="text-xl">{isDisahkan ? '✅' : '📄'}</span>
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">{doc.nama_file}</p>
+                                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mt-1">
+                                    <span>{formatDate(doc.uploaded_at)}</span>
                                     <span>•</span>
                                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                      doc.status_review === 'diterima' ? 'bg-green-100 text-green-700' :
-                                      doc.status_review === 'ditolak' ? 'bg-red-100 text-red-700' :
-                                      'bg-gray-100 text-gray-700'
+                                      isFinal ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                                     }`}>
-                                      {doc.status_review === 'diterima' ? 'Disetujui' :
-                                       doc.status_review === 'ditolak' ? 'Ditolak' : 'Pending'}
+                                      {isFinal ? 'Final' : 'Draft'}
                                     </span>
-                                  </>
+                                    {isDisahkan && (
+                                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-600 text-white">
+                                        🏆 DISAHKAN
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Validation Status Flow for Final Documents */}
+                                  {isFinal && mintaValidasi && (
+                                    <div className="mt-3 p-3 bg-white rounded-lg border">
+                                      <p className="text-xs font-semibold text-gray-600 mb-2">✅ Alur Validasi Dokumen Final:</p>
+                                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        {/* Kesubag Validation Status */}
+                                        <div className={`px-2 py-1 rounded flex items-center gap-1 ${
+                                          doc.validasi_kesubag === 'valid' ? 'bg-green-100 text-green-700' :
+                                          doc.validasi_kesubag === 'tidak_valid' ? 'bg-red-100 text-red-700' :
+                                          'bg-yellow-100 text-yellow-700'
+                                        }`}>
+                                          <span>Kesubag:</span>
+                                          <span className="font-medium">
+                                            {doc.validasi_kesubag === 'valid' ? '✅ Valid' :
+                                             doc.validasi_kesubag === 'tidak_valid' ? '❌ Revisi' : '⏳ Pending'}
+                                          </span>
+                                        </div>
+                                        {doc.validasi_kesubag === 'valid' && (
+                                          <>
+                                            <span className="text-gray-400">→</span>
+                                            {/* Pimpinan Validation Status */}
+                                            <div className={`px-2 py-1 rounded flex items-center gap-1 ${
+                                              doc.validasi_pimpinan === 'valid' ? 'bg-green-100 text-green-700' :
+                                              doc.validasi_pimpinan === 'tidak_valid' ? 'bg-red-100 text-red-700' :
+                                              'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                              <span>Pimpinan:</span>
+                                              <span className="font-medium">
+                                                {doc.validasi_pimpinan === 'valid' ? '✅ Valid' :
+                                                 doc.validasi_pimpinan === 'tidak_valid' ? '❌ Revisi' : '⏳ Pending'}
+                                              </span>
+                                            </div>
+                                          </>
+                                        )}
+                                        {isDisahkan && (
+                                          <>
+                                            <span className="text-gray-400">→</span>
+                                            <span className="px-2 py-1 bg-green-600 text-white rounded font-medium">🏆 Disahkan</span>
+                                          </>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-2 italic">
+                                        {doc.validasi_kesubag === 'tidak_valid'
+                                          ? '⚠️ Dokumen ditolak kesubag, silakan upload ulang dokumen perbaikan'
+                                          : doc.validasi_kesubag === 'valid' && doc.validasi_pimpinan === 'tidak_valid'
+                                          ? '⚠️ Dokumen ditolak pimpinan, silakan upload ulang dokumen perbaikan'
+                                          : doc.validasi_kesubag === 'valid' && doc.validasi_pimpinan === 'valid'
+                                          ? '🏆 Dokumen telah disahkan!'
+                                          : doc.validasi_kesubag === 'valid'
+                                          ? '⏳ Menunggu validasi dari pimpinan'
+                                          : '⏳ Menunggu validasi dari kesubag'}
+                                      </p>
+                                      {doc.validasi_feedback_kesubag && (
+                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
+                                          💬 <strong>Kesubag:</strong> {doc.validasi_feedback_kesubag}
+                                        </p>
+                                      )}
+                                      {doc.validasi_feedback_pimpinan && (
+                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded">
+                                          💬 <strong>Pimpinan:</strong> {doc.validasi_feedback_pimpinan}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Final document not yet requested validation */}
+                                  {isFinal && !mintaValidasi && (
+                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                      <p className="text-xs font-semibold text-blue-700 mb-1">📤 Belum Diminta Validasi</p>
+                                      <p className="text-xs text-blue-600">
+                                        Klik tombol "Minta Validasi" untuk mengajukan dokumen ini ke kesubag dan pimpinan untuk divalidasi.
+                                      </p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Draft Review Status */}
+                                  {isDraft && (
+                                    <div className="mt-3 p-3 bg-white rounded-lg border">
+                                      <p className="text-xs font-semibold text-gray-600 mb-2">📝 Alur Review Draft:</p>
+                                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                                        <div className={`px-2 py-1 rounded flex items-center gap-1 ${
+                                          doc.draft_status_kesubag === 'reviewed' ? 'bg-green-100 text-green-700' :
+                                          doc.draft_status_kesubag === 'revisi' ? 'bg-red-100 text-red-700' :
+                                          'bg-yellow-100 text-yellow-700'
+                                        }`}>
+                                          <span>Kesubag:</span>
+                                          <span className="font-medium">
+                                            {doc.draft_status_kesubag === 'reviewed' ? '✅ Diterima' :
+                                             doc.draft_status_kesubag === 'revisi' ? '❌ Revisi' : '⏳ Pending'}
+                                          </span>
+                                        </div>
+                                        {doc.draft_status_kesubag === 'reviewed' && (
+                                          <>
+                                            <span className="text-gray-400">→</span>
+                                            <div className={`px-2 py-1 rounded flex items-center gap-1 ${
+                                              doc.draft_feedback_pimpinan ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                              <span>Pimpinan:</span>
+                                              <span className="font-medium">
+                                                {doc.draft_feedback_pimpinan ? '✅ Reviewed' : '⏳ Pending'}
+                                              </span>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-gray-500 mt-2 italic">
+                                        {doc.draft_status_kesubag === 'revisi' 
+                                          ? '⚠️ Draft ditolak, silakan upload ulang dokumen perbaikan'
+                                          : doc.draft_status_kesubag === 'reviewed'
+                                          ? '✓ Draft diterima kesubag, menunggu review pimpinan'
+                                          : '⏳ Draft sedang direview oleh kesubag'}
+                                      </p>
+                                      {doc.draft_feedback_kesubag && (
+                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
+                                          💬 <strong>Kesubag:</strong> {doc.draft_feedback_kesubag}
+                                        </p>
+                                      )}
+                                      {doc.draft_feedback_pimpinan && (
+                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded">
+                                          💬 <strong>Pimpinan:</strong> {doc.draft_feedback_pimpinan}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Actions */}
+                              <div className="flex flex-col gap-2">
+                                <a
+                                  href={doc.path_file}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors text-center"
+                                >
+                                  Lihat
+                                </a>
+                                {/* Minta Validasi button - only for final docs not yet requested */}
+                                {isFinal && !mintaValidasi && (
+                                  <button
+                                    onClick={() => handleMintaValidasi(doc.id)}
+                                    disabled={submitting}
+                                    className="px-3 py-1.5 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
+                                  >
+                                    Minta Validasi
+                                  </button>
+                                )}
+                                {/* Delete button - only for docs not yet validated/reviewed */}
+                                {!mintaValidasi && !isDisahkan && (
+                                  <button
+                                    onClick={() => handleDeleteDokumen(doc.id)}
+                                    disabled={deletingDokumenId === doc.id}
+                                    className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                                  >
+                                    {deletingDokumenId === doc.id ? 'Menghapus...' : '🗑️ Hapus'}
+                                  </button>
                                 )}
                               </div>
-                              {doc.catatan_reviewer && (
-                                <p className="text-sm text-gray-600 mt-1">📝 {doc.catatan_reviewer}</p>
-                              )}
                             </div>
                           </div>
-                          <a
-                            href={doc.path_file}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            Lihat
-                          </a>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -721,9 +1010,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   </div>
                   <div className="bg-purple-50 p-4 rounded-xl text-center">
                     <div className="text-2xl font-bold text-purple-600">
-                      {dokumenOutput.filter(d => d.status_review === 'diterima').length}
+                      {dokumenOutput.filter(d => d.status_final === 'disahkan').length}
                     </div>
-                    <div className="text-sm text-gray-600">Disetujui</div>
+                    <div className="text-sm text-gray-600">Disahkan</div>
                   </div>
                 </div>
               </div>

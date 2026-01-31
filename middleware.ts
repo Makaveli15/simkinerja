@@ -6,7 +6,7 @@ export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   // Determine which role is required based on path
-  let requiredRole: 'admin' | 'pimpinan' | 'pelaksana' | null = null;
+  let requiredRole: 'admin' | 'pimpinan' | 'pelaksana' | 'kesubag' | null = null;
   
   if (path.startsWith('/admin')) {
     requiredRole = 'admin';
@@ -14,6 +14,8 @@ export function middleware(req: NextRequest) {
     requiredRole = 'pimpinan';
   } else if (path.startsWith('/pelaksana') || path.startsWith('/api/pelaksana')) {
     requiredRole = 'pelaksana';
+  } else if (path.startsWith('/kesubag') || path.startsWith('/api/kesubag')) {
+    requiredRole = 'kesubag';
   }
 
   if (!requiredRole) {
@@ -49,5 +51,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/pimpinan/:path*', '/api/pimpinan/:path*'],
+  matcher: ['/admin/:path*', '/pimpinan/:path*', '/api/pimpinan/:path*', '/kesubag/:path*', '/api/kesubag/:path*'],
 };

@@ -45,6 +45,8 @@ export default function LoginPage() {
         router.push('/pimpinan/dashboard');
       } else if (data?.role === 'pelaksana') {
         router.push('/pelaksana/dashboard');
+      } else if (data?.role === 'kesubag') {
+        router.push('/kesubag/dashboard');
       } else {
         router.push('/admin/dashboard');
       }

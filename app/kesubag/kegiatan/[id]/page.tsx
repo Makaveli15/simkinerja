@@ -44,6 +44,10 @@ interface Summary {
     waktu: number;
     anggaran: number;
   };
+  dokumen_total: number;
+  dokumen_pending: number;
+  dokumen_diterima: number;
+  dokumen_ditolak: number;
 }
 
 interface Progres {
@@ -77,12 +81,20 @@ interface Kendala {
   tindak_lanjut: TindakLanjut[];
 }
 
-interface Evaluasi {
+interface EvaluasiPimpinan {
   id: number;
   jenis_evaluasi: string;
   isi: string;
   created_at: string;
   pimpinan_nama: string;
+}
+
+interface EvaluasiKesubag {
+  id: number;
+  jenis_evaluasi: string;
+  isi: string;
+  created_at: string;
+  kesubag_nama: string;
 }
 
 interface DokumenOutput {
@@ -95,15 +107,16 @@ interface DokumenOutput {
   ukuran_file: number;
   tipe_file: string;
   uploaded_at: string;
-  uploaded_by_nama: string;
+  uploader_nama: string;
   // Draft review status (Kesubag)
-  draft_status_kesubag?: 'pending' | 'reviewed' | 'revisi' | null;
+  draft_status_kesubag: 'pending' | 'reviewed' | 'revisi' | null;
   draft_feedback_kesubag?: string;
   draft_reviewed_at_kesubag?: string;
-  validated_by_kesubag_nama?: string;
+  validator_kesubag_nama?: string;
   // Draft review status (Pimpinan)
   draft_feedback_pimpinan?: string;
   draft_reviewed_at_pimpinan?: string;
+  validator_pimpinan_nama?: string;
   // Final validation workflow
   minta_validasi?: number; // 0 or 1
   validasi_kesubag?: 'pending' | 'valid' | 'tidak_valid' | null;
@@ -114,7 +127,7 @@ interface DokumenOutput {
   tanggal_disahkan?: string;
 }
 
-export default function PimpinanKegiatanDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function KesubagKegiatanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const kegiatanId = resolvedParams.id;
 
@@ -124,15 +137,14 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
   const [progres, setProgres] = useState<Progres[]>([]);
   const [realisasiAnggaran, setRealisasiAnggaran] = useState<RealisasiAnggaran[]>([]);
   const [kendala, setKendala] = useState<Kendala[]>([]);
-  const [evaluasi, setEvaluasi] = useState<Evaluasi[]>([]);
+  const [evaluasiKesubag, setEvaluasiKesubag] = useState<EvaluasiKesubag[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
   
   const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'waktu' | 'evaluasi'>('evaluasi-kinerja');
-  const [updatingVerifikasi, setUpdatingVerifikasi] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  // Evaluasi form
+  // Evaluasi Kesubag form
   const [showEvaluasiForm, setShowEvaluasiForm] = useState(false);
   const [evaluasiForm, setEvaluasiForm] = useState({
     jenis_evaluasi: 'catatan' as 'catatan' | 'arahan' | 'rekomendasi',
@@ -140,7 +152,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
   });
   const [submittingEvaluasi, setSubmittingEvaluasi] = useState(false);
 
-  // Dokumen Review State
+  // Dokumen Validation State
   const [reviewingDokumenId, setReviewingDokumenId] = useState<number | null>(null);
   const [reviewForm, setReviewForm] = useState({
     status: '' as 'diterima' | 'ditolak' | '',
@@ -167,7 +179,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`/api/pimpinan/kegiatan/${kegiatanId}`);
+      const res = await fetch(`/api/kesubag/kegiatan/${kegiatanId}`);
       if (res.ok) {
         const data = await res.json();
         setKegiatan(data.kegiatan);
@@ -175,7 +187,8 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
         setProgres(data.progres);
         setRealisasiAnggaran(data.realisasi_anggaran);
         setKendala(data.kendala);
-        setEvaluasi(data.evaluasi);
+        setEvaluasiKesubag(data.evaluasi_kesubag || []);
+        setDokumenOutput(data.dokumen_output || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -184,21 +197,8 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
     }
   };
 
-  const fetchDokumen = async () => {
-    try {
-      const res = await fetch(`/api/pimpinan/dokumen-output?kegiatan_id=${kegiatanId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setDokumenOutput(data.dokumen || []);
-      }
-    } catch (error) {
-      console.error('Error fetching dokumen:', error);
-    }
-  };
-
   useEffect(() => {
     fetchData();
-    fetchDokumen();
   }, [kegiatanId]);
 
   // Hitung status verifikasi berdasarkan dokumen
@@ -236,137 +236,6 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
   // Status verifikasi yang dihitung dari dokumen
   const statusVerifikasiDokumen = hitungStatusVerifikasiBerdasarkanDokumen();
 
-  const handleVerifikasi = async (newStatus: 'valid' | 'revisi') => {
-    setUpdatingVerifikasi(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const res = await fetch(`/api/pimpinan/kegiatan/${kegiatanId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status_verifikasi: newStatus })
-      });
-
-      if (res.ok) {
-        setSuccess(`Status verifikasi berhasil diubah menjadi ${newStatus.toUpperCase()}`);
-        fetchData(); // Refresh data
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal mengubah status verifikasi');
-      }
-    } catch (error) {
-      setError('Terjadi kesalahan');
-    } finally {
-      setUpdatingVerifikasi(false);
-    }
-  };
-
-  // Handle draft feedback (for drafts already reviewed by kesubag)
-  // Now supports action: 'diterima' or 'ditolak'
-  const handleDraftFeedback = async (dokumenId: number, catatan: string, action: 'diterima' | 'ditolak' = 'diterima') => {
-    setReviewingDokumenId(dokumenId);
-    setError('');
-
-    try {
-      const res = await fetch('/api/pimpinan/dokumen-output', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: dokumenId,
-          action,
-          catatan
-        })
-      });
-
-      if (res.ok) {
-        setSuccess(action === 'diterima' ? 'Draft berhasil diterima' : 'Draft ditolak');
-        setReviewForm({ status: '', catatan: '' });
-        fetchDokumen();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal memberikan feedback');
-      }
-    } catch {
-      setError('Terjadi kesalahan saat memberikan feedback');
-    } finally {
-      setReviewingDokumenId(null);
-    }
-  };
-
-  // Handle validate dokumen final (for new validation workflow)
-  const handleValidateDokumenFinal = async (dokumenId: number, action: 'valid' | 'tidak_valid', catatan: string) => {
-    setReviewingDokumenId(dokumenId);
-    setError('');
-
-    try {
-      const res = await fetch('/api/pimpinan/dokumen-output', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: dokumenId,
-          action,
-          catatan
-        })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccess(data.message || `Dokumen berhasil ${action === 'valid' ? 'divalidasi' : 'ditolak'}`);
-        setReviewForm({ status: '', catatan: '' });
-        fetchDokumen();
-        fetchData(); // Refresh kegiatan data for status_verifikasi
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error || 'Gagal memvalidasi dokumen');
-      }
-    } catch {
-      setError('Terjadi kesalahan saat memvalidasi dokumen');
-    } finally {
-      setReviewingDokumenId(null);
-    }
-  };
-
-  // Handle sahkan dokumen
-  const handleSahkanDokumen = async (dokumenId: number) => {
-    if (!confirm('Apakah Anda yakin ingin mengesahkan dokumen ini? Dokumen yang telah disahkan tidak dapat diubah.')) {
-      return;
-    }
-
-    setReviewingDokumenId(dokumenId);
-    setError('');
-
-    try {
-      const res = await fetch('/api/pimpinan/dokumen-output', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: dokumenId,
-          action: 'sahkan'
-        })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccess('🏆 Dokumen berhasil disahkan!');
-        setReviewForm({ status: '', catatan: '' });
-        fetchDokumen();
-        fetchData(); // Refresh kegiatan data for status_verifikasi
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error || 'Gagal mengesahkan dokumen');
-      }
-    } catch {
-      setError('Terjadi kesalahan saat mengesahkan dokumen');
-    } finally {
-      setReviewingDokumenId(null);
-    }
-  };
-
   // Format file size
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -382,39 +251,6 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
     if (tipeFile.includes('powerpoint') || tipeFile.includes('presentation')) return '📽️';
     if (tipeFile.includes('image')) return '🖼️';
     return '📎';
-  };
-
-  const handleSubmitEvaluasi = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmittingEvaluasi(true);
-    setError('');
-
-    try {
-      const res = await fetch('/api/pimpinan/evaluasi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kegiatan_id: parseInt(kegiatanId),
-          jenis_evaluasi: evaluasiForm.jenis_evaluasi,
-          isi: evaluasiForm.isi
-        })
-      });
-
-      if (res.ok) {
-        setSuccess('Evaluasi berhasil disimpan');
-        setEvaluasiForm({ jenis_evaluasi: 'catatan', isi: '' });
-        setShowEvaluasiForm(false);
-        fetchData(); // Refresh
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal menyimpan evaluasi');
-      }
-    } catch (error) {
-      setError('Terjadi kesalahan');
-    } finally {
-      setSubmittingEvaluasi(false);
-    }
   };
 
   const getStatusKinerjaBadge = (status: string) => {
@@ -437,6 +273,73 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
     return 'text-gray-400';
   };
 
+  // Handle submit evaluasi kesubag
+  const handleSubmitEvaluasi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingEvaluasi(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/kesubag/evaluasi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kegiatan_id: parseInt(kegiatanId),
+          jenis_evaluasi: evaluasiForm.jenis_evaluasi,
+          isi: evaluasiForm.isi
+        })
+      });
+
+      if (res.ok) {
+        setSuccess('Evaluasi berhasil disimpan');
+        setEvaluasiForm({ jenis_evaluasi: 'catatan', isi: '' });
+        setShowEvaluasiForm(false);
+        fetchData(); // Refresh
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Gagal menyimpan evaluasi');
+      }
+    } catch {
+      setError('Terjadi kesalahan');
+    } finally {
+      setSubmittingEvaluasi(false);
+    }
+  };
+
+  // Handle validate dokumen - supports both draft review and final validation workflow
+  const handleValidateDokumen = async (dokumenId: number, action: string, catatan: string) => {
+    setReviewingDokumenId(dokumenId);
+    setError('');
+
+    try {
+      const res = await fetch('/api/kesubag/validasi-dokumen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dokumenId,
+          action,
+          catatan
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccess(data.message || `Dokumen berhasil diproses`);
+        setReviewForm({ status: '', catatan: '' });
+        fetchData();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(data.error || 'Gagal memvalidasi dokumen');
+      }
+    } catch {
+      setError('Terjadi kesalahan saat memvalidasi dokumen');
+    } finally {
+      setReviewingDokumenId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -453,7 +356,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Kegiatan tidak ditemukan</h3>
         <p className="text-gray-500 mb-4">Kegiatan dengan ID {kegiatanId} tidak ada atau sudah dihapus.</p>
-        <Link href="/pimpinan/kegiatan" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+        <Link href="/kesubag/kegiatan" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
           <LuChevronLeft className="w-4 h-4" />
           Kembali ke daftar kegiatan
         </Link>
@@ -467,7 +370,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-            <Link href="/pimpinan/kegiatan" className="hover:text-blue-600">Monitoring Kegiatan</Link>
+            <Link href="/kesubag/kegiatan" className="hover:text-blue-600">Monitoring Kegiatan</Link>
             <span>/</span>
             <span className="text-gray-900">Detail</span>
           </div>
@@ -501,7 +404,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
 
       {/* Informasi Detail Kegiatan */}
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-4">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <span>📋</span> Informasi Detail Kegiatan
           </h2>
@@ -643,9 +546,9 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
               { id: 'progres', label: 'Progres', icon: '📈', count: progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
-              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+              { id: 'dokumen', label: 'Validasi Dokumen', icon: '✅', count: dokumenOutput.length },
               { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
-              { id: 'evaluasi', label: 'Catatan Pimpinan', icon: '📝', count: evaluasi.length },
+              { id: 'evaluasi', label: 'Catatan Kesubag', icon: '📝', count: evaluasiKesubag.length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -849,8 +752,8 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                       <span className="font-medium text-gray-700">{dokumenOutput.length} file</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Disahkan</span>
-                      <span className="font-medium text-green-600">{dokumenOutput.filter(d => d.tanggal_disahkan || d.status_final === 'disahkan').length} file</span>
+                      <span className="text-gray-600">Diterima</span>
+                      <span className="font-medium text-green-600">{summary.dokumen_diterima} file</span>
                     </div>
                   </div>
                   <div className="mt-3">
@@ -1018,39 +921,6 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   </div>
                 </div>
               )}
-
-              {/* Panduan Penilaian */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
-                <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                  <span>📋</span> Panduan Interpretasi Skor Kinerja
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-lg p-4 border border-green-200 text-center">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <span className="text-2xl">✓</span>
-                    </div>
-                    <p className="text-2xl font-bold text-green-600">≥ 80</p>
-                    <p className="font-semibold text-green-700">SUKSES</p>
-                    <p className="text-xs text-gray-600 mt-1">Kinerja sangat baik, target tercapai</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 border border-yellow-200 text-center">
-                    <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <span className="text-2xl">!</span>
-                    </div>
-                    <p className="text-2xl font-bold text-yellow-600">60 - 79</p>
-                    <p className="font-semibold text-yellow-700">PERLU PERHATIAN</p>
-                    <p className="text-xs text-gray-600 mt-1">Ada aspek yang perlu diperbaiki</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4 border border-red-200 text-center">
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <span className="text-2xl">✗</span>
-                    </div>
-                    <p className="text-2xl font-bold text-red-600">&lt; 60</p>
-                    <p className="font-semibold text-red-700">BERMASALAH</p>
-                    <p className="text-xs text-gray-600 mt-1">Perlu tindakan korektif segera</p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1203,16 +1073,16 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
             </div>
           )}
 
-          {/* Tab: Dokumen Output */}
+          {/* Tab: Validasi Dokumen */}
           {activeTab === 'dokumen' && (
             <div className="space-y-6">
               {/* Info Box */}
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                <h4 className="font-medium text-indigo-800 mb-2 flex items-center gap-2">
-                  <span>📁</span> Review Dokumen Output
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                  <span>✅</span> Validasi Dokumen Output
                 </h4>
-                <p className="text-sm text-indigo-700">
-                  Review dokumen yang diupload oleh pelaksana. Validasi dokumen final setelah Kesubag menyetujui.
+                <p className="text-sm text-blue-700">
+                  Review dokumen yang diupload oleh pelaksana. Terima jika sesuai atau tolak dengan catatan jika perlu revisi.
                 </p>
               </div>
 
@@ -1223,16 +1093,16 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   <p className="text-sm text-gray-500">Total Dokumen</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-amber-600">{dokumenOutput.filter(d => d.minta_validasi === 1 && d.validasi_pimpinan === 'pending').length}</p>
-                  <p className="text-sm text-amber-600">Menunggu Validasi</p>
+                  <p className="text-2xl font-bold text-amber-600">{summary.dokumen_pending}</p>
+                  <p className="text-sm text-amber-600">Pending Kesubag</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-green-600">{dokumenOutput.filter(d => d.tanggal_disahkan || d.status_final === 'disahkan').length}</p>
-                  <p className="text-sm text-green-600">Disahkan</p>
+                  <p className="text-2xl font-bold text-green-600">{summary.dokumen_diterima}</p>
+                  <p className="text-sm text-green-600">Diterima Kesubag</p>
                 </div>
                 <div className="bg-red-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-red-600">{dokumenOutput.filter(d => d.validasi_pimpinan === 'tidak_valid').length}</p>
-                  <p className="text-sm text-red-600">Tidak Valid</p>
+                  <p className="text-2xl font-bold text-red-600">{summary.dokumen_ditolak}</p>
+                  <p className="text-sm text-red-600">Ditolak</p>
                 </div>
               </div>
 
@@ -1253,22 +1123,17 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     const mintaValidasi = dok.minta_validasi === 1;
                     const isDisahkan = !!dok.tanggal_disahkan || dok.status_final === 'disahkan';
                     
-                    // For final validation: kesubag must approve first
-                    const kesubagApproved = dok.validasi_kesubag === 'valid';
-                    const needsFinalValidation = isFinal && mintaValidasi && kesubagApproved && 
-                      (!dok.validasi_pimpinan || dok.validasi_pimpinan === 'pending');
-                    const canSahkan = isFinal && mintaValidasi && dok.validasi_pimpinan === 'valid' && !isDisahkan;
-                    
-                    // For draft: kesubag must review first
-                    const kesubagReviewedDraft = dok.draft_status_kesubag === 'reviewed';
-                    const needsDraftFeedback = isDraft && kesubagReviewedDraft && !dok.draft_feedback_pimpinan;
+                    // Determine if kesubag needs to take action
+                    const needsDraftReview = isDraft && (!dok.draft_status_kesubag || dok.draft_status_kesubag === 'pending');
+                    const needsFinalValidation = isFinal && mintaValidasi && (!dok.validasi_kesubag || dok.validasi_kesubag === 'pending');
+                    const needsAction = needsDraftReview || needsFinalValidation;
                     
                     return (
                       <div key={dok.id} className={`border rounded-xl p-5 ${
                         isDisahkan ? 'bg-green-50 border-green-300' :
-                        dok.validasi_pimpinan === 'valid' || dok.draft_feedback_pimpinan ? 'bg-green-50 border-green-200' :
-                        dok.validasi_pimpinan === 'tidak_valid' || dok.draft_status_kesubag === 'revisi' ? 'bg-red-50 border-red-200' :
-                        (needsFinalValidation || needsDraftFeedback) ? 'bg-blue-50 border-blue-200' :
+                        dok.validasi_kesubag === 'valid' || dok.draft_status_kesubag === 'reviewed' ? 'bg-green-50 border-green-200' :
+                        dok.validasi_kesubag === 'tidak_valid' || dok.draft_status_kesubag === 'revisi' ? 'bg-red-50 border-red-200' :
+                        needsAction ? 'bg-amber-50 border-amber-200' :
                         'bg-white border-gray-200'
                       }`}>
                         <div className="flex items-start gap-4">
@@ -1276,7 +1141,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                           <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
                             isDisahkan ? 'bg-green-200' : 'bg-gray-100'
                           }`}>
-                            <span className="text-2xl">{isDisahkan ? '🏆' : getFileIcon(dok.tipe_file)}</span>
+                            <span className="text-2xl">{isDisahkan ? '✅' : getFileIcon(dok.tipe_file)}</span>
                           </div>
 
                           {/* File Info */}
@@ -1289,18 +1154,13 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                 {isFinal ? '✅ Final' : '📝 Draft'}
                               </span>
                               {mintaValidasi && (
-                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                                   📤 Minta Validasi
                                 </span>
                               )}
                               {isDisahkan && (
                                 <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-600 text-white">
                                   🏆 DISAHKAN
-                                </span>
-                              )}
-                              {needsFinalValidation && (
-                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white animate-pulse">
-                                  ⏳ Menunggu Validasi Anda
                                 </span>
                               )}
                             </div>
@@ -1314,13 +1174,13 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                               <span>•</span>
                               <span>Diupload: {formatDate(dok.uploaded_at)}</span>
                               <span>•</span>
-                              <span>Oleh: {dok.uploaded_by_nama}</span>
+                              <span>Oleh: {dok.uploader_nama}</span>
                             </div>
 
                             {/* For Final documents with minta_validasi - Show validation flow */}
                             {isFinal && mintaValidasi && (
                               <div className="mb-4 p-3 bg-white rounded-lg border">
-                                <p className="text-xs font-semibold text-gray-600 mb-2">Status Validasi Dokumen Final:</p>
+                                <p className="text-xs font-semibold text-gray-600 mb-2">✅ Alur Validasi Dokumen Final:</p>
                                 <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
                                   {/* Kesubag Validation */}
                                   <div className={`px-2 py-1 rounded flex items-center gap-1 ${
@@ -1331,22 +1191,27 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                     <span>Kesubag:</span>
                                     <span className="font-medium">
                                       {dok.validasi_kesubag === 'valid' ? '✅ Valid' :
-                                       dok.validasi_kesubag === 'tidak_valid' ? '❌ Tidak Valid' : '⏳ Pending'}
+                                       dok.validasi_kesubag === 'tidak_valid' ? '❌ Revisi' : '⏳ Pending'}
                                     </span>
                                   </div>
-                                  <span className="text-gray-400">→</span>
-                                  {/* Pimpinan Validation */}
-                                  <div className={`px-2 py-1 rounded flex items-center gap-1 ${
-                                    dok.validasi_pimpinan === 'valid' ? 'bg-green-100 text-green-700' :
-                                    dok.validasi_pimpinan === 'tidak_valid' ? 'bg-red-100 text-red-700' :
-                                    'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    <span>Pimpinan:</span>
-                                    <span className="font-medium">
-                                      {dok.validasi_pimpinan === 'valid' ? '✅ Valid' :
-                                       dok.validasi_pimpinan === 'tidak_valid' ? '❌ Tidak Valid' : '⏳ Pending'}
-                                    </span>
-                                  </div>
+                                  {/* Only show pimpinan step if kesubag validated */}
+                                  {dok.validasi_kesubag === 'valid' && (
+                                    <>
+                                      <span className="text-gray-400">→</span>
+                                      {/* Pimpinan Validation */}
+                                      <div className={`px-2 py-1 rounded flex items-center gap-1 ${
+                                        dok.validasi_pimpinan === 'valid' ? 'bg-green-100 text-green-700' :
+                                        dok.validasi_pimpinan === 'tidak_valid' ? 'bg-red-100 text-red-700' :
+                                        'bg-amber-100 text-amber-700'
+                                      }`}>
+                                        <span>Pimpinan:</span>
+                                        <span className="font-medium">
+                                          {dok.validasi_pimpinan === 'valid' ? '✅ Valid' :
+                                           dok.validasi_pimpinan === 'tidak_valid' ? '❌ Revisi' : '⏳ Pending'}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
                                   {isDisahkan && (
                                     <>
                                       <span className="text-gray-400">→</span>
@@ -1354,8 +1219,19 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                     </>
                                   )}
                                 </div>
+                                <p className="text-xs text-gray-500 italic mb-2">
+                                  {dok.validasi_kesubag === 'tidak_valid' 
+                                    ? '⚠️ Dokumen ditolak, menunggu pelaksana upload ulang'
+                                    : dok.validasi_kesubag === 'valid' && dok.validasi_pimpinan === 'tidak_valid'
+                                    ? '⚠️ Dokumen ditolak pimpinan'
+                                    : dok.validasi_kesubag === 'valid' && dok.validasi_pimpinan === 'valid'
+                                    ? '🏆 Dokumen telah disahkan!'
+                                    : dok.validasi_kesubag === 'valid'
+                                    ? '⏳ Diteruskan ke pimpinan, menunggu validasi akhir'
+                                    : '⏳ Menunggu validasi dari Anda'}
+                                </p>
                                 {dok.validasi_feedback_kesubag && (
-                                  <p className="text-sm text-teal-700 bg-teal-50 p-2 rounded mt-2">
+                                  <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded mt-2">
                                     💬 <strong>Kesubag:</strong> {dok.validasi_feedback_kesubag}
                                   </p>
                                 )}
@@ -1377,20 +1253,10 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                               </div>
                             )}
 
-                            {/* For Final documents with minta_validasi but kesubag not approved yet */}
-                            {isFinal && mintaValidasi && !kesubagApproved && dok.validasi_kesubag !== 'tidak_valid' && (
-                              <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                                <p className="text-xs font-semibold text-amber-700 mb-2">⏳ Menunggu Validasi Kesubag:</p>
-                                <p className="text-sm text-amber-600 italic">
-                                  Dokumen ini sedang menunggu validasi dari Kesubag. Anda dapat memvalidasi setelah Kesubag menyetujui.
-                                </p>
-                              </div>
-                            )}
-
                             {/* For Draft documents - Show review flow */}
                             {isDraft && (
                               <div className="mb-4 p-3 bg-white rounded-lg border">
-                                <p className="text-xs font-semibold text-gray-600 mb-2">Status Review Draft:</p>
+                                <p className="text-xs font-semibold text-gray-600 mb-2">📝 Alur Review Draft:</p>
                                 <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
                                   {/* Kesubag Review */}
                                   <div className={`px-2 py-1 rounded flex items-center gap-1 ${
@@ -1400,24 +1266,36 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                   }`}>
                                     <span>Kesubag:</span>
                                     <span className="font-medium">
-                                      {dok.draft_status_kesubag === 'reviewed' ? '✅ Reviewed' :
+                                      {dok.draft_status_kesubag === 'reviewed' ? '✅ Diterima' :
                                        dok.draft_status_kesubag === 'revisi' ? '❌ Revisi' : '⏳ Pending'}
                                     </span>
                                   </div>
-                                  <span className="text-gray-400">→</span>
-                                  {/* Pimpinan Review */}
-                                  <div className={`px-2 py-1 rounded flex items-center gap-1 ${
-                                    dok.draft_feedback_pimpinan ? 'bg-green-100 text-green-700' :
-                                    'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    <span>Pimpinan:</span>
-                                    <span className="font-medium">
-                                      {dok.draft_feedback_pimpinan ? '✅ Reviewed' : '⏳ Pending'}
-                                    </span>
-                                  </div>
+                                  {/* Only show pimpinan if kesubag already reviewed */}
+                                  {dok.draft_status_kesubag === 'reviewed' && (
+                                    <>
+                                      <span className="text-gray-400">→</span>
+                                      {/* Pimpinan Review */}
+                                      <div className={`px-2 py-1 rounded flex items-center gap-1 ${
+                                        dok.draft_feedback_pimpinan ? 'bg-green-100 text-green-700' :
+                                        'bg-amber-100 text-amber-700'
+                                      }`}>
+                                        <span>Pimpinan:</span>
+                                        <span className="font-medium">
+                                          {dok.draft_feedback_pimpinan ? '✅ Reviewed' : '⏳ Pending'}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
+                                <p className="text-xs text-gray-500 italic mb-2">
+                                  {dok.draft_status_kesubag === 'revisi' 
+                                    ? '⚠️ Draft ditolak, menunggu pelaksana upload ulang'
+                                    : dok.draft_status_kesubag === 'reviewed'
+                                    ? (dok.draft_feedback_pimpinan ? '✓ Draft telah selesai direview' : '⏳ Menunggu review pimpinan')
+                                    : '⏳ Menunggu review dari Anda'}
+                                </p>
                                 {dok.draft_feedback_kesubag && (
-                                  <p className="text-sm text-teal-700 bg-teal-50 p-2 rounded mt-2">
+                                  <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded mt-2">
                                     💬 <strong>Kesubag:</strong> {dok.draft_feedback_kesubag}
                                   </p>
                                 )}
@@ -1429,64 +1307,10 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                               </div>
                             )}
 
-                            {/* Final Validation Form - only if kesubag approved */}
-                            {needsFinalValidation && (
-                              <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                                <p className="text-sm font-medium text-indigo-700 mb-3">✅ Validasi Dokumen Final (Kesubag telah memvalidasi):</p>
-                                <div className="space-y-3">
-                                  <textarea
-                                    placeholder="Catatan validasi (opsional untuk valid, wajib untuk invalid)..."
-                                    value={reviewingDokumenId === dok.id ? reviewForm.catatan : ''}
-                                    onChange={(e) => {
-                                      setReviewingDokumenId(dok.id);
-                                      setReviewForm({ ...reviewForm, catatan: e.target.value });
-                                    }}
-                                    onFocus={() => setReviewingDokumenId(dok.id)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
-                                    rows={2}
-                                  />
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={() => handleValidateDokumenFinal(dok.id, 'valid', reviewingDokumenId === dok.id ? reviewForm.catatan : '')}
-                                      className="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                                    >
-                                      <span>✅</span> Valid
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        const catatan = reviewingDokumenId === dok.id ? reviewForm.catatan : '';
-                                        if (!catatan.trim()) {
-                                          setError('Harap berikan catatan alasan penolakan');
-                                          return;
-                                        }
-                                        handleValidateDokumenFinal(dok.id, 'tidak_valid', catatan);
-                                      }}
-                                      className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
-                                    >
-                                      <span>❌</span> Tidak Valid
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Sahkan Button - only if validated by pimpinan */}
-                            {canSahkan && (
-                              <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                                <p className="text-sm font-medium text-green-700 mb-3">🏆 Dokumen telah divalidasi dan siap disahkan:</p>
-                                <button
-                                  onClick={() => handleSahkanDokumen(dok.id)}
-                                  className="w-full px-4 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                                >
-                                  <span>🏆</span> Sahkan Dokumen
-                                </button>
-                              </div>
-                            )}
-
-                            {/* Draft Feedback Form - only if kesubag reviewed */}
-                            {needsDraftFeedback && (
-                              <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                <p className="text-sm font-medium text-purple-700 mb-3">📝 Review Draft:</p>
+                            {/* Validation Form for Draft Review */}
+                            {needsDraftReview && (
+                              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <p className="text-sm font-medium text-blue-700 mb-3">📝 Review Draft:</p>
                                 <div className="space-y-3">
                                   <textarea
                                     placeholder="Catatan untuk pelaksana (opsional untuk terima, wajib untuk tolak)..."
@@ -1496,12 +1320,12 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                       setReviewForm({ ...reviewForm, catatan: e.target.value });
                                     }}
                                     onFocus={() => setReviewingDokumenId(dok.id)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
                                     rows={2}
                                   />
                                   <div className="flex gap-2">
                                     <button
-                                      onClick={() => handleDraftFeedback(dok.id, reviewingDokumenId === dok.id ? reviewForm.catatan : '', 'diterima')}
+                                      onClick={() => handleValidateDokumen(dok.id, 'diterima', reviewingDokumenId === dok.id ? reviewForm.catatan : '')}
                                       className="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
                                     >
                                       <span>✅</span> Terima
@@ -1513,11 +1337,53 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                           setError('Harap berikan catatan alasan penolakan');
                                           return;
                                         }
-                                        handleDraftFeedback(dok.id, catatan, 'ditolak');
+                                        handleValidateDokumen(dok.id, 'ditolak', catatan);
                                       }}
                                       className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
                                     >
                                       <span>❌</span> Tolak
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Validation Form for Final Document */}
+                            {needsFinalValidation && (
+                              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <p className="text-sm font-medium text-blue-700 mb-3">✅ Validasi Dokumen Final:</p>
+                                <p className="text-xs text-blue-600 mb-3">Jika valid, dokumen akan diteruskan ke Pimpinan untuk validasi akhir.</p>
+                                <div className="space-y-3">
+                                  <textarea
+                                    placeholder="Catatan validasi (opsional untuk valid, wajib untuk invalid)..."
+                                    value={reviewingDokumenId === dok.id ? reviewForm.catatan : ''}
+                                    onChange={(e) => {
+                                      setReviewingDokumenId(dok.id);
+                                      setReviewForm({ ...reviewForm, catatan: e.target.value });
+                                    }}
+                                    onFocus={() => setReviewingDokumenId(dok.id)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleValidateDokumen(dok.id, 'valid', reviewingDokumenId === dok.id ? reviewForm.catatan : '')}
+                                      className="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
+                                    >
+                                      <span>✅</span> Valid
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        const catatan = reviewingDokumenId === dok.id ? reviewForm.catatan : '';
+                                        if (!catatan.trim()) {
+                                          setError('Harap berikan catatan alasan penolakan');
+                                          return;
+                                        }
+                                        handleValidateDokumen(dok.id, 'tidak_valid', catatan);
+                                      }}
+                                      className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
+                                    >
+                                      <span>❌</span> Invalid
                                     </button>
                                   </div>
                                 </div>
@@ -1690,7 +1556,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
             </div>
           )}
 
-          {/* Tab: Evaluasi Pimpinan */}
+          {/* Tab: Catatan Kesubag */}
           {activeTab === 'evaluasi' && (
             <div className="space-y-4">
               {/* Add Evaluasi Button */}
@@ -1700,18 +1566,18 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 flex items-center gap-2"
                 >
                   <LuPlus className="w-4 h-4" />
-                  Tambah Evaluasi
+                  Tambah Catatan
                 </button>
               </div>
 
               {/* Evaluasi Form */}
               {showEvaluasiForm && (
-                <div className="bg-blue-50 border border-indigo-200 rounded-lg p-6">
-                  <h4 className="font-semibold text-gray-900 mb-4">Tambah Evaluasi Baru</h4>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Tambah Catatan Baru</h4>
                   <form onSubmit={handleSubmitEvaluasi} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Jenis Evaluasi
+                        Jenis Catatan
                       </label>
                       <select
                         value={evaluasiForm.jenis_evaluasi}
@@ -1725,7 +1591,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Isi Evaluasi <span className="text-red-500">*</span>
+                        Isi Catatan <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         value={evaluasiForm.isi}
@@ -1736,7 +1602,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                         required
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        ⚠️ Evaluasi tidak dapat diubah setelah disimpan
+                        ⚠️ Catatan tidak dapat diubah setelah disimpan
                       </p>
                     </div>
                     <div className="flex justify-end gap-2">
@@ -1757,20 +1623,21 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                         ) : (
                           <LuCheck className="w-4 h-4" />
                         )}
-                        Simpan Evaluasi
+                        Simpan Catatan
                       </button>
                     </div>
                   </form>
                 </div>
               )}
 
-              {/* Evaluasi List */}
-              {evaluasi.length === 0 ? (
+              {/* Evaluasi Kesubag List */}
+              {evaluasiKesubag.length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Belum ada evaluasi dari pimpinan</p>
+                  <p className="text-gray-500">Belum ada catatan dari kesubag</p>
+                  <p className="text-sm text-gray-400 mt-1">Klik tombol &quot;Tambah Catatan&quot; untuk menambahkan catatan</p>
                 </div>
               ) : (
-                evaluasi.map((e) => (
+                evaluasiKesubag.map((e) => (
                   <div key={e.id} className={`border rounded-lg p-4 ${
                     e.jenis_evaluasi === 'catatan' ? 'bg-blue-50 border-blue-200' :
                     e.jenis_evaluasi === 'arahan' ? 'bg-orange-50 border-orange-200' :
@@ -1789,7 +1656,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                       <span className="text-xs text-gray-500">{formatDate(e.created_at)}</span>
                     </div>
                     <p className="text-gray-900 mb-2">{e.isi}</p>
-                    <p className="text-xs text-gray-600">Oleh: {e.pimpinan_nama}</p>
+                    <p className="text-xs text-gray-600">Oleh: {e.kesubag_nama}</p>
                   </div>
                 ))
               )}

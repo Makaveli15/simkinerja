@@ -224,11 +224,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Round anggaran to avoid floating-point precision issues (e.g., 10000000 becoming 9999999.99)
+    const roundedAnggaran = anggaran_pagu ? Math.round(Number(anggaran_pagu) * 100) / 100 : 0;
+
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO kegiatan_operasional 
        (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, kro_id, mitra_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', anggaran_pagu || 0, finalStatus, kro_id || null, mitra_id || null]
+      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', roundedAnggaran, finalStatus, kro_id || null, mitra_id || null]
     );
 
     return NextResponse.json({ message: 'Kegiatan berhasil dibuat', id: result.insertId });

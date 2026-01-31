@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
-import { createNotificationForAllPimpinan } from '@/lib/services/notificationService';
+import { createNotificationForAllPimpinan, createNotificationForAllKesubag, createNotification } from '@/lib/services/notificationService';
 
 // GET - Get dokumen output for a kegiatan
 export async function GET(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     }
 
     const payload = JSON.parse(authCookie.value);
-    if (!payload || !['pelaksana', 'pimpinan', 'admin'].includes(payload.role)) {
+    if (!payload || !['pelaksana', 'pimpinan', 'admin', 'kesubag'].includes(payload.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -29,16 +29,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'kegiatan_id is required' }, { status: 400 });
     }
 
-    // Get dokumen with uploader info
+    // Get dokumen with uploader info and validation status
+    // Compatible with both old and new schema
     const [dokumen] = await pool.query<RowDataPacket[]>(`
       SELECT 
         d.*,
         u.nama_lengkap as uploaded_by_nama,
-        u.username as uploaded_by_username,
-        r.nama_lengkap as reviewed_by_nama
+        u.username as uploaded_by_username
       FROM dokumen_output d
       JOIN users u ON d.uploaded_by = u.id
-      LEFT JOIN users r ON d.reviewed_by = r.id
       WHERE d.kegiatan_id = ?
       ORDER BY d.uploaded_at DESC
     `, [kegiatan_id]);
@@ -138,10 +137,15 @@ export async function POST(req: NextRequest) {
     await writeFile(filePath, buffer);
 
     // Insert into database
+    // Alur validasi:
+    // - Draft: Otomatis masuk ke kesubag untuk review (draft_status_kesubag = 'pending', status_final = 'menunggu_kesubag')
+    // - Final: Belum masuk validasi sampai pelaksana klik "Minta Validasi" (status_final = 'draft')
+    const isDraft = tipe_dokumen === 'draft';
+    
     const [result] = await pool.query<ResultSetHeader>(`
       INSERT INTO dokumen_output 
-      (kegiatan_id, uploaded_by, nama_file, path_file, tipe_dokumen, tipe_file, ukuran_file, deskripsi)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (kegiatan_id, uploaded_by, nama_file, path_file, tipe_dokumen, tipe_file, ukuran_file, deskripsi, draft_status_kesubag, status_final)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       kegiatan_id,
       payload.id,
@@ -150,7 +154,9 @@ export async function POST(req: NextRequest) {
       tipe_dokumen,
       file.type,
       file.size,
-      deskripsi
+      deskripsi,
+      isDraft ? 'pending' : null,  // Draft: pending untuk kesubag, Final: null
+      isDraft ? 'menunggu_kesubag' : 'draft'  // Draft: langsung masuk kesubag, Final: tunggu minta validasi
     ]);
 
     // Get the created dokumen
@@ -175,14 +181,28 @@ export async function POST(req: NextRequest) {
     );
     const uploaderNama = uploaderInfo[0]?.nama_lengkap || 'Pelaksana';
 
-    // Create notification for all pimpinan
-    await createNotificationForAllPimpinan({
-      title: '📄 Permintaan Validasi Dokumen',
-      message: `${uploaderNama} mengajukan dokumen "${file.name}" untuk kegiatan "${kegiatanNama}" yang perlu divalidasi`,
-      type: 'permintaan_validasi',
-      referenceId: parseInt(kegiatan_id),
-      referenceType: 'kegiatan'
-    });
+    // Notifikasi berdasarkan tipe dokumen:
+    // - Draft: Notifikasi ke kesubag untuk review
+    // - Final: Hanya notifikasi upload, validasi setelah pelaksana klik "Minta Validasi"
+    if (isDraft) {
+      // Draft otomatis masuk ke kesubag untuk review
+      await createNotificationForAllKesubag({
+        title: '📝 Draft Dokumen Baru',
+        message: `${uploaderNama} mengupload draft "${file.name}" untuk kegiatan "${kegiatanNama}". Silakan review.`,
+        type: 'permintaan_validasi',
+        referenceId: parseInt(kegiatan_id),
+        referenceType: 'kegiatan'
+      });
+    } else {
+      // Final: Hanya info, validasi setelah minta validasi
+      await createNotificationForAllKesubag({
+        title: '📄 Dokumen Final Diupload',
+        message: `${uploaderNama} mengupload dokumen final "${file.name}" untuk kegiatan "${kegiatanNama}". Menunggu permintaan validasi dari pelaksana.`,
+        type: 'info',
+        referenceId: parseInt(kegiatan_id),
+        referenceType: 'kegiatan'
+      });
+    }
 
     return NextResponse.json({
       message: 'Dokumen berhasil diupload',
@@ -235,12 +255,127 @@ export async function DELETE(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Delete from database (file will remain for audit trail)
+    // Don't allow delete if validation already requested
+    if (dokumenCheck[0].minta_validasi === 1) {
+      return NextResponse.json({ 
+        error: 'Tidak dapat menghapus dokumen yang sudah diminta validasi' 
+      }, { status: 400 });
+    }
+
+    // Try to delete the physical file
+    try {
+      const filePath = path.join(process.cwd(), 'public', dokumenCheck[0].path_file);
+      if (existsSync(filePath)) {
+        await unlink(filePath);
+      }
+    } catch (fileError) {
+      console.error('Error deleting physical file:', fileError);
+      // Continue with database deletion even if file deletion fails
+    }
+
+    // Delete from database
     await pool.query('DELETE FROM dokumen_output WHERE id = ?', [dokumen_id]);
 
     return NextResponse.json({ message: 'Dokumen berhasil dihapus' });
   } catch (error) {
     console.error('Error deleting dokumen:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// PATCH - Request validation for final document (pelaksana only)
+export async function PATCH(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const authCookie = cookieStore.get('auth');
+    
+    if (!authCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = JSON.parse(authCookie.value);
+    if (!payload || payload.role !== 'pelaksana') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { dokumenId, action } = body;
+
+    if (!dokumenId) {
+      return NextResponse.json({ error: 'dokumenId is required' }, { status: 400 });
+    }
+
+    // Check if dokumen exists and belongs to user
+    const [dokumenCheck] = await pool.query<RowDataPacket[]>(
+      'SELECT d.*, ko.nama as kegiatan_nama FROM dokumen_output d LEFT JOIN kegiatan_operasional ko ON d.kegiatan_id = ko.id WHERE d.id = ? AND d.uploaded_by = ?',
+      [dokumenId, payload.id]
+    );
+
+    if (dokumenCheck.length === 0) {
+      return NextResponse.json({ 
+        error: 'Dokumen tidak ditemukan atau Anda tidak memiliki akses' 
+      }, { status: 404 });
+    }
+
+    const dokumen = dokumenCheck[0];
+
+    if (action === 'minta_validasi') {
+      // Only final documents can request validation
+      if (dokumen.tipe_dokumen !== 'final') {
+        return NextResponse.json({ 
+          error: 'Hanya dokumen final yang dapat diminta validasi' 
+        }, { status: 400 });
+      }
+
+      // Check if already requested
+      if (dokumen.minta_validasi === 1) {
+        return NextResponse.json({ 
+          error: 'Dokumen sudah dalam proses validasi' 
+        }, { status: 400 });
+      }
+
+      // Update minta_validasi flag with correct column names
+      await pool.query<ResultSetHeader>(`
+        UPDATE dokumen_output 
+        SET minta_validasi = 1, 
+            minta_validasi_at = NOW(),
+            validasi_kesubag = 'pending', 
+            validasi_pimpinan = 'pending',
+            status_final = 'menunggu_kesubag'
+        WHERE id = ?
+      `, [dokumenId]);
+
+      // Update kegiatan status_verifikasi to menunggu
+      await pool.query(
+        'UPDATE kegiatan_operasional SET status_verifikasi = ? WHERE id = ?',
+        ['menunggu', dokumen.kegiatan_id]
+      );
+
+      // Notify kesubag
+      const [kesubagRows] = await pool.query<RowDataPacket[]>(
+        "SELECT id FROM users WHERE role = 'kesubag' AND status = 'aktif'"
+      );
+      
+      for (const kesubag of kesubagRows) {
+        await createNotification({
+          userId: kesubag.id,
+          title: '📄 Permintaan Validasi Dokumen',
+          message: `${payload.nama_lengkap || 'Pelaksana'} mengajukan dokumen "${dokumen.nama_file}" untuk kegiatan "${dokumen.kegiatan_nama}" untuk divalidasi.`,
+          type: 'permintaan_validasi',
+          referenceId: dokumen.kegiatan_id,
+          referenceType: 'dokumen'
+        });
+      }
+
+      return NextResponse.json({ 
+        success: true,
+        message: 'Permintaan validasi berhasil dikirim ke Kesubag' 
+      });
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (error) {
+    console.error('Error requesting validation:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

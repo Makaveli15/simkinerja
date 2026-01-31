@@ -151,6 +151,36 @@ export async function GET(
       }
     }));
 
+    // Get dokumen stats untuk perhitungan kinerja berdasarkan dokumen
+    let dokumenStats = {
+      total_final: 0,
+      final_disahkan: 0,
+      final_menunggu: 0,
+      final_revisi: 0,
+    };
+    try {
+      const [dokumenResult] = await pool.query<RowDataPacket[]>(
+        `SELECT 
+          COUNT(*) as total_final,
+          SUM(CASE WHEN status_final = 'disahkan' THEN 1 ELSE 0 END) as final_disahkan,
+          SUM(CASE WHEN status_final IN ('menunggu_kesubag', 'menunggu_pimpinan') THEN 1 ELSE 0 END) as final_menunggu,
+          SUM(CASE WHEN status_final = 'revisi' OR validasi_kesubag = 'tidak_valid' OR validasi_pimpinan = 'tidak_valid' THEN 1 ELSE 0 END) as final_revisi
+        FROM dokumen_output 
+        WHERE kegiatan_operasional_id = ? AND tipe_dokumen = 'final' AND minta_validasi = 1`,
+        [id]
+      );
+      if (dokumenResult.length > 0) {
+        dokumenStats = {
+          total_final: Number(dokumenResult[0].total_final) || 0,
+          final_disahkan: Number(dokumenResult[0].final_disahkan) || 0,
+          final_menunggu: Number(dokumenResult[0].final_menunggu) || 0,
+          final_revisi: Number(dokumenResult[0].final_revisi) || 0,
+        };
+      }
+    } catch (e) {
+      console.log('Could not get dokumen stats:', e);
+    }
+
     // Prepare data for automatic kinerja calculation
     const kegiatanDetail = kegiatan[0];
     const totalAnggaran = realisasiAnggaran.reduce((sum, r) => sum + parseFloat(r.jumlah), 0);
@@ -173,6 +203,8 @@ export async function GET(
       total_realisasi_anggaran: totalAnggaran,
       total_kendala: totalKendala,
       kendala_resolved: resolvedKendala,
+      // Tambahkan dokumen_stats untuk perhitungan kualitas output berdasarkan dokumen
+      dokumen_stats: dokumenStats.total_final > 0 ? dokumenStats : undefined,
     };
 
     // Calculate kinerja using rule-based service (automatic calculation)
@@ -364,7 +396,10 @@ export async function PUT(
     const finalDeskripsi = deskripsi !== undefined ? deskripsi : currentKegiatan.deskripsi;
     const finalTargetOutput = target_output !== undefined && target_output !== null ? target_output : currentKegiatan.target_output;
     const finalSatuanOutput = satuan_output !== undefined && satuan_output !== '' ? satuan_output : currentKegiatan.satuan_output;
-    const finalAnggaranPagu = anggaran_pagu !== undefined && anggaran_pagu !== null ? anggaran_pagu : currentKegiatan.anggaran_pagu;
+    // Round anggaran to avoid floating-point precision issues (e.g., 10000000 becoming 9999999)
+    const finalAnggaranPagu = anggaran_pagu !== undefined && anggaran_pagu !== null 
+      ? Math.round(Number(anggaran_pagu) * 100) / 100 
+      : currentKegiatan.anggaran_pagu;
     const finalStatus = status !== undefined && status !== '' ? status : currentKegiatan.status;
 
     await pool.query<ResultSetHeader>(

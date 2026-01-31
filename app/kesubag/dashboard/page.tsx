@@ -11,8 +11,9 @@ import {
   LuCalendar,
   LuClipboardList,
   LuFileText,
-  LuPencil,
-  LuChevronRight
+  LuChevronRight,
+  LuLoader,
+  LuChartBar
 } from 'react-icons/lu';
 import {
   BarChart,
@@ -26,7 +27,6 @@ import {
   Pie,
   Cell,
   Legend,
-  LineChart,
   Line,
   Area,
   AreaChart,
@@ -44,9 +44,21 @@ interface DashboardStats {
   totalRealisasiAnggaran: number;
   persentaseRealisasi: number;
   ratarataSkor: number;
-  pendingVerifikasi: number;
+  pendingValidasi: number;
+  dokumenDiterima: number;
+  dokumenDitolak: number;
+  totalDokumen: number;
   totalKendala: number;
   kendalaResolved: number;
+}
+
+interface DokumenPending {
+  id: number;
+  nama_file: string;
+  kegiatan_nama: string;
+  tim_nama: string;
+  uploaded_at: string;
+  uploaded_by_nama: string;
 }
 
 interface TimPerformance {
@@ -68,8 +80,7 @@ interface KegiatanBermasalah {
   tim_nama: string;
   status: string;
   skor: number;
-  kendala: string;
-  jumlah_kendala?: number;
+  jumlah_kendala: number;
 }
 
 interface ProgresData {
@@ -84,7 +95,7 @@ interface AnggaranData {
   realisasi: number;
 }
 
-export default function PimpinanDashboard() {
+export default function KesubagDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
@@ -98,7 +109,10 @@ export default function PimpinanDashboard() {
     totalRealisasiAnggaran: 0,
     persentaseRealisasi: 0,
     ratarataSkor: 0,
-    pendingVerifikasi: 0,
+    pendingValidasi: 0,
+    dokumenDiterima: 0,
+    dokumenDitolak: 0,
+    totalDokumen: 0,
     totalKendala: 0,
     kendalaResolved: 0,
   });
@@ -115,7 +129,7 @@ export default function PimpinanDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const res = await fetch('/api/pimpinan/dashboard');
+      const res = await fetch('/api/kesubag/dashboard');
       if (res.ok) {
         const data = await res.json();
         setStats(data.stats);
@@ -125,7 +139,7 @@ export default function PimpinanDashboard() {
         setProgresData(data.progresChart || []);
         setAnggaranData(data.anggaranChart || []);
         
-        // Set status chart data
+        // Set status kegiatan chart data
         setStatusData([
           { name: 'Selesai', value: data.stats.kegiatanSelesai || 0, color: '#10B981' },
           { name: 'Berjalan', value: data.stats.kegiatanBerjalan || 0, color: '#3B82F6' },
@@ -156,13 +170,6 @@ export default function PimpinanDashboard() {
     return 'text-red-600 bg-red-100';
   };
 
-  const getSkorLabel = (skor: number) => {
-    if (skor >= 80) return 'Sangat Baik';
-    if (skor >= 60) return 'Baik';
-    if (skor >= 40) return 'Cukup';
-    return 'Kurang';
-  };
-
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'selesai':
@@ -186,7 +193,7 @@ export default function PimpinanDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <LuLoader className="w-12 h-12 text-blue-500 animate-spin" />
           <p className="text-gray-500">Memuat dashboard...</p>
         </div>
       </div>
@@ -221,8 +228,8 @@ export default function PimpinanDashboard() {
       gradient: 'from-orange-500 to-amber-500',
     },
     {
-      label: 'Pending Verifikasi',
-      value: stats.pendingVerifikasi,
+      label: 'Perlu Perhatian',
+      value: stats.kegiatanBermasalah,
       icon: <LuCircleCheck className="w-6 h-6" />,
       gradient: 'from-red-500 to-rose-500',
     },
@@ -231,14 +238,14 @@ export default function PimpinanDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
                 <LuTrendingUp className="w-6 h-6" />
               </div>
-              Dashboard Pimpinan
+              Dashboard Kesubag
             </h1>
             <p className="text-blue-100 mt-2">Monitoring capaian kinerja seluruh tim</p>
           </div>
@@ -294,7 +301,7 @@ export default function PimpinanDashboard() {
         </div>
       </div>
 
-      {/* Charts Row */}
+      {/* Charts Row - Status & Tim Performance */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Kegiatan Pie Chart */}
         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
@@ -448,23 +455,88 @@ export default function PimpinanDashboard() {
         )}
       </div>
 
+      {/* Kegiatan Bermasalah */}
+      {kegiatanBermasalah.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <LuTriangleAlert className="w-5 h-5 text-red-500" />
+              Kegiatan Perlu Perhatian
+            </h2>
+            <Link 
+              href="/kesubag/kegiatan"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            >
+              Lihat Semua <LuChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Kegiatan</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Tim</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Kendala</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Skor</th>
+                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-600">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {kegiatanBermasalah.map((kegiatan) => (
+                  <tr key={kegiatan.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4">
+                      <p className="font-medium text-gray-900">{kegiatan.nama}</p>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{kegiatan.tim_nama}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(kegiatan.status)}`}>
+                        {kegiatan.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        {kegiatan.jumlah_kendala}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-sm font-bold ${getSkorColor(kegiatan.skor)}`}>
+                        {Math.round(kegiatan.skor)}%
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <Link
+                        href={`/kesubag/kegiatan/${kegiatan.id}`}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Detail
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Link 
-          href="/pimpinan/kegiatan" 
+          href="/kesubag/kegiatan" 
           className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl text-white hover:shadow-lg transition-all group"
         >
           <div className="flex items-center gap-3">
             <LuClipboardList className="w-8 h-8" />
             <div>
               <p className="font-semibold">Monitoring Kegiatan</p>
-              <p className="text-sm text-white/80">Lihat dan verifikasi kegiatan</p>
+              <p className="text-sm text-white/80">Lihat dan pantau kegiatan</p>
             </div>
             <LuChevronRight className="w-5 h-5 ml-auto group-hover:translate-x-1 transition-transform" />
           </div>
         </Link>
         <Link 
-          href="/pimpinan/laporan" 
+          href="/kesubag/laporan" 
           className="p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white hover:shadow-lg transition-all group"
         >
           <div className="flex items-center gap-3">
@@ -477,11 +549,11 @@ export default function PimpinanDashboard() {
           </div>
         </Link>
         <Link 
-          href="/pimpinan/statistik" 
+          href="/kesubag/statistik" 
           className="p-4 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl text-white hover:shadow-lg transition-all group"
         >
           <div className="flex items-center gap-3">
-            <LuPencil className="w-8 h-8" />
+            <LuChartBar className="w-8 h-8" />
             <div>
               <p className="font-semibold">Statistik</p>
               <p className="text-sm text-white/80">Analisis kinerja tim</p>

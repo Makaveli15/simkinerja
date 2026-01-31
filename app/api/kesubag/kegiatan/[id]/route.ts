@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { RowDataPacket } from 'mysql2';
 import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
-// GET - Get kegiatan detail (read-only for pimpinan)
+// GET - Get kegiatan detail (read-only for kesubag - monitoring only)
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -15,7 +15,7 @@ export async function GET(
     }
 
     const payload = JSON.parse(decodeURIComponent(cookie));
-    if (!payload || payload.role !== 'pimpinan') {
+    if (!payload || payload.role !== 'kesubag') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -87,23 +87,7 @@ export async function GET(
       kendala = [];
     }
 
-    // Get evaluasi pimpinan (may not exist yet)
-    let evaluasi: RowDataPacket[] = [];
-    try {
-      const [evaluasiRows] = await pool.query<RowDataPacket[]>(`
-        SELECT ep.*, u.nama_lengkap as pimpinan_nama, u.username as pimpinan_username
-        FROM evaluasi_pimpinan ep
-        JOIN users u ON ep.user_id = u.id
-        WHERE ep.kegiatan_id = ?
-        ORDER BY ep.created_at DESC
-      `, [kegiatanId]);
-      evaluasi = evaluasiRows;
-    } catch (err) {
-      console.error('Error fetching evaluasi (table may not exist):', err);
-      evaluasi = [];
-    }
-
-    // Get dokumen output for document validation
+    // Get dokumen output with kesubag validation status
     let dokumenOutput: RowDataPacket[] = [];
     try {
       const [dokumenRows] = await pool.query<RowDataPacket[]>(`
@@ -123,6 +107,38 @@ export async function GET(
     } catch (err) {
       console.error('Error fetching dokumen output:', err);
       dokumenOutput = [];
+    }
+
+    // Get evaluasi kesubag
+    let evaluasiKesubag: RowDataPacket[] = [];
+    try {
+      const [evaluasiKesubagRows] = await pool.query<RowDataPacket[]>(`
+        SELECT ek.*, u.nama_lengkap as kesubag_nama, u.username as kesubag_username
+        FROM evaluasi_kesubag ek
+        JOIN users u ON ek.user_id = u.id
+        WHERE ek.kegiatan_id = ?
+        ORDER BY ek.created_at DESC
+      `, [kegiatanId]);
+      evaluasiKesubag = evaluasiKesubagRows;
+    } catch (err) {
+      console.error('Error fetching evaluasi kesubag (table may not exist):', err);
+      evaluasiKesubag = [];
+    }
+
+    // Get evaluasi pimpinan (read-only view)
+    let evaluasiPimpinan: RowDataPacket[] = [];
+    try {
+      const [evaluasiRows] = await pool.query<RowDataPacket[]>(`
+        SELECT ep.*, u.nama_lengkap as pimpinan_nama, u.username as pimpinan_username
+        FROM evaluasi_pimpinan ep
+        JOIN users u ON ep.user_id = u.id
+        WHERE ep.kegiatan_id = ?
+        ORDER BY ep.created_at DESC
+      `, [kegiatanId]);
+      evaluasiPimpinan = evaluasiRows;
+    } catch (err) {
+      console.error('Error fetching evaluasi pimpinan (table may not exist):', err);
+      evaluasiPimpinan = [];
     }
 
     // Calculate summary
@@ -166,6 +182,36 @@ export async function GET(
 
     const kinerjaResult = hitungKinerjaKegiatan(kegiatanData);
 
+    // Document validation summary
+    // For drafts: check draft_status_kesubag
+    // For finals with minta_validasi: check validasi_kesubag
+    const dokumenPending = dokumenOutput.filter((d: RowDataPacket) => {
+      if (d.tipe_dokumen === 'draft') {
+        return !d.draft_status_kesubag || d.draft_status_kesubag === 'pending';
+      } else if (d.tipe_dokumen === 'final' && d.minta_validasi === 1) {
+        return !d.validasi_kesubag || d.validasi_kesubag === 'pending';
+      }
+      return false;
+    }).length;
+    
+    const dokumenDiterima = dokumenOutput.filter((d: RowDataPacket) => {
+      if (d.tipe_dokumen === 'draft') {
+        return d.draft_status_kesubag === 'reviewed';
+      } else if (d.tipe_dokumen === 'final' && d.minta_validasi === 1) {
+        return d.validasi_kesubag === 'valid';
+      }
+      return false;
+    }).length;
+    
+    const dokumenDitolak = dokumenOutput.filter((d: RowDataPacket) => {
+      if (d.tipe_dokumen === 'draft') {
+        return d.draft_status_kesubag === 'revisi';
+      } else if (d.tipe_dokumen === 'final' && d.minta_validasi === 1) {
+        return d.validasi_kesubag === 'tidak_valid';
+      }
+      return false;
+    }).length;
+
     return NextResponse.json({
       kegiatan: {
         ...kegiatan,
@@ -180,7 +226,8 @@ export async function GET(
         tindak_lanjut: k.tindak_lanjut || []
       })),
       dokumen_output: dokumenOutput,
-      evaluasi,
+      evaluasi_kesubag: evaluasiKesubag,
+      evaluasi_pimpinan: evaluasiPimpinan,
       summary: {
         total_realisasi_anggaran: totalRealisasiAnggaran,
         realisasi_anggaran_persen: kegiatan.anggaran_pagu > 0 
@@ -194,7 +241,12 @@ export async function GET(
         skor_kinerja: kinerjaResult.skor_kinerja,
         status_kinerja: kinerjaResult.status_kinerja,
         indikator: kinerjaResult.indikator,
-        deviasi: kinerjaResult.deviasi
+        deviasi: kinerjaResult.deviasi,
+        // Dokumen summary
+        dokumen_total: dokumenOutput.length,
+        dokumen_pending: dokumenPending,
+        dokumen_diterima: dokumenDiterima,
+        dokumen_ditolak: dokumenDitolak
       }
     });
   } catch (error) {
@@ -203,67 +255,15 @@ export async function GET(
   }
 }
 
-// PATCH - Only allow updating status_verifikasi (verification)
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const cookie = req.cookies.get('auth')?.value;
-    if (!cookie) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const payload = JSON.parse(decodeURIComponent(cookie));
-    if (!payload || payload.role !== 'pimpinan') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const resolvedParams = await params;
-    const kegiatanId = resolvedParams.id;
-    const body = await req.json();
-
-    // ONLY allow status_verifikasi update - block all other fields
-    const allowedFields = ['status_verifikasi'];
-    const updateFields = Object.keys(body);
-    
-    // Check for forbidden fields
-    const forbiddenFields = updateFields.filter(f => !allowedFields.includes(f));
-    if (forbiddenFields.length > 0) {
-      return NextResponse.json({ 
-        error: `Forbidden - Pimpinan tidak dapat mengubah: ${forbiddenFields.join(', ')}. Hanya status verifikasi yang dapat diubah.` 
-      }, { status: 403 });
-    }
-
-    // Validate status_verifikasi value
-    const validStatuses = ['belum_verifikasi', 'valid', 'revisi'];
-    if (!body.status_verifikasi || !validStatuses.includes(body.status_verifikasi)) {
-      return NextResponse.json({ 
-        error: 'Status verifikasi tidak valid. Gunakan: belum_verifikasi, valid, atau revisi' 
-      }, { status: 400 });
-    }
-
-    // Update only status_verifikasi
-    await pool.query<ResultSetHeader>(
-      'UPDATE kegiatan_operasional SET status_verifikasi = ? WHERE id = ?',
-      [body.status_verifikasi, kegiatanId]
-    );
-
-    return NextResponse.json({ 
-      message: 'Status verifikasi berhasil diperbarui',
-      status_verifikasi: body.status_verifikasi
-    });
-  } catch (error) {
-    console.error('Error updating verifikasi:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+// Kesubag is read-only for kegiatan (no PATCH, PUT, DELETE)
+export async function PATCH() {
+  return NextResponse.json({ error: 'Forbidden - Kesubag hanya dapat monitoring kegiatan' }, { status: 403 });
 }
 
-// Block other write operations
 export async function PUT() {
-  return NextResponse.json({ error: 'Forbidden - Gunakan PATCH untuk verifikasi kualitas' }, { status: 403 });
+  return NextResponse.json({ error: 'Forbidden - Kesubag hanya dapat monitoring kegiatan' }, { status: 403 });
 }
 
 export async function DELETE() {
-  return NextResponse.json({ error: 'Forbidden - Pimpinan tidak dapat menghapus kegiatan' }, { status: 403 });
+  return NextResponse.json({ error: 'Forbidden - Kesubag tidak dapat menghapus kegiatan' }, { status: 403 });
 }

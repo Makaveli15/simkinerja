@@ -32,8 +32,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Password salah' }, { status: 401 });
     }
 
-    // Allow admin, pimpinan, and pelaksana to login
-    const validRoles = ['admin', 'pimpinan', 'pelaksana'];
+    // Allow admin, pimpinan, pelaksana, and kesubag to login
+    const validRoles = ['admin', 'pimpinan', 'pelaksana', 'kesubag'];
     if (!validRoles.includes(user.role)) {
       return NextResponse.json({ error: 'Akses ditolak: role tidak valid' }, { status: 403 });
     }

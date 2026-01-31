@@ -30,6 +30,14 @@ export interface KegiatanData {
   total_realisasi_anggaran: number;  // Sum dari realisasi_anggaran
   total_kendala: number;
   kendala_resolved: number;
+  
+  // Data dokumen untuk perhitungan status verifikasi per dokumen (opsional)
+  dokumen_stats?: {
+    total_final: number;           // Total dokumen final
+    final_disahkan: number;        // Dokumen final yang sudah disahkan
+    final_menunggu: number;        // Dokumen final yang menunggu validasi
+    final_revisi: number;          // Dokumen final yang ditolak/perlu revisi
+  };
 }
 
 export interface IndikatorSkor {
@@ -235,12 +243,50 @@ function hitungSerapanAnggaran(
 
 /**
  * Hitung skor Kualitas Output (20%)
+ * 
+ * LOGIKA BARU - Berdasarkan dokumen dan target output:
+ * - Skor = (dokumen_disahkan / target_output) * 100
+ * - Jika ada dokumen revisi: penalti
+ * - Jika tidak ada dokumen final: gunakan status_verifikasi lama
+ * 
+ * LOGIKA LAMA (fallback jika tidak ada data dokumen):
  * - VALID: 100
  * - MENUNGGU: 50 (sedang menunggu validasi)
  * - REVISI: 30 (output perlu perbaikan)
  * - BELUM_VERIFIKASI: 0 (belum bisa dinilai)
  */
-function hitungKualitasOutput(statusVerifikasi: 'belum_verifikasi' | 'menunggu' | 'valid' | 'revisi'): number {
+function hitungKualitasOutput(
+  statusVerifikasi: 'belum_verifikasi' | 'menunggu' | 'valid' | 'revisi',
+  dokumenStats?: {
+    total_final: number;
+    final_disahkan: number;
+    final_menunggu: number;
+    final_revisi: number;
+  },
+  targetOutput?: number
+): number {
+  // Jika ada data dokumen, hitung berdasarkan dokumen
+  if (dokumenStats && dokumenStats.total_final > 0) {
+    const { final_disahkan, final_menunggu, final_revisi } = dokumenStats;
+    
+    // Gunakan target_output jika tersedia, jika tidak gunakan total_final
+    const target = targetOutput && targetOutput > 0 ? targetOutput : dokumenStats.total_final;
+    
+    // Skor dasar: persentase dokumen yang disahkan terhadap target
+    const persentaseDisahkan = (final_disahkan / target) * 100;
+    
+    // Bonus untuk dokumen yang sedang menunggu (setengah nilai, proporsional terhadap target)
+    const bonusMenunggu = (final_menunggu / target) * 50;
+    
+    // Penalti untuk dokumen yang perlu revisi
+    const penaltiRevisi = (final_revisi / target) * 20;
+    
+    const skor = persentaseDisahkan + bonusMenunggu - penaltiRevisi;
+    
+    return Math.max(0, Math.min(100, skor));
+  }
+  
+  // Fallback ke logika lama jika tidak ada data dokumen
   switch (statusVerifikasi) {
     case 'valid':
       return 100;
@@ -297,7 +343,13 @@ export function hitungKinerjaKegiatan(data: KegiatanData): KinerjaResult {
     data.total_realisasi_anggaran
   );
 
-  const skorKualitasOutput = hitungKualitasOutput(data.status_verifikasi);
+  // Hitung kualitas output berdasarkan dokumen jika tersedia
+  // Kirimkan target_output untuk perhitungan yang akurat
+  const skorKualitasOutput = hitungKualitasOutput(
+    data.status_verifikasi,
+    data.dokumen_stats,
+    data.target_output
+  );
 
   const skorPenyelesaianKendala = hitungPenyelesaianKendala(
     data.total_kendala, 

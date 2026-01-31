@@ -84,6 +84,33 @@ export async function createNotificationForAllPimpinan(
 }
 
 /**
+ * Membuat notifikasi untuk semua kesubag
+ */
+export async function createNotificationForAllKesubag(
+  data: Omit<NotificationData, 'userId'>
+): Promise<number> {
+  try {
+    const [kesubagUsers] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM users WHERE role = ?',
+      ['kesubag']
+    );
+
+    let created = 0;
+    for (const user of kesubagUsers) {
+      const notifId = await createNotification({
+        ...data,
+        userId: user.id
+      });
+      if (notifId) created++;
+    }
+    return created;
+  } catch (error) {
+    console.error('Error creating kesubag notifications:', error);
+    return 0;
+  }
+}
+
+/**
  * Membuat notifikasi untuk pelaksana yang upload dokumen tertentu
  */
 export async function createNotificationForDocUploader(
