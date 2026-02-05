@@ -94,6 +94,22 @@ export async function GET(request: NextRequest) {
       [...queryParams, limit, offset]
     );
 
+    // Get mitra for each kegiatan from kegiatan_mitra table
+    const kegiatanWithMitra = await Promise.all(kegiatan.map(async (k) => {
+      const [mitraRows] = await pool.query<RowDataPacket[]>(
+        `SELECT m.id, m.nama, m.posisi, m.alamat, m.no_telp, m.sobat_id
+         FROM kegiatan_mitra km
+         JOIN mitra m ON km.mitra_id = m.id
+         WHERE km.kegiatan_id = ?`,
+        [k.id]
+      );
+      return {
+        ...k,
+        mitra_list: mitraRows,
+        total_mitra: mitraRows.length
+      };
+    }));
+
     // Get counts by status for summary
     const [statusCounts] = await pool.query<RowDataPacket[]>(
       `SELECT 
@@ -117,7 +133,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      data: kegiatan,
+      data: kegiatanWithMitra,
       pagination: {
         total,
         page,

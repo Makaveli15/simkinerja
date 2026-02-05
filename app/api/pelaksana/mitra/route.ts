@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     // If dates are provided, filter out mitra that are already assigned to active kegiatan
     if (tanggalMulai && tanggalSelesai) {
       // Get mitra that are NOT assigned to any kegiatan with overlapping dates
+      // Check both kegiatan_mitra table (new) and kegiatan.mitra_id (legacy)
       let query = `
         SELECT m.id, m.nama, m.posisi, m.alamat, m.no_telp, m.sobat_id,
                CASE 
@@ -38,13 +39,16 @@ export async function GET(request: NextRequest) {
                ko.tanggal_mulai as busy_mulai,
                ko.tanggal_selesai as busy_selesai
         FROM mitra m
-        LEFT JOIN kegiatan ko ON m.id = ko.mitra_id 
-          AND ko.status != 'selesai'
-          AND (
-            (ko.tanggal_mulai <= ? AND ko.tanggal_selesai >= ?)
-            OR (ko.tanggal_mulai <= ? AND ko.tanggal_selesai >= ?)
-            OR (ko.tanggal_mulai >= ? AND ko.tanggal_selesai <= ?)
-          )`;
+        LEFT JOIN (
+          SELECT DISTINCT km.mitra_id, k.id, k.nama, k.tanggal_mulai, k.tanggal_selesai
+          FROM kegiatan_mitra km
+          INNER JOIN kegiatan k ON km.kegiatan_id = k.id
+          WHERE k.status != 'selesai'
+            AND (
+              (k.tanggal_mulai <= ? AND k.tanggal_selesai >= ?)
+              OR (k.tanggal_mulai <= ? AND k.tanggal_selesai >= ?)
+              OR (k.tanggal_mulai >= ? AND k.tanggal_selesai <= ?)
+            )`;
       
       const params: (string | number)[] = [
         tanggalSelesai, tanggalMulai,  // Overlap check 1: kegiatan spans across our dates
@@ -54,11 +58,11 @@ export async function GET(request: NextRequest) {
 
       // Exclude specific kegiatan (for update operations)
       if (excludeKegiatanId) {
-        query += ` AND ko.id != ?`;
+        query += ` AND k.id != ?`;
         params.push(parseInt(excludeKegiatanId));
       }
 
-      query += ` ORDER BY m.nama ASC`;
+      query += `) ko ON m.id = ko.mitra_id ORDER BY m.nama ASC`;
 
       const [mitra] = await pool.query<RowDataPacket[]>(query, params);
 

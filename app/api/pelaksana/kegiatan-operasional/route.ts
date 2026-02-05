@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
 
     const timId = userRows[0].tim_id;
 
-    const { nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status: inputStatus, kro_id, mitra_id } = await request.json();
+    const { nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status: inputStatus, kro_id, mitra_id, mitra_ids } = await request.json();
 
     if (!nama || !tanggal_mulai) {
       return NextResponse.json({ error: 'Nama dan tanggal mulai harus diisi' }, { status: 400 });
@@ -207,26 +207,35 @@ export async function POST(request: NextRequest) {
     const validStatuses = ['belum_mulai', 'berjalan', 'selesai', 'tertunda'];
     const finalStatus = validStatuses.includes(inputStatus) ? inputStatus : 'berjalan';
 
-    // Check if mitra is available (not assigned to another active kegiatan in overlapping dates)
-    if (mitra_id && tanggal_mulai && tanggal_selesai) {
-      const [conflictingKegiatan] = await pool.query<RowDataPacket[]>(
-        `SELECT id, nama, tanggal_mulai, tanggal_selesai 
-         FROM kegiatan 
-         WHERE mitra_id = ? 
-           AND status != 'selesai'
-           AND (
-             (tanggal_mulai <= ? AND tanggal_selesai >= ?)
-             OR (tanggal_mulai <= ? AND tanggal_selesai >= ?)
-             OR (tanggal_mulai >= ? AND tanggal_selesai <= ?)
-           )`,
-        [mitra_id, tanggal_selesai, tanggal_mulai, tanggal_mulai, tanggal_mulai, tanggal_mulai, tanggal_selesai]
-      );
+    // Handle multiple mitra IDs (new) or single mitra_id (legacy)
+    const mitraIdList: number[] = mitra_ids && Array.isArray(mitra_ids) ? mitra_ids : (mitra_id ? [mitra_id] : []);
 
-      if (conflictingKegiatan.length > 0) {
-        const conflict = conflictingKegiatan[0];
-        return NextResponse.json({ 
-          error: `Mitra sudah ditugaskan pada kegiatan "${conflict.nama}" (${new Date(conflict.tanggal_mulai).toLocaleDateString('id-ID')} - ${new Date(conflict.tanggal_selesai).toLocaleDateString('id-ID')})` 
-        }, { status: 400 });
+    // Check if mitra is available (not assigned to another active kegiatan in overlapping dates)
+    if (mitraIdList.length > 0 && tanggal_mulai && tanggal_selesai) {
+      for (const checkMitraId of mitraIdList) {
+        const [conflictingKegiatan] = await pool.query<RowDataPacket[]>(
+          `SELECT k.id, k.nama, k.tanggal_mulai, k.tanggal_selesai 
+           FROM kegiatan k
+           INNER JOIN kegiatan_mitra km ON k.id = km.kegiatan_id
+           WHERE km.mitra_id = ? 
+             AND k.status != 'selesai'
+             AND (
+               (k.tanggal_mulai <= ? AND k.tanggal_selesai >= ?)
+               OR (k.tanggal_mulai <= ? AND k.tanggal_selesai >= ?)
+               OR (k.tanggal_mulai >= ? AND k.tanggal_selesai <= ?)
+             )`,
+          [checkMitraId, tanggal_selesai, tanggal_mulai, tanggal_mulai, tanggal_mulai, tanggal_mulai, tanggal_selesai]
+        );
+
+        if (conflictingKegiatan.length > 0) {
+          const conflict = conflictingKegiatan[0];
+          // Get mitra name
+          const [mitraInfo] = await pool.query<RowDataPacket[]>('SELECT nama FROM mitra WHERE id = ?', [checkMitraId]);
+          const mitraName = mitraInfo[0]?.nama || 'Mitra';
+          return NextResponse.json({ 
+            error: `${mitraName} sudah ditugaskan pada kegiatan "${conflict.nama}" (${new Date(conflict.tanggal_mulai).toLocaleDateString('id-ID')} - ${new Date(conflict.tanggal_selesai).toLocaleDateString('id-ID')})` 
+          }, { status: 400 });
+        }
       }
     }
 
@@ -234,17 +243,32 @@ export async function POST(request: NextRequest) {
     const roundedAnggaran = anggaran_pagu ? Math.round(Number(anggaran_pagu) * 100) / 100 : 0;
 
     // New kegiatan starts as 'draft' and 'belum_mulai' until approved
+    // Keep mitra_id as first mitra for backward compatibility
+    const primaryMitraId = mitraIdList.length > 0 ? mitraIdList[0] : null;
+    
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO kegiatan 
        (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, status_pengajuan, kro_id, mitra_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'belum_mulai', 'draft', ?, ?)`,
-      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', roundedAnggaran, kro_id || null, mitra_id || null]
+      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', roundedAnggaran, kro_id || null, primaryMitraId]
     );
+
+    const kegiatanId = result.insertId;
+
+    // Insert all mitra into kegiatan_mitra table
+    if (mitraIdList.length > 0) {
+      const mitraValues = mitraIdList.map(mid => [kegiatanId, mid]);
+      await pool.query(
+        `INSERT INTO kegiatan_mitra (kegiatan_id, mitra_id) VALUES ?`,
+        [mitraValues]
+      );
+    }
 
     return NextResponse.json({ 
       message: 'Kegiatan berhasil dibuat sebagai draft. Silakan ajukan ke Pimpinan untuk disetujui.', 
-      id: result.insertId,
-      status_pengajuan: 'draft'
+      id: kegiatanId,
+      status_pengajuan: 'draft',
+      total_mitra: mitraIdList.length
     });
   } catch (error) {
     console.error('Error creating kegiatan:', error);

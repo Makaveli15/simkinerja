@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LuChevronLeft, LuLoader, LuPlus } from 'react-icons/lu';
+import { LuChevronLeft, LuLoader, LuPlus, LuSearch, LuX, LuUser } from 'react-icons/lu';
 
 interface KRO {
   id: number;
@@ -36,9 +36,14 @@ export default function TambahKegiatanPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   
+  // Multi-select mitra states
+  const [selectedMitra, setSelectedMitra] = useState<Mitra[]>([]);
+  const [mitraSearch, setMitraSearch] = useState('');
+  const [showMitraDropdown, setShowMitraDropdown] = useState(false);
+  const mitraDropdownRef = useRef<HTMLDivElement>(null);
+  
   const [formData, setFormData] = useState({
     kro_id: '',
-    mitra_id: '',
     nama: '',
     deskripsi: '',
     tanggal_mulai: '',
@@ -47,6 +52,18 @@ export default function TambahKegiatanPage() {
     satuan_output: 'dokumen',
     anggaran_pagu: ''
   });
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mitraDropdownRef.current && !mitraDropdownRef.current.contains(event.target as Node)) {
+        setShowMitraDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchKRO();
@@ -97,11 +114,11 @@ export default function TambahKegiatanPage() {
       if (res.ok) {
         const data = await res.json();
         setMitraList(data);
-        // Reset mitra selection if currently selected mitra is not available
-        const selectedMitra = data.find((m: Mitra) => m.id.toString() === formData.mitra_id);
-        if (selectedMitra && selectedMitra.available === false) {
-          setFormData(prev => ({ ...prev, mitra_id: '' }));
-        }
+        // Remove unavailable mitra from selection
+        setSelectedMitra(prev => prev.filter(m => {
+          const updated = data.find((d: Mitra) => d.id === m.id);
+          return updated?.available !== false;
+        }));
       }
     } catch (error) {
       console.error('Error fetching Mitra:', error);
@@ -117,6 +134,31 @@ export default function TambahKegiatanPage() {
       [name]: value
     }));
   };
+
+  // Mitra selection handlers
+  const handleAddMitra = (mitra: Mitra) => {
+    if (!selectedMitra.find(m => m.id === mitra.id)) {
+      setSelectedMitra(prev => [...prev, mitra]);
+    }
+    setMitraSearch('');
+    setShowMitraDropdown(false);
+  };
+
+  const handleRemoveMitra = (mitraId: number) => {
+    setSelectedMitra(prev => prev.filter(m => m.id !== mitraId));
+  };
+
+  // Filter mitra based on search
+  const filteredMitra = mitraList.filter(mitra => {
+    const searchLower = mitraSearch.toLowerCase();
+    const matchesSearch = 
+      mitra.nama.toLowerCase().includes(searchLower) ||
+      (mitra.posisi && mitra.posisi.toLowerCase().includes(searchLower)) ||
+      (mitra.alamat && mitra.alamat.toLowerCase().includes(searchLower)) ||
+      (mitra.sobat_id && mitra.sobat_id.toLowerCase().includes(searchLower));
+    const notSelected = !selectedMitra.find(m => m.id === mitra.id);
+    return matchesSearch && notSelected;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,7 +212,7 @@ export default function TambahKegiatanPage() {
           // Use Math.round to avoid floating-point precision issues (e.g., 10000000 becoming 9999999)
           anggaran_pagu: formData.anggaran_pagu ? Math.round(Number(formData.anggaran_pagu) * 100) / 100 : 0,
           kro_id: parseInt(formData.kro_id),
-          mitra_id: formData.mitra_id ? parseInt(formData.mitra_id) : null,
+          mitra_ids: selectedMitra.map(m => m.id), // Send array of mitra IDs
         })
       });
 
@@ -387,50 +429,122 @@ export default function TambahKegiatanPage() {
             )}
           </div>
 
-          {/* Mitra Selection */}
+          {/* Multi-Select Mitra with Search */}
           <div>
-            <label htmlFor="mitra_id" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Mitra Terkait (Opsional)
               {loadingMitra && <span className="ml-2 text-blue-500 text-xs">Memuat ketersediaan...</span>}
             </label>
+            
             {(!formData.tanggal_mulai || !formData.tanggal_selesai) && (
               <p className="text-xs text-amber-600 mb-2">
                 💡 Pilih tanggal mulai dan selesai terlebih dahulu untuk melihat ketersediaan mitra
               </p>
             )}
-            <select
-              id="mitra_id"
-              name="mitra_id"
-              value={formData.mitra_id}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              disabled={loadingMitra}
-            >
-              <option value="">-- Tanpa Mitra --</option>
-              {mitraList.map((mitra) => (
-                <option 
-                  key={mitra.id} 
-                  value={mitra.id}
-                  disabled={mitra.available === false}
-                  className={mitra.available === false ? 'text-gray-400' : ''}
-                >
-                  {mitra.nama} {mitra.posisi && `- ${mitra.posisi}`} {mitra.alamat && `(${mitra.alamat})`}
-                  {mitra.available === false && ' [Tidak Tersedia]'}
-                </option>
-              ))}
-            </select>
-            {formData.mitra_id && (() => {
-              const selectedMitra = mitraList.find(m => m.id.toString() === formData.mitra_id);
-              if (selectedMitra?.busy_info) {
-                return (
-                  <p className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
-                    ⚠️ Mitra ini sedang ditugaskan pada &quot;{selectedMitra.busy_info.kegiatan}&quot; 
-                    ({new Date(selectedMitra.busy_info.mulai).toLocaleDateString('id-ID')} - {new Date(selectedMitra.busy_info.selesai).toLocaleDateString('id-ID')})
-                  </p>
-                );
-              }
-              return null;
-            })()}
+
+            {/* Selected Mitra Tags */}
+            {selectedMitra.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selectedMitra.map(mitra => (
+                  <div
+                    key={mitra.id}
+                    className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-sm border border-blue-200"
+                  >
+                    <LuUser className="w-4 h-4" />
+                    <span className="font-medium">{mitra.nama}</span>
+                    {mitra.posisi && <span className="text-blue-500">- {mitra.posisi}</span>}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMitra(mitra.id)}
+                      className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                    >
+                      <LuX className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Search Input with Dropdown */}
+            <div className="relative" ref={mitraDropdownRef}>
+              <div className="relative">
+                <LuSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  value={mitraSearch}
+                  onChange={(e) => {
+                    setMitraSearch(e.target.value);
+                    setShowMitraDropdown(true);
+                  }}
+                  onFocus={() => setShowMitraDropdown(true)}
+                  placeholder="Cari mitra berdasarkan nama, posisi, alamat, atau SOBAT ID..."
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={loadingMitra}
+                />
+              </div>
+
+              {/* Dropdown List */}
+              {showMitraDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  {filteredMitra.length === 0 ? (
+                    <div className="px-4 py-3 text-gray-500 text-sm">
+                      {mitraSearch ? 'Tidak ada mitra yang cocok' : 'Semua mitra sudah dipilih atau ketik untuk mencari'}
+                    </div>
+                  ) : (
+                    filteredMitra.slice(0, 20).map(mitra => (
+                      <button
+                        key={mitra.id}
+                        type="button"
+                        onClick={() => mitra.available !== false && handleAddMitra(mitra)}
+                        disabled={mitra.available === false}
+                        className={`w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                          mitra.available === false ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-gray-900 flex items-center gap-2">
+                              {mitra.nama}
+                              {mitra.available === false && (
+                                <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">Tidak Tersedia</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {mitra.posisi && <span>{mitra.posisi}</span>}
+                              {mitra.posisi && mitra.alamat && <span> • </span>}
+                              {mitra.alamat && <span>{mitra.alamat}</span>}
+                            </div>
+                            {mitra.sobat_id && (
+                              <div className="text-xs text-gray-400 font-mono">SOBAT: {mitra.sobat_id}</div>
+                            )}
+                            {mitra.busy_info && (
+                              <div className="text-xs text-red-500 mt-1">
+                                Sedang di kegiatan &quot;{mitra.busy_info.kegiatan}&quot;
+                              </div>
+                            )}
+                          </div>
+                          {mitra.available !== false && (
+                            <LuPlus className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                  {filteredMitra.length > 20 && (
+                    <div className="px-4 py-2 text-center text-sm text-gray-500 bg-gray-50">
+                      Menampilkan 20 dari {filteredMitra.length} mitra. Ketik untuk mempersempit pencarian.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Selected count */}
+            <p className="mt-2 text-sm text-gray-500">
+              {selectedMitra.length === 0 
+                ? 'Belum ada mitra yang dipilih' 
+                : `${selectedMitra.length} mitra dipilih`}
+            </p>
           </div>
 
           {/* Workflow Info */}

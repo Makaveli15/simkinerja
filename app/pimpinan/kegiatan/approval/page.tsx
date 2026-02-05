@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LuSearch, LuClipboard, LuEye, LuCheck, LuX, LuClock, LuBadgeCheck, LuBan, LuClipboardCheck } from 'react-icons/lu';
+import { LuSearch, LuClipboard, LuEye, LuCheck, LuX, LuClock, LuBadgeCheck, LuBan, LuClipboardCheck, LuUser } from 'react-icons/lu';
+
+interface MitraItem {
+  id: number;
+  nama: string;
+  posisi?: string;
+  alamat?: string;
+  no_telp?: string;
+  sobat_id?: string;
+}
 
 interface Kegiatan {
   id: number;
@@ -27,13 +36,16 @@ interface Kegiatan {
   pelaksana_nama?: string;
   approved_by_nama?: string;
   created_by_nama?: string;
-  // Mitra info
+  // Mitra info (legacy single mitra)
   mitra_id?: number;
   mitra_nama?: string;
   mitra_posisi?: string;
   mitra_alamat?: string;
   mitra_no_telp?: string;
   mitra_sobat_id?: string;
+  // Multi mitra
+  mitra_list?: MitraItem[];
+  total_mitra?: number;
 }
 
 interface ApprovalSummary {
@@ -452,31 +464,58 @@ export default function ApprovalKegiatanPage() {
                 <h3 className="font-semibold text-cyan-900 mb-3 flex items-center gap-2">
                   <span className="w-6 h-6 bg-cyan-500 text-white rounded-full flex items-center justify-center text-xs">3</span>
                   Informasi Mitra
+                  {selectedKegiatan.total_mitra && selectedKegiatan.total_mitra > 0 && (
+                    <span className="ml-auto bg-cyan-500 text-white text-xs px-2 py-1 rounded-full">
+                      {selectedKegiatan.total_mitra} mitra
+                    </span>
+                  )}
                 </h3>
-                {selectedKegiatan.mitra_nama ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white p-3 rounded-lg border border-cyan-100">
-                      <label className="text-sm text-cyan-700">Nama Mitra</label>
-                      <p className="font-medium text-gray-900">{selectedKegiatan.mitra_nama}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg border border-cyan-100">
-                      <label className="text-sm text-cyan-700">Posisi</label>
-                      <p className="font-medium text-gray-900">{selectedKegiatan.mitra_posisi || '-'}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg border border-cyan-100">
-                      <label className="text-sm text-cyan-700">Alamat</label>
-                      <p className="font-medium text-gray-900">{selectedKegiatan.mitra_alamat || '-'}</p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg border border-cyan-100">
-                      <label className="text-sm text-cyan-700">No. Telepon</label>
-                      <p className="font-medium text-gray-900">{selectedKegiatan.mitra_no_telp || '-'}</p>
-                    </div>
-                    {selectedKegiatan.mitra_sobat_id && (
-                      <div className="col-span-2 bg-white p-3 rounded-lg border border-cyan-100">
-                        <label className="text-sm text-cyan-700">SOBAT ID</label>
-                        <p className="font-medium text-gray-900 font-mono">{selectedKegiatan.mitra_sobat_id}</p>
+                {selectedKegiatan.mitra_list && selectedKegiatan.mitra_list.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedKegiatan.mitra_list.map((mitra, index) => (
+                      <div key={mitra.id} className="bg-white p-3 rounded-lg border border-cyan-100">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <LuUser className="w-4 h-4 text-cyan-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900">{mitra.nama}</p>
+                              {mitra.posisi && (
+                                <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded">{mitra.posisi}</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                              {mitra.alamat && <p>📍 {mitra.alamat}</p>}
+                              {mitra.no_telp && <p>📞 {mitra.no_telp}</p>}
+                              {mitra.sobat_id && <p className="font-mono text-xs">SOBAT: {mitra.sobat_id}</p>}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    )}
+                    ))}
+                  </div>
+                ) : selectedKegiatan.mitra_nama ? (
+                  // Legacy single mitra display
+                  <div className="bg-white p-3 rounded-lg border border-cyan-100">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <LuUser className="w-4 h-4 text-cyan-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900">{selectedKegiatan.mitra_nama}</p>
+                          {selectedKegiatan.mitra_posisi && (
+                            <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded">{selectedKegiatan.mitra_posisi}</span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                          {selectedKegiatan.mitra_alamat && <p>📍 {selectedKegiatan.mitra_alamat}</p>}
+                          {selectedKegiatan.mitra_no_telp && <p>📞 {selectedKegiatan.mitra_no_telp}</p>}
+                          {selectedKegiatan.mitra_sobat_id && <p className="font-mono text-xs">SOBAT: {selectedKegiatan.mitra_sobat_id}</p>}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="bg-white p-3 rounded-lg border border-cyan-100">
