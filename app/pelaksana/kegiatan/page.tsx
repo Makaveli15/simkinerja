@@ -9,7 +9,11 @@ import {
   LuPlus,
   LuSearch,
   LuFolderOpen,
-  LuClipboard
+  LuClipboard,
+  LuSend,
+  LuClock,
+  LuBadgeCheck,
+  LuBan
 } from 'react-icons/lu';
 
 interface KendalaItem {
@@ -48,6 +52,12 @@ interface Kegiatan {
   target_output: number;
   output_realisasi: number;
   satuan_output: string;
+  // Approval workflow fields
+  status_pengajuan: 'draft' | 'diajukan' | 'disetujui' | 'ditolak';
+  tanggal_pengajuan: string;
+  tanggal_approval: string;
+  catatan_approval: string;
+  approved_by_nama: string;
 }
 
 interface KRO {
@@ -69,6 +79,7 @@ export default function KegiatanPage() {
   const [exportPeriode, setExportPeriode] = useState('all');
   const [exportTahun, setExportTahun] = useState(new Date().getFullYear().toString());
   const [exportBulan, setExportBulan] = useState((new Date().getMonth() + 1).toString());
+  const [submittingId, setSubmittingId] = useState<number | null>(null);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -172,6 +183,47 @@ export default function KegiatanPage() {
     if (skor >= 60) return 'bg-amber-100 text-amber-700';
     if (skor > 0) return 'bg-red-100 text-red-700';
     return 'bg-gray-100 text-gray-700';
+  };
+
+  const getStatusPengajuanBadge = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return { bg: 'bg-gray-100 text-gray-600 border-gray-200', icon: <LuClock className="w-3 h-3" />, label: 'Draft' };
+      case 'diajukan':
+        return { bg: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: <LuClock className="w-3 h-3" />, label: 'Menunggu Persetujuan' };
+      case 'disetujui':
+        return { bg: 'bg-green-100 text-green-700 border-green-200', icon: <LuBadgeCheck className="w-3 h-3" />, label: 'Disetujui' };
+      case 'ditolak':
+        return { bg: 'bg-red-100 text-red-700 border-red-200', icon: <LuBan className="w-3 h-3" />, label: 'Ditolak' };
+      default:
+        return { bg: 'bg-gray-100 text-gray-600 border-gray-200', icon: <LuClock className="w-3 h-3" />, label: status };
+    }
+  };
+
+  const handleSubmitKegiatan = async (kegiatanId: number, nama: string) => {
+    if (!confirm(`Apakah Anda yakin ingin mengajukan kegiatan "${nama}" ke Pimpinan untuk disetujui?`)) {
+      return;
+    }
+    
+    setSubmittingId(kegiatanId);
+    try {
+      const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}/submit`, {
+        method: 'POST',
+      });
+      
+      if (res.ok) {
+        alert('Kegiatan berhasil diajukan ke Pimpinan');
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Terjadi kesalahan');
+      }
+    } catch (error) {
+      console.error('Error submitting kegiatan:', error);
+      alert('Terjadi kesalahan');
+    } finally {
+      setSubmittingId(null);
+    }
   };
 
   // Helper function to generate kendala section for PDF
@@ -1006,6 +1058,7 @@ export default function KegiatanPage() {
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kode KRO</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Kegiatan</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Pengajuan</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Periode</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Target</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Progres</th>
@@ -1039,6 +1092,24 @@ export default function KegiatanPage() {
                           <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(k.status)}`}>
                             {getStatusLabel(k.status)}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {(() => {
+                            const badge = getStatusPengajuanBadge(k.status_pengajuan || 'disetujui');
+                            return (
+                              <div>
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${badge.bg}`}>
+                                  {badge.icon}
+                                  {badge.label}
+                                </span>
+                                {k.status_pengajuan === 'ditolak' && k.catatan_approval && (
+                                  <p className="text-xs text-red-600 mt-1 max-w-[150px] truncate" title={k.catatan_approval}>
+                                    {k.catatan_approval}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-600">
@@ -1093,13 +1164,43 @@ export default function KegiatanPage() {
                             >
                               Detail
                             </Link>
-                            <span className="text-gray-300">|</span>
-                            <Link
-                              href={`/pelaksana/kegiatan/${k.id}/update`}
-                              className="text-green-600 hover:text-green-700 text-sm font-medium"
-                            >
-                              Update
-                            </Link>
+                            {k.status_pengajuan === 'draft' && (
+                              <>
+                                <span className="text-gray-300">|</span>
+                                <button
+                                  onClick={() => handleSubmitKegiatan(k.id, k.nama)}
+                                  disabled={submittingId === k.id}
+                                  className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-sm font-medium disabled:opacity-50"
+                                >
+                                  <LuSend className="w-3 h-3" />
+                                  {submittingId === k.id ? 'Mengajukan...' : 'Ajukan'}
+                                </button>
+                              </>
+                            )}
+                            {k.status_pengajuan === 'ditolak' && (
+                              <>
+                                <span className="text-gray-300">|</span>
+                                <button
+                                  onClick={() => handleSubmitKegiatan(k.id, k.nama)}
+                                  disabled={submittingId === k.id}
+                                  className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 text-sm font-medium disabled:opacity-50"
+                                >
+                                  <LuSend className="w-3 h-3" />
+                                  {submittingId === k.id ? 'Mengajukan...' : 'Ajukan Ulang'}
+                                </button>
+                              </>
+                            )}
+                            {k.status_pengajuan === 'disetujui' && (
+                              <>
+                                <span className="text-gray-300">|</span>
+                                <Link
+                                  href={`/pelaksana/kegiatan/${k.id}/update`}
+                                  className="text-green-600 hover:text-green-700 text-sm font-medium"
+                                >
+                                  Update
+                                </Link>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -45,8 +45,7 @@ export default function TambahKegiatanPage() {
     tanggal_selesai: '',
     target_output: '',
     satuan_output: 'dokumen',
-    anggaran_pagu: '',
-    status: 'berjalan'
+    anggaran_pagu: ''
   });
 
   useEffect(() => {
@@ -170,7 +169,6 @@ export default function TambahKegiatanPage() {
           satuan_output: formData.satuan_output || 'dokumen',
           // Use Math.round to avoid floating-point precision issues (e.g., 10000000 becoming 9999999)
           anggaran_pagu: formData.anggaran_pagu ? Math.round(Number(formData.anggaran_pagu) * 100) / 100 : 0,
-          status: formData.status,
           kro_id: parseInt(formData.kro_id),
           mitra_id: formData.mitra_id ? parseInt(formData.mitra_id) : null,
         })
@@ -221,7 +219,7 @@ export default function TambahKegiatanPage() {
               </div>
               Tambah Kegiatan Baru
             </h1>
-            <p className="text-blue-100 mt-2">Buat kegiatan baru dengan memilih KRO terkait</p>
+            <p className="text-blue-100 mt-2">Kegiatan akan disimpan sebagai draft dan perlu diajukan ke Pimpinan untuk disetujui</p>
           </div>
         </div>
 
@@ -435,22 +433,22 @@ export default function TambahKegiatanPage() {
             })()}
           </div>
 
-          {/* Status */}
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-              Status Awal
-            </label>
-            <select
-              id="status"
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="belum_mulai">Belum Dimulai</option>
-              <option value="berjalan">Berjalan</option>
-              <option value="tertunda">Tertunda</option>
-            </select>
+          {/* Workflow Info */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-amber-700 text-lg">📋</span>
+              </div>
+              <div>
+                <h4 className="font-medium text-amber-800">Alur Persetujuan Kegiatan</h4>
+                <ol className="text-sm text-amber-700 mt-2 space-y-1 list-decimal list-inside">
+                  <li>Kegiatan disimpan sebagai <strong>Draft</strong></li>
+                  <li>Klik tombol <strong>&quot;Ajukan&quot;</strong> di daftar kegiatan untuk mengajukan ke Pimpinan</li>
+                  <li>Pimpinan akan <strong>menyetujui atau menolak</strong> kegiatan</li>
+                  <li>Kegiatan yang disetujui bisa mulai dijalankan dan dimonitor</li>
+                </ol>
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -472,7 +470,7 @@ export default function TambahKegiatanPage() {
                   Menyimpan...
                 </span>
               ) : (
-                'Simpan Kegiatan'
+                'Simpan sebagai Draft'
               )}
             </button>
           </div>
@@ -480,17 +478,27 @@ export default function TambahKegiatanPage() {
 
         {/* Info Box */}
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <h3 className="font-medium text-blue-900 mb-2">Informasi Penilaian Kinerja</h3>
-          <p className="text-sm text-blue-800 mb-3">
-            Setelah kegiatan dibuat, Anda dapat memperbarui progres dan realisasi untuk menghitung skor kinerja:
-          </p>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• <strong>Capaian Output (30%):</strong> Persentase penyelesaian kegiatan</li>
-            <li>• <strong>Ketepatan Waktu (20%):</strong> Kesesuaian dengan jadwal</li>
-            <li>• <strong>Serapan Anggaran (20%):</strong> Efisiensi penggunaan anggaran</li>
-            <li>• <strong>Kualitas Output (20%):</strong> Rating kualitas hasil</li>
-            <li>• <strong>Penyelesaian Kendala (10%):</strong> Kemampuan mengatasi kendala</li>
-          </ul>
+          <h3 className="font-medium text-blue-900 mb-2">Informasi Penting</h3>
+          <div className="text-sm text-blue-800 space-y-3">
+            <div>
+              <strong>Setelah Kegiatan Disetujui:</strong>
+              <ul className="mt-1 space-y-1 ml-4 list-disc">
+                <li>Kegiatan akan muncul di halaman Monitoring Pimpinan</li>
+                <li>Anda dapat mengupdate progres dan realisasi</li>
+                <li>Skor kinerja akan dihitung otomatis</li>
+              </ul>
+            </div>
+            <div>
+              <strong>Komponen Penilaian Kinerja:</strong>
+              <ul className="mt-1 space-y-1 ml-4 list-disc text-blue-700">
+                <li><strong>Capaian Output (30%):</strong> Persentase penyelesaian kegiatan</li>
+                <li><strong>Ketepatan Waktu (20%):</strong> Kesesuaian dengan jadwal</li>
+                <li><strong>Serapan Anggaran (20%):</strong> Efisiensi penggunaan anggaran</li>
+                <li><strong>Kualitas Output (20%):</strong> Rating kualitas hasil</li>
+                <li><strong>Penyelesaian Kendala (10%):</strong> Kemampuan mengatasi kendala</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>

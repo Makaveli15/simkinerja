@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
       FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
-      WHERE 1=1
+      WHERE ko.status_pengajuan = 'disetujui'
     `;
 
     const queryParams: (string | number)[] = [];

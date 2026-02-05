@@ -50,6 +50,10 @@ export async function GET(request: NextRequest) {
         ko.satuan_output,
         ko.anggaran_pagu,
         ko.status,
+        ko.status_pengajuan,
+        ko.tanggal_pengajuan,
+        ko.tanggal_approval,
+        ko.catatan_approval,
         ko.status_verifikasi,
         ko.created_at,
         ko.kro_id,
@@ -59,6 +63,7 @@ export async function GET(request: NextRequest) {
         kro.kode as kro_kode,
         kro.nama as kro_nama,
         m.nama as mitra_nama,
+        approver.username as approved_by_nama,
         COALESCE((SELECT persentase FROM realisasi_fisik WHERE kegiatan_id = ko.id ORDER BY tanggal_realisasi DESC LIMIT 1), 0) as realisasi_fisik,
         COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_anggaran_realisasi
       FROM kegiatan ko
@@ -66,6 +71,7 @@ export async function GET(request: NextRequest) {
       JOIN users u ON ko.created_by = u.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       LEFT JOIN mitra m ON ko.mitra_id = m.id
+      LEFT JOIN users approver ON ko.approved_by = approver.id
       WHERE ko.tim_id = ?`;
     
     const params: (string | number)[] = [timId];
@@ -227,14 +233,19 @@ export async function POST(request: NextRequest) {
     // Round anggaran to avoid floating-point precision issues (e.g., 10000000 becoming 9999999.99)
     const roundedAnggaran = anggaran_pagu ? Math.round(Number(anggaran_pagu) * 100) / 100 : 0;
 
+    // New kegiatan starts as 'draft' and 'belum_mulai' until approved
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO kegiatan 
-       (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, kro_id, mitra_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', roundedAnggaran, finalStatus, kro_id || null, mitra_id || null]
+       (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, status_pengajuan, kro_id, mitra_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'belum_mulai', 'draft', ?, ?)`,
+      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', roundedAnggaran, kro_id || null, mitra_id || null]
     );
 
-    return NextResponse.json({ message: 'Kegiatan berhasil dibuat', id: result.insertId });
+    return NextResponse.json({ 
+      message: 'Kegiatan berhasil dibuat sebagai draft. Silakan ajukan ke Pimpinan untuk disetujui.', 
+      id: result.insertId,
+      status_pengajuan: 'draft'
+    });
   } catch (error) {
     console.error('Error creating kegiatan:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

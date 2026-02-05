@@ -12,10 +12,13 @@ import {
   LuCloudDownload,
   LuChevronLeft,
   LuChevronDown,
+  LuChevronRight,
   LuMenu,
   LuBell,
   LuUser,
-  LuLogOut
+  LuLogOut,
+  LuActivity,
+  LuClipboardCheck
 } from 'react-icons/lu';
 
 interface User {
@@ -45,6 +48,7 @@ export default function PimpinanLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -60,6 +64,16 @@ export default function PimpinanLayout({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // Kegiatan submenu state - auto open when on kegiatan page
+  const [isKegiatanOpen, setIsKegiatanOpen] = useState(pathname.startsWith('/pimpinan/kegiatan'));
+
+  // Auto open kegiatan submenu when navigating to kegiatan pages
+  useEffect(() => {
+    if (pathname.startsWith('/pimpinan/kegiatan')) {
+      setIsKegiatanOpen(true);
+    }
+  }, [pathname]);
+
   const menuItems = [
     { 
       href: '/pimpinan/dashboard', 
@@ -67,9 +81,22 @@ export default function PimpinanLayout({
       icon: <LuLayoutDashboard className="w-5 h-5" />
     },
     { 
-      href: '/pimpinan/kegiatan', 
-      label: 'Monitoring Kegiatan', 
-      icon: <LuClipboardList className="w-5 h-5" />
+      href: '/pimpinan/kegiatan',
+      label: 'Kegiatan', 
+      icon: <LuClipboardList className="w-5 h-5" />,
+      hasSubmenu: true,
+      submenu: [
+        { 
+          href: '/pimpinan/kegiatan/approval', 
+          label: 'Approval', 
+          icon: <LuClipboardCheck className="w-4 h-4" />
+        },
+        { 
+          href: '/pimpinan/kegiatan/monitoring', 
+          label: 'Monitoring', 
+          icon: <LuActivity className="w-4 h-4" />
+        },
+      ]
     },
     { 
       href: '/pimpinan/statistik', 
@@ -81,15 +108,6 @@ export default function PimpinanLayout({
       label: 'Laporan', 
       icon: <LuCloudDownload className="w-5 h-5" />
     },
-    // { 
-    //   href: '/pimpinan/evaluasi', 
-    //   label: 'Evaluasi & Tindak Lanjut', 
-    //   icon: (
-    //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-    //     </svg>
-    //   )
-    // },
   ];
 
   // Fetch user profile
@@ -331,7 +349,71 @@ export default function PimpinanLayout({
         {/* Menu */}
         <nav className="p-3 space-y-1 mt-2">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isActive = pathname === item.href || pathname.startsWith(item.href.split('?')[0] + '/') || pathname === item.href.split('?')[0];
+            const hasSubmenu = 'hasSubmenu' in item && item.hasSubmenu;
+            
+            if (hasSubmenu && 'submenu' in item) {
+              // Menu with submenu (Kegiatan)
+              const isSubmenuActive = pathname.startsWith('/pimpinan/kegiatan');
+              return (
+                <div key={item.href}>
+                  <button
+                    onClick={() => setIsKegiatanOpen(!isKegiatanOpen)}
+                    className={`
+                      w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
+                      ${isSubmenuActive 
+                        ? 'bg-white/20 text-white font-semibold' 
+                        : 'text-white/90 hover:bg-white/15 hover:text-white'
+                      }
+                      ${isCollapsed ? 'justify-center' : 'justify-between'}
+                    `}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.icon}
+                      {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                    </div>
+                    {!isCollapsed && (
+                      <LuChevronRight className={`w-4 h-4 transition-transform duration-200 ${isKegiatanOpen ? 'rotate-90' : ''}`} />
+                    )}
+                  </button>
+                  
+                  {/* Submenu */}
+                  {(isKegiatanOpen || isCollapsed) && !isCollapsed && (
+                    <div className="ml-4 mt-1 space-y-1 border-l-2 border-white/20 pl-3">
+                      {item.submenu.map((sub) => {
+                        const isSubActive = pathname === sub.href || pathname.startsWith(sub.href + '/');
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            className={`
+                              flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm
+                              ${isSubActive 
+                                ? 'bg-white text-blue-600 shadow-md font-semibold' 
+                                : 'text-white/80 hover:bg-white/15 hover:text-white'
+                              }
+                            `}
+                          >
+                            {sub.icon}
+                            <span>{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {/* Tooltip submenu for collapsed state */}
+                  {isCollapsed && (
+                    <div className="absolute left-20 top-0 hidden group-hover:block">
+                      {/* This could be enhanced for collapsed tooltip */}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            
+            // Regular menu item
             return (
               <Link
                 key={item.href}
