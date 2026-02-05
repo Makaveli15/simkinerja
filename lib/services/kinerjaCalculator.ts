@@ -6,13 +6,16 @@
  * 
  * Prinsip: Pengguna hanya input data faktual, sistem menghitung skor.
  * 
- * Bobot Indikator:
- * - Capaian Output: 30%
- * - Ketepatan Waktu: 20%
- * - Serapan Anggaran: 20%
- * - Kualitas Output: 20%
- * - Penyelesaian Kendala: 10%
+ * Bobot Indikator (diambil dari database master_indikator_kinerja):
+ * - Capaian Output: default 30%
+ * - Ketepatan Waktu: default 20%
+ * - Serapan Anggaran: default 20%
+ * - Kualitas Output: default 20%
+ * - Penyelesaian Kendala: default 10%
  */
+
+import pool from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
 export interface KegiatanData {
   // Data Target (dari kegiatan)
@@ -79,6 +82,62 @@ const DEFAULT_BOBOT: BobotConfig = {
 
 // Bobot yang digunakan (bisa dioverride dari database)
 let BOBOT: BobotConfig = { ...DEFAULT_BOBOT };
+
+// Cache untuk bobot dari database
+let cachedBobot: BobotConfig | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 60000; // 1 menit cache
+
+/**
+ * Fetch bobot konfigurasi dari database (server-side)
+ * Mengambil data dari tabel master_indikator_kinerja yang aktif
+ */
+export async function fetchBobotFromDatabase(): Promise<BobotConfig> {
+  // Cek cache
+  const now = Date.now();
+  if (cachedBobot && (now - cacheTimestamp) < CACHE_DURATION) {
+    return cachedBobot;
+  }
+
+  try {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT kode, bobot FROM master_indikator_kinerja WHERE is_active = TRUE ORDER BY urutan ASC`
+    );
+
+    const config: BobotConfig = { ...DEFAULT_BOBOT };
+    
+    rows.forEach(row => {
+      const kode = row.kode.toUpperCase();
+      const bobot = parseFloat(row.bobot) / 100; // Convert to decimal
+      
+      if (kode === 'CAPAIAN_OUTPUT') config.CAPAIAN_OUTPUT = bobot;
+      else if (kode === 'KETEPATAN_WAKTU') config.KETEPATAN_WAKTU = bobot;
+      else if (kode === 'SERAPAN_ANGGARAN') config.SERAPAN_ANGGARAN = bobot;
+      else if (kode === 'KUALITAS_OUTPUT') config.KUALITAS_OUTPUT = bobot;
+      else if (kode === 'PENYELESAIAN_KENDALA') config.PENYELESAIAN_KENDALA = bobot;
+    });
+
+    // Update cache
+    cachedBobot = config;
+    cacheTimestamp = now;
+    
+    // Also update the global BOBOT variable
+    BOBOT = config;
+    
+    return config;
+  } catch (error) {
+    console.error('Error fetching bobot from database:', error);
+    return DEFAULT_BOBOT;
+  }
+}
+
+/**
+ * Clear bobot cache - dipanggil setelah admin mengubah konfigurasi
+ */
+export function clearBobotCache(): void {
+  cachedBobot = null;
+  cacheTimestamp = 0;
+}
 
 /**
  * Set bobot konfigurasi dari database
@@ -361,6 +420,7 @@ function tentukanStatusKinerja(skor: number): 'Sukses' | 'Perlu Perhatian' | 'Be
 /**
  * Fungsi utama untuk menghitung kinerja kegiatan
  * Menerima data mentah dan menghasilkan skor serta status kinerja
+ * Versi synchronous - menggunakan bobot yang sudah di-set sebelumnya
  */
 export function hitungKinerjaKegiatan(data: KegiatanData): KinerjaResult {
   // Hitung masing-masing indikator
@@ -423,6 +483,19 @@ export function hitungKinerjaKegiatan(data: KegiatanData): KinerjaResult {
       anggaran: Math.round(deviasiAnggaran * 100) / 100,
     },
   };
+}
+
+/**
+ * Fungsi async untuk menghitung kinerja kegiatan
+ * Otomatis mengambil bobot dari database master_indikator_kinerja
+ * DIREKOMENDASIKAN untuk digunakan di semua API
+ */
+export async function hitungKinerjaKegiatanAsync(data: KegiatanData): Promise<KinerjaResult> {
+  // Fetch dan set bobot dari database
+  await fetchBobotFromDatabase();
+  
+  // Gunakan fungsi synchronous setelah bobot di-set
+  return hitungKinerjaKegiatan(data);
 }
 
 /**

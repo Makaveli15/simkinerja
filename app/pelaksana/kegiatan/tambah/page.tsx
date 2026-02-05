@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LuChevronLeft, LuLoader, LuPlus, LuSearch, LuX, LuUser } from 'react-icons/lu';
+import { LuChevronLeft, LuLoader, LuPlus, LuSearch, LuX, LuUser, LuFileText, LuCheck } from 'react-icons/lu';
 
 interface KRO {
   id: number;
@@ -36,6 +36,12 @@ export default function TambahKegiatanPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   
+  // KRO search states
+  const [selectedKRO, setSelectedKRO] = useState<KRO | null>(null);
+  const [kroSearch, setKroSearch] = useState('');
+  const [showKroDropdown, setShowKroDropdown] = useState(false);
+  const kroDropdownRef = useRef<HTMLDivElement>(null);
+  
   // Multi-select mitra states
   const [selectedMitra, setSelectedMitra] = useState<Mitra[]>([]);
   const [mitraSearch, setMitraSearch] = useState('');
@@ -56,6 +62,9 @@ export default function TambahKegiatanPage() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      if (kroDropdownRef.current && !kroDropdownRef.current.contains(event.target as Node)) {
+        setShowKroDropdown(false);
+      }
       if (mitraDropdownRef.current && !mitraDropdownRef.current.contains(event.target as Node)) {
         setShowMitraDropdown(false);
       }
@@ -134,6 +143,29 @@ export default function TambahKegiatanPage() {
       [name]: value
     }));
   };
+
+  // KRO selection handler
+  const handleSelectKRO = (kro: KRO) => {
+    setSelectedKRO(kro);
+    setFormData(prev => ({ ...prev, kro_id: kro.id.toString() }));
+    setKroSearch('');
+    setShowKroDropdown(false);
+  };
+
+  const handleClearKRO = () => {
+    setSelectedKRO(null);
+    setFormData(prev => ({ ...prev, kro_id: '' }));
+  };
+
+  // Filter KRO based on search
+  const filteredKRO = kroList.filter(kro => {
+    const searchLower = kroSearch.toLowerCase();
+    return (
+      kro.kode.toLowerCase().includes(searchLower) ||
+      kro.nama.toLowerCase().includes(searchLower) ||
+      (kro.deskripsi && kro.deskripsi.toLowerCase().includes(searchLower))
+    );
+  });
 
   // Mitra selection handlers
   const handleAddMitra = (mitra: Mitra) => {
@@ -229,8 +261,6 @@ export default function TambahKegiatanPage() {
     }
   };
 
-  const selectedKRO = kroList.find(k => k.id.toString() === formData.kro_id);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -273,30 +303,95 @@ export default function TambahKegiatanPage() {
             </div>
           )}
 
-          {/* KRO Selection */}
+          {/* KRO Selection with Search */}
           <div>
-            <label htmlFor="kro_id" className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Key Result Output (KRO) <span className="text-red-500">*</span>
             </label>
-            <select
-              id="kro_id"
-              name="kro_id"
-              value={formData.kro_id}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-            >
-              <option value="">-- Pilih KRO --</option>
-              {kroList.map((kro) => (
-                <option key={kro.id} value={kro.id}>
-                  [{kro.kode}] {kro.nama}
-                </option>
-              ))}
-            </select>
-            {selectedKRO && selectedKRO.deskripsi && (
-              <p className="mt-2 text-sm text-gray-500 bg-gray-50 p-3 rounded">
-                <strong>Deskripsi:</strong> {selectedKRO.deskripsi}
-              </p>
+
+            {/* Selected KRO Display */}
+            {selectedKRO ? (
+              <div className="border border-green-300 bg-green-50 rounded-lg p-4 mb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <LuFileText className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                          {selectedKRO.kode}
+                        </span>
+                        <LuCheck className="w-4 h-4 text-green-600" />
+                      </div>
+                      <p className="font-medium text-gray-900 mt-1">{selectedKRO.nama}</p>
+                      {selectedKRO.deskripsi && (
+                        <p className="text-sm text-gray-500 mt-1">{selectedKRO.deskripsi}</p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearKRO}
+                    className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                    title="Hapus pilihan"
+                  >
+                    <LuX className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* KRO Search Dropdown */
+              <div className="relative" ref={kroDropdownRef}>
+                <div className="relative">
+                  <LuSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    value={kroSearch}
+                    onChange={(e) => setKroSearch(e.target.value)}
+                    onFocus={() => setShowKroDropdown(true)}
+                    placeholder="Cari KRO berdasarkan kode atau nama..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                {/* KRO Dropdown List */}
+                {showKroDropdown && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    {filteredKRO.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        {kroSearch ? 'Tidak ada KRO yang cocok' : 'Tidak ada KRO tersedia'}
+                      </div>
+                    ) : (
+                      filteredKRO.map(kro => (
+                        <button
+                          key={kro.id}
+                          type="button"
+                          onClick={() => handleSelectKRO(kro)}
+                          className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="p-1.5 bg-blue-100 rounded">
+                              <LuFileText className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                  {kro.kode}
+                                </span>
+                              </div>
+                              <p className="font-medium text-gray-900 mt-1 truncate">{kro.nama}</p>
+                              {kro.deskripsi && (
+                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{kro.deskripsi}</p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -545,24 +640,6 @@ export default function TambahKegiatanPage() {
                 ? 'Belum ada mitra yang dipilih' 
                 : `${selectedMitra.length} mitra dipilih`}
             </p>
-          </div>
-
-          {/* Workflow Info */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-amber-700 text-lg">📋</span>
-              </div>
-              <div>
-                <h4 className="font-medium text-amber-800">Alur Persetujuan Kegiatan</h4>
-                <ol className="text-sm text-amber-700 mt-2 space-y-1 list-decimal list-inside">
-                  <li>Kegiatan disimpan sebagai <strong>Draft</strong></li>
-                  <li>Klik tombol <strong>&quot;Ajukan&quot;</strong> di daftar kegiatan untuk mengajukan ke Pimpinan</li>
-                  <li>Pimpinan akan <strong>menyetujui atau menolak</strong> kegiatan</li>
-                  <li>Kegiatan yang disetujui bisa mulai dijalankan dan dimonitor</li>
-                </ol>
-              </div>
-            </div>
           </div>
 
           {/* Action Buttons */}

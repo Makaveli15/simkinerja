@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -18,8 +18,19 @@ import {
   LuUpload,
   LuShieldCheck,
   LuLoader,
-  LuCircleAlert
+  LuCircleAlert,
+  LuUser,
+  LuSearch
 } from 'react-icons/lu';
+
+interface MitraItem {
+  id: number;
+  nama: string;
+  posisi?: string;
+  alamat?: string;
+  no_telp?: string;
+  sobat_id?: string;
+}
 
 interface KegiatanDetail {
   id: number;
@@ -43,6 +54,8 @@ interface KegiatanDetail {
   kro_nama?: string;
   mitra_id?: number;
   mitra_nama?: string;
+  mitra_list?: MitraItem[];
+  total_mitra?: number;
 }
 
 interface Progres {
@@ -113,6 +126,7 @@ interface KRO {
   id: number;
   kode: string;
   nama: string;
+  deskripsi?: string;
 }
 
 interface Mitra {
@@ -120,6 +134,16 @@ interface Mitra {
   nama: string;
   posisi: string;
   alamat: string;
+  no_telp?: string;
+  sobat_id?: string;
+}
+
+interface IndikatorConfigItem {
+  kode: string;
+  nama: string;
+  bobot: number;
+  deskripsi: string;
+  urutan: number;
 }
 
 type TabType = 'evaluasi' | 'progres' | 'realisasi-anggaran' | 'kendala' | 'verifikasi' | 'waktu' | 'catatan';
@@ -188,6 +212,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
   const [summary, setSummary] = useState<Summary | null>(null);
   const [kroList, setKroList] = useState<KRO[]>([]);
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
+  const [indikatorConfig, setIndikatorConfig] = useState<IndikatorConfigItem[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('evaluasi');
@@ -196,6 +221,18 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
   const [deletingDokumenId, setDeletingDokumenId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // KRO search states for edit modal
+  const [editSelectedKRO, setEditSelectedKRO] = useState<KRO | null>(null);
+  const [editKroSearch, setEditKroSearch] = useState('');
+  const [showEditKroDropdown, setShowEditKroDropdown] = useState(false);
+  const editKroDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Multi-select mitra states for edit modal
+  const [editSelectedMitra, setEditSelectedMitra] = useState<Mitra[]>([]);
+  const [editMitraSearch, setEditMitraSearch] = useState('');
+  const [showEditMitraDropdown, setShowEditMitraDropdown] = useState(false);
+  const editMitraDropdownRef = useRef<HTMLDivElement>(null);
 
   const [editForm, setEditForm] = useState({
     nama: '',
@@ -210,13 +247,41 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     mitra_id: ''
   });
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editKroDropdownRef.current && !editKroDropdownRef.current.contains(event.target as Node)) {
+        setShowEditKroDropdown(false);
+      }
+      if (editMitraDropdownRef.current && !editMitraDropdownRef.current.contains(event.target as Node)) {
+        setShowEditMitraDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     fetchKegiatan();
     fetchKROList();
     fetchMitraList();
     fetchDokumenOutput();
     fetchEvaluasi();
+    fetchIndikatorConfig();
   }, [kegiatanId]);
+
+  const fetchIndikatorConfig = async () => {
+    try {
+      const res = await fetch('/api/indikator-config');
+      if (res.ok) {
+        const data = await res.json();
+        setIndikatorConfig(data.indikator || []);
+      }
+    } catch (error) {
+      console.error('Error fetching indikator config:', error);
+    }
+  };
 
   const fetchDokumenOutput = async () => {
     try {
@@ -396,6 +461,31 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
             kro_id: k.kro_id?.toString() || '',
             mitra_id: k.mitra_id?.toString() || ''
           });
+          
+          // Set selected KRO if exists
+          if (k.kro_id && k.kro_kode && k.kro_nama) {
+            setEditSelectedKRO({
+              id: k.kro_id,
+              kode: k.kro_kode,
+              nama: k.kro_nama
+            });
+          } else {
+            setEditSelectedKRO(null);
+          }
+          
+          // Set selected Mitra list if exists
+          if (k.mitra_list && k.mitra_list.length > 0) {
+            setEditSelectedMitra(k.mitra_list.map((m: MitraItem) => ({
+              id: m.id,
+              nama: m.nama,
+              posisi: m.posisi || '',
+              alamat: m.alamat || '',
+              no_telp: m.no_telp || '',
+              sobat_id: m.sobat_id || ''
+            })));
+          } else {
+            setEditSelectedMitra([]);
+          }
         }
       }
     } catch (error) {
@@ -422,6 +512,54 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
       console.error('Error fetching Mitra:', error);
     }
   };
+
+  // KRO selection handlers for edit modal
+  const handleEditSelectKRO = (kro: KRO) => {
+    setEditSelectedKRO(kro);
+    setEditForm(prev => ({ ...prev, kro_id: kro.id.toString() }));
+    setEditKroSearch('');
+    setShowEditKroDropdown(false);
+  };
+
+  const handleEditClearKRO = () => {
+    setEditSelectedKRO(null);
+    setEditForm(prev => ({ ...prev, kro_id: '' }));
+  };
+
+  // Filter KRO based on search for edit modal
+  const filteredEditKRO = kroList.filter(kro => {
+    const searchLower = editKroSearch.toLowerCase();
+    return (
+      kro.kode.toLowerCase().includes(searchLower) ||
+      kro.nama.toLowerCase().includes(searchLower) ||
+      (kro.deskripsi && kro.deskripsi.toLowerCase().includes(searchLower))
+    );
+  });
+
+  // Mitra selection handlers for edit modal
+  const handleEditAddMitra = (mitra: Mitra) => {
+    if (!editSelectedMitra.find(m => m.id === mitra.id)) {
+      setEditSelectedMitra(prev => [...prev, mitra]);
+    }
+    setEditMitraSearch('');
+    setShowEditMitraDropdown(false);
+  };
+
+  const handleEditRemoveMitra = (mitraId: number) => {
+    setEditSelectedMitra(prev => prev.filter(m => m.id !== mitraId));
+  };
+
+  // Filter mitra based on search for edit modal
+  const filteredEditMitra = mitraList.filter(mitra => {
+    const searchLower = editMitraSearch.toLowerCase();
+    const matchesSearch = 
+      mitra.nama.toLowerCase().includes(searchLower) ||
+      (mitra.posisi && mitra.posisi.toLowerCase().includes(searchLower)) ||
+      (mitra.alamat && mitra.alamat.toLowerCase().includes(searchLower)) ||
+      (mitra.sobat_id && mitra.sobat_id.toLowerCase().includes(searchLower));
+    const notSelected = !editSelectedMitra.find(m => m.id === mitra.id);
+    return matchesSearch && notSelected;
+  });
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -463,7 +601,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
           anggaran_pagu: anggaranValue,
           status: editForm.status || undefined,
           kro_id: editForm.kro_id ? parseInt(editForm.kro_id) : null,
-          mitra_id: editForm.mitra_id ? parseInt(editForm.mitra_id) : null
+          mitra_ids: editSelectedMitra.map(m => m.id) // Send array of mitra IDs
         })
       });
 
@@ -616,7 +754,21 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
               <div><span className="text-gray-500">Selesai:</span><span className="ml-2 font-medium">{formatDate(kegiatan.tanggal_selesai)}</span></div>
               <div><span className="text-gray-500">Target Anggaran:</span><span className="ml-2 font-medium">{formatCurrency(kegiatan.anggaran_pagu)}</span></div>
               {kegiatan.target_output && <div><span className="text-gray-500">Target Output:</span><span className="ml-2 font-medium">{kegiatan.target_output} {kegiatan.satuan_output}</span></div>}
-              {kegiatan.mitra_nama && <div><span className="text-gray-500">Mitra:</span><span className="ml-2 font-medium">{kegiatan.mitra_nama}</span></div>}
+              {/* Multiple Mitra Display */}
+              {kegiatan.mitra_list && kegiatan.mitra_list.length > 0 && (
+                <div className="col-span-2 md:col-span-4">
+                  <span className="text-gray-500">Mitra ({kegiatan.total_mitra}):</span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {kegiatan.mitra_list.map((mitra) => (
+                      <span key={mitra.id} className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-sm border border-blue-200">
+                        <LuUser className="w-3.5 h-3.5" />
+                        {mitra.nama}
+                        {mitra.posisi && <span className="text-blue-500">- {mitra.posisi}</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tabel KRO */}
@@ -1249,53 +1401,72 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     <span>📊</span> Breakdown Indikator Kinerja
                   </h3>
                   <p className="text-sm text-gray-500 mb-6">
-                    Skor kinerja dihitung berdasarkan 5 indikator dengan bobot berbeda. Nilai dihitung secara otomatis berdasarkan data monitoring yang diinput.
+                    Skor kinerja dihitung berdasarkan {indikatorConfig.length || 5} indikator dengan bobot berbeda. Nilai dihitung secara otomatis berdasarkan data monitoring yang diinput.
                   </p>
 
                   <div className="space-y-5">
-                    {[
-                      { label: 'Capaian Output', value: summary.indikator.capaian_output, bobot: 30, color: 'blue', icon: '🎯', desc: 'Perbandingan output realisasi dengan target output' },
-                      { label: 'Ketepatan Waktu', value: summary.indikator.ketepatan_waktu, bobot: 20, color: 'green', icon: '⏱️', desc: 'Penyelesaian tepat waktu atau lebih cepat dari jadwal' },
-                      { label: 'Serapan Anggaran', value: summary.indikator.serapan_anggaran, bobot: 20, color: 'yellow', icon: '💰', desc: 'Efisiensi penggunaan anggaran sesuai target' },
-                      { label: 'Kualitas Output', value: summary.indikator.kualitas_output, bobot: 20, color: 'purple', icon: '✅', desc: 'Status verifikasi kualitas hasil pekerjaan' },
-                      { label: 'Penyelesaian Kendala', value: summary.indikator.penyelesaian_kendala, bobot: 10, color: 'orange', icon: '🔧', desc: 'Rasio kendala yang berhasil diselesaikan' },
-                    ].map((item, i) => (
-                      <div key={i} className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{item.icon}</span>
-                            <div>
-                              <span className="font-medium text-gray-900">{item.label}</span>
-                              <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Bobot {item.bobot}%</span>
+                    {(() => {
+                      // Helper function to get bobot from config
+                      const getBobot = (kode: string) => {
+                        const config = indikatorConfig.find(i => i.kode.toLowerCase() === kode.toLowerCase());
+                        return config ? config.bobot : 0;
+                      };
+                      
+                      const getDesc = (kode: string, defaultDesc: string) => {
+                        const config = indikatorConfig.find(i => i.kode.toLowerCase() === kode.toLowerCase());
+                        return config?.deskripsi || defaultDesc;
+                      };
+
+                      const items = [
+                        { kode: 'capaian_output', label: 'Capaian Output', value: summary.indikator.capaian_output, color: 'blue', icon: '🎯', defaultDesc: 'Perbandingan output realisasi dengan target output' },
+                        { kode: 'ketepatan_waktu', label: 'Ketepatan Waktu', value: summary.indikator.ketepatan_waktu, color: 'green', icon: '⏱️', defaultDesc: 'Penyelesaian tepat waktu atau lebih cepat dari jadwal' },
+                        { kode: 'serapan_anggaran', label: 'Serapan Anggaran', value: summary.indikator.serapan_anggaran, color: 'yellow', icon: '💰', defaultDesc: 'Efisiensi penggunaan anggaran sesuai target' },
+                        { kode: 'kualitas_output', label: 'Kualitas Output', value: summary.indikator.kualitas_output, color: 'purple', icon: '✅', defaultDesc: 'Status verifikasi kualitas hasil pekerjaan' },
+                        { kode: 'penyelesaian_kendala', label: 'Penyelesaian Kendala', value: summary.indikator.penyelesaian_kendala, color: 'orange', icon: '🔧', defaultDesc: 'Rasio kendala yang berhasil diselesaikan' },
+                      ].map(item => ({
+                        ...item,
+                        bobot: getBobot(item.kode),
+                        desc: getDesc(item.kode, item.defaultDesc)
+                      }));
+
+                      return items.map((item, i) => (
+                        <div key={i} className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{item.icon}</span>
+                              <div>
+                                <span className="font-medium text-gray-900">{item.label}</span>
+                                <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Bobot {item.bobot}%</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className={`text-2xl font-bold ${
+                                item.color === 'blue' ? 'text-blue-600' :
+                                item.color === 'green' ? 'text-green-600' :
+                                item.color === 'yellow' ? 'text-yellow-600' :
+                                item.color === 'purple' ? 'text-purple-600' : 'text-orange-600'
+                              }`}>{item.value.toFixed(1)}</span>
+                              <span className="text-gray-500 text-sm"> / 100</span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <span className={`text-2xl font-bold ${
-                              item.color === 'blue' ? 'text-blue-600' :
-                              item.color === 'green' ? 'text-green-600' :
-                              item.color === 'yellow' ? 'text-yellow-600' :
-                              item.color === 'purple' ? 'text-purple-600' : 'text-orange-600'
-                            }`}>{item.value.toFixed(1)}</span>
-                            <span className="text-gray-500 text-sm"> / 100</span>
+                          <p className="text-xs text-gray-500 mb-2">{item.desc}</p>
+                          <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div 
+                              className={`h-3 rounded-full transition-all ${
+                                item.color === 'blue' ? 'bg-blue-500' :
+                                item.color === 'green' ? 'bg-green-500' :
+                                item.color === 'yellow' ? 'bg-yellow-500' :
+                                item.color === 'purple' ? 'bg-purple-500' : 'bg-orange-500'
+                              }`} 
+                              style={{ width: `${Math.min(item.value, 100)}%` }}
+                            />
                           </div>
+                          <p className="text-xs text-gray-500 mt-1 text-right">
+                            Kontribusi: <strong>{(item.value * item.bobot / 100).toFixed(1)} poin</strong>
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-500 mb-2">{item.desc}</p>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
-                          <div 
-                            className={`h-3 rounded-full transition-all ${
-                              item.color === 'blue' ? 'bg-blue-500' :
-                              item.color === 'green' ? 'bg-green-500' :
-                              item.color === 'yellow' ? 'bg-yellow-500' :
-                              item.color === 'purple' ? 'bg-purple-500' : 'bg-orange-500'
-                            }`} 
-                            style={{ width: `${Math.min(item.value, 100)}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 text-right">
-                          Kontribusi: <strong>{(item.value * item.bobot / 100).toFixed(1)} poin</strong>
-                        </p>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
 
                   {/* Total */}
@@ -1705,45 +1876,175 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   )}
                 </div>
 
-                {/* KRO */}
-                {kroList.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      KRO <span className="text-xs text-gray-400 font-normal">(Klasifikasi Rincian Output)</span>
-                    </label>
-                    <select 
-                      value={editForm.kro_id} 
-                      onChange={e => setEditForm({...editForm, kro_id: e.target.value})} 
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
-                    >
-                      <option value="">-- Tidak ada KRO --</option>
-                      {kroList.map(k => (
-                        <option key={k.id} value={k.id}>[{k.kode}] {k.nama}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* KRO with Search */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    KRO <span className="text-xs text-gray-400 font-normal">(Klasifikasi Rincian Output)</span>
+                  </label>
 
-                {/* Mitra */}
-                {mitraList.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Mitra <span className="text-xs text-gray-400 font-normal">(Penanggung Jawab)</span>
-                    </label>
-                    <select 
-                      value={editForm.mitra_id} 
-                      onChange={e => setEditForm({...editForm, mitra_id: e.target.value})} 
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
-                    >
-                      <option value="">-- Tanpa Mitra --</option>
-                      {mitraList.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.nama} {m.posisi && `- ${m.posisi}`} {m.alamat && `(${m.alamat})`}
-                        </option>
+                  {/* Selected KRO Display */}
+                  {editSelectedKRO ? (
+                    <div className="border border-green-300 bg-green-50 rounded-lg p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-2">
+                          <div className="p-1.5 bg-green-100 rounded">
+                            <LuFileText className="w-4 h-4 text-green-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                {editSelectedKRO.kode}
+                              </span>
+                              <LuCheck className="w-3 h-3 text-green-600" />
+                            </div>
+                            <p className="text-sm font-medium text-gray-900 mt-1">{editSelectedKRO.nama}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleEditClearKRO}
+                          className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                          title="Hapus pilihan"
+                        >
+                          <LuX className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* KRO Search Dropdown */
+                    <div className="relative" ref={editKroDropdownRef}>
+                      <div className="relative">
+                        <LuSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          value={editKroSearch}
+                          onChange={(e) => setEditKroSearch(e.target.value)}
+                          onFocus={() => setShowEditKroDropdown(true)}
+                          placeholder="Cari KRO berdasarkan kode atau nama..."
+                          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+
+                      {/* KRO Dropdown List */}
+                      {showEditKroDropdown && (
+                        <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {filteredEditKRO.length === 0 ? (
+                            <div className="p-3 text-center text-gray-500 text-sm">
+                              {editKroSearch ? 'Tidak ada KRO yang cocok' : 'Tidak ada KRO tersedia'}
+                            </div>
+                          ) : (
+                            filteredEditKRO.map(kro => (
+                              <button
+                                key={kro.id}
+                                type="button"
+                                onClick={() => handleEditSelectKRO(kro)}
+                                className="w-full px-3 py-2.5 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <div className="p-1 bg-blue-100 rounded">
+                                    <LuFileText className="w-3 h-3 text-blue-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <span className="font-mono text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                                      {kro.kode}
+                                    </span>
+                                    <p className="text-sm font-medium text-gray-900 mt-0.5 truncate">{kro.nama}</p>
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Multi-Select Mitra with Search */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Mitra <span className="text-xs text-gray-400 font-normal">(Penanggung Jawab)</span>
+                  </label>
+
+                  {/* Selected Mitra Tags */}
+                  {editSelectedMitra.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editSelectedMitra.map(mitra => (
+                        <div
+                          key={mitra.id}
+                          className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 px-2.5 py-1.5 rounded-lg text-sm"
+                        >
+                          <LuUser className="w-3.5 h-3.5" />
+                          <span className="font-medium">{mitra.nama}</span>
+                          {mitra.posisi && <span className="text-blue-500 text-xs">({mitra.posisi})</span>}
+                          <button
+                            type="button"
+                            onClick={() => handleEditRemoveMitra(mitra.id)}
+                            className="ml-1 p-0.5 hover:bg-blue-200 rounded-full transition-colors"
+                          >
+                            <LuX className="w-3 h-3" />
+                          </button>
+                        </div>
                       ))}
-                    </select>
+                    </div>
+                  )}
+
+                  {/* Mitra Search Input */}
+                  <div className="relative" ref={editMitraDropdownRef}>
+                    <div className="relative">
+                      <LuSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        value={editMitraSearch}
+                        onChange={(e) => setEditMitraSearch(e.target.value)}
+                        onFocus={() => setShowEditMitraDropdown(true)}
+                        placeholder="Cari dan tambah mitra..."
+                        className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Mitra Dropdown List */}
+                    {showEditMitraDropdown && (
+                      <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {filteredEditMitra.length === 0 ? (
+                          <div className="p-3 text-center text-gray-500 text-sm">
+                            {editMitraSearch ? 'Tidak ada mitra yang cocok' : 
+                             editSelectedMitra.length === mitraList.length ? 'Semua mitra sudah dipilih' : 'Tidak ada mitra tersedia'}
+                          </div>
+                        ) : (
+                          filteredEditMitra.map(mitra => (
+                            <button
+                              key={mitra.id}
+                              type="button"
+                              onClick={() => handleEditAddMitra(mitra)}
+                              className="w-full px-3 py-2.5 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="p-1 bg-gray-100 rounded-full">
+                                  <LuUser className="w-3 h-3 text-gray-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900">{mitra.nama}</p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {mitra.posisi && `${mitra.posisi}`}
+                                    {mitra.posisi && mitra.alamat && ' • '}
+                                    {mitra.alamat && `${mitra.alamat}`}
+                                  </p>
+                                </div>
+                                <LuPlus className="w-4 h-4 text-blue-500" />
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                  {editSelectedMitra.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {editSelectedMitra.length} mitra dipilih
+                    </p>
+                  )}
+                </div>
 
                 {/* Footer Buttons */}
                 <div className="flex gap-3 pt-4 border-t">

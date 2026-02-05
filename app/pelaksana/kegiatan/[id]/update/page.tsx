@@ -121,6 +121,14 @@ interface DokumenOutput {
 
 type TabType = 'progres' | 'waktu' | 'realisasi-anggaran' | 'kendala' | 'evaluasi' | 'dokumen';
 
+interface IndikatorConfigItem {
+  kode: string;
+  nama: string;
+  bobot: number;
+  deskripsi: string;
+  urutan: number;
+}
+
 export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const kegiatanId = resolvedParams.id;
@@ -133,6 +141,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   
   const [kegiatan, setKegiatan] = useState<KegiatanDetail | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [indikatorConfig, setIndikatorConfig] = useState<IndikatorConfigItem[]>([]);
   const [currentStatus, setCurrentStatus] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [progres, setProgres] = useState<Progres[]>([]);
@@ -194,7 +203,20 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     fetchData();
     fetchDokumenOutput();
+    fetchIndikatorConfig();
   }, [kegiatanId]);
+
+  const fetchIndikatorConfig = async () => {
+    try {
+      const res = await fetch('/api/indikator-config');
+      if (res.ok) {
+        const data = await res.json();
+        setIndikatorConfig(data.indikator || []);
+      }
+    } catch (error) {
+      console.error('Error fetching indikator config:', error);
+    }
+  };
 
   const fetchDokumenOutput = async () => {
     try {
@@ -1770,53 +1792,72 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                       <span>📊</span> Breakdown Indikator Kinerja
                     </h3>
                     <p className="text-sm text-gray-500 mb-6">
-                      Skor kinerja dihitung berdasarkan 5 indikator dengan bobot berbeda. Nilai dihitung secara otomatis berdasarkan data monitoring yang diinput.
+                      Skor kinerja dihitung berdasarkan {indikatorConfig.length || 5} indikator dengan bobot berbeda. Nilai dihitung secara otomatis berdasarkan data monitoring yang diinput.
                     </p>
 
                     <div className="space-y-5">
-                      {[
-                        { label: 'Capaian Output', value: summary.indikator.capaian_output, bobot: 30, color: 'blue', icon: '🎯', desc: 'Perbandingan output realisasi dengan target output' },
-                        { label: 'Ketepatan Waktu', value: summary.indikator.ketepatan_waktu, bobot: 20, color: 'green', icon: '⏱️', desc: 'Penyelesaian tepat waktu atau lebih cepat dari jadwal' },
-                        { label: 'Serapan Anggaran', value: summary.indikator.serapan_anggaran, bobot: 20, color: 'yellow', icon: '💰', desc: 'Efisiensi penggunaan anggaran sesuai target' },
-                        { label: 'Kualitas Output', value: summary.indikator.kualitas_output, bobot: 20, color: 'purple', icon: '✅', desc: 'Status verifikasi kualitas hasil pekerjaan' },
-                        { label: 'Penyelesaian Kendala', value: summary.indikator.penyelesaian_kendala, bobot: 10, color: 'orange', icon: '🔧', desc: 'Rasio kendala yang berhasil diselesaikan' },
-                      ].map((item, i) => (
-                        <div key={i} className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{item.icon}</span>
-                              <div>
-                                <span className="font-medium text-gray-900">{item.label}</span>
-                                <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Bobot {item.bobot}%</span>
+                      {(() => {
+                        // Helper function to get bobot from config
+                        const getBobot = (kode: string) => {
+                          const config = indikatorConfig.find(i => i.kode.toLowerCase() === kode.toLowerCase());
+                          return config ? config.bobot : 0;
+                        };
+                        
+                        const getDesc = (kode: string, defaultDesc: string) => {
+                          const config = indikatorConfig.find(i => i.kode.toLowerCase() === kode.toLowerCase());
+                          return config?.deskripsi || defaultDesc;
+                        };
+
+                        const items = [
+                          { kode: 'capaian_output', label: 'Capaian Output', value: summary.indikator.capaian_output, color: 'blue', icon: '🎯', defaultDesc: 'Perbandingan output realisasi dengan target output' },
+                          { kode: 'ketepatan_waktu', label: 'Ketepatan Waktu', value: summary.indikator.ketepatan_waktu, color: 'green', icon: '⏱️', defaultDesc: 'Penyelesaian tepat waktu atau lebih cepat dari jadwal' },
+                          { kode: 'serapan_anggaran', label: 'Serapan Anggaran', value: summary.indikator.serapan_anggaran, color: 'yellow', icon: '💰', defaultDesc: 'Efisiensi penggunaan anggaran sesuai target' },
+                          { kode: 'kualitas_output', label: 'Kualitas Output', value: summary.indikator.kualitas_output, color: 'purple', icon: '✅', defaultDesc: 'Status verifikasi kualitas hasil pekerjaan' },
+                          { kode: 'penyelesaian_kendala', label: 'Penyelesaian Kendala', value: summary.indikator.penyelesaian_kendala, color: 'orange', icon: '🔧', defaultDesc: 'Rasio kendala yang berhasil diselesaikan' },
+                        ].map(item => ({
+                          ...item,
+                          bobot: getBobot(item.kode),
+                          desc: getDesc(item.kode, item.defaultDesc)
+                        }));
+
+                        return items.map((item, i) => (
+                          <div key={i} className="bg-gray-50 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">{item.icon}</span>
+                                <div>
+                                  <span className="font-medium text-gray-900">{item.label}</span>
+                                  <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Bobot {item.bobot}%</span>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className={`text-2xl font-bold ${
+                                  item.color === 'blue' ? 'text-blue-600' :
+                                  item.color === 'green' ? 'text-green-600' :
+                                  item.color === 'yellow' ? 'text-yellow-600' :
+                                  item.color === 'purple' ? 'text-purple-600' : 'text-orange-600'
+                                }`}>{item.value.toFixed(1)}</span>
+                                <span className="text-gray-500 text-sm"> / 100</span>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <span className={`text-2xl font-bold ${
-                                item.color === 'blue' ? 'text-blue-600' :
-                                item.color === 'green' ? 'text-green-600' :
-                                item.color === 'yellow' ? 'text-yellow-600' :
-                                item.color === 'purple' ? 'text-purple-600' : 'text-orange-600'
-                              }`}>{item.value.toFixed(1)}</span>
-                              <span className="text-gray-500 text-sm"> / 100</span>
+                            <p className="text-xs text-gray-500 mb-2">{item.desc}</p>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                              <div 
+                                className={`h-3 rounded-full transition-all ${
+                                  item.color === 'blue' ? 'bg-blue-500' :
+                                  item.color === 'green' ? 'bg-green-500' :
+                                  item.color === 'yellow' ? 'bg-yellow-500' :
+                                  item.color === 'purple' ? 'bg-purple-500' : 'bg-orange-500'
+                                }`} 
+                                style={{ width: `${Math.min(item.value, 100)}%` }}
+                              />
                             </div>
+                            <p className="text-xs text-gray-500 mt-1 text-right">
+                              Kontribusi: <strong>{(item.value * item.bobot / 100).toFixed(1)} poin</strong>
+                            </p>
                           </div>
-                          <p className="text-xs text-gray-500 mb-2">{item.desc}</p>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className={`h-3 rounded-full transition-all ${
-                                item.color === 'blue' ? 'bg-blue-500' :
-                                item.color === 'green' ? 'bg-green-500' :
-                                item.color === 'yellow' ? 'bg-yellow-500' :
-                                item.color === 'purple' ? 'bg-purple-500' : 'bg-orange-500'
-                              }`} 
-                              style={{ width: `${Math.min(item.value, 100)}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1 text-right">
-                            Kontribusi: <strong>{(item.value * item.bobot / 100).toFixed(1)} poin</strong>
-                          </p>
-                        </div>
-                      ))}
+                        ));
+                      })()}
                     </div>
 
                     {/* Total */}

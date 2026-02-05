@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
+import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // GET - Get all kegiatan for kesubag monitoring (read-only)
 export async function GET(req: NextRequest) {
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     const [kegiatanRows] = await pool.query<RowDataPacket[]>(query, queryParams);
 
     // Calculate kinerja for each kegiatan
-    const kegiatanWithKinerja = kegiatanRows.map((kg) => {
+    const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg) => {
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
         tanggal_mulai: kg.tanggal_mulai,
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
         kendala_resolved: parseInt(kg.kendala_resolved) || 0
       };
 
-      const kinerjaResult = hitungKinerjaKegiatan(kegiatanData);
+      const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
 
       return {
         ...kg,
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
           ? Math.round((parseFloat(kg.output_realisasi) / parseFloat(kg.target_output)) * 100 * 100) / 100 
           : 0
       };
-    });
+    }));
 
     // Filter by status_kinerja if provided
     let filteredKegiatan = kegiatanWithKinerja;

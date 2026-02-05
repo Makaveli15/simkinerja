@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
+import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // Generate monthly chart data
 function generateMonthlyData() {
@@ -147,7 +147,7 @@ export async function GET() {
       };
 
       // Calculate kinerja using the service
-      const kinerjaResult = hitungKinerjaKegiatan(kinerjaData);
+      const kinerjaResult = await hitungKinerjaKegiatanAsync(kinerjaData);
       totalSkor += kinerjaResult.skor_kinerja;
       countWithData++;
     }

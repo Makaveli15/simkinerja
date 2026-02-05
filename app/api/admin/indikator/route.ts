@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { clearBobotCache } from '@/lib/services/kinerjaCalculator';
 
 // GET - Get all indikator kinerja
 export async function GET(req: NextRequest) {
@@ -98,6 +99,9 @@ export async function POST(req: NextRequest) {
       ]
     );
 
+    // Clear bobot cache so all roles get updated values
+    clearBobotCache();
+
     return NextResponse.json({
       success: true,
       message: 'Indikator berhasil ditambahkan',
@@ -156,17 +160,20 @@ export async function PUT(req: NextRequest) {
       [
         kode || null,
         nama || null,
-        deskripsi,
-        bobot !== undefined ? parseFloat(bobot) : null,
-        urutan || null,
-        rumus_perhitungan,
+        deskripsi || null,
+        bobot !== undefined && bobot !== '' ? parseFloat(bobot) : null,
+        urutan !== undefined && urutan !== '' ? parseInt(urutan) : null,
+        rumus_perhitungan || null,
         satuan || null,
-        nilai_min,
-        nilai_max,
-        is_active,
+        nilai_min !== undefined && nilai_min !== '' ? parseFloat(nilai_min) : null,
+        nilai_max !== undefined && nilai_max !== '' ? parseFloat(nilai_max) : null,
+        is_active !== undefined ? is_active : null,
         id
       ]
     );
+
+    // Clear bobot cache so all roles get updated values
+    clearBobotCache();
 
     return NextResponse.json({
       success: true,
@@ -203,6 +210,9 @@ export async function DELETE(req: NextRequest) {
       'UPDATE master_indikator_kinerja SET is_active = FALSE WHERE id = ?',
       [id]
     );
+
+    // Clear bobot cache so all roles get updated values
+    clearBobotCache();
 
     return NextResponse.json({
       success: true,

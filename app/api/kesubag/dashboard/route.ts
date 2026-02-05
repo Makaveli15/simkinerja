@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
+import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // Generate monthly chart data
 function generateMonthlyData() {
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     `);
 
     // Calculate kinerja for each kegiatan
-    const kegiatanWithKinerja = kegiatanRows.map((kg: RowDataPacket) => {
+    const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg: RowDataPacket) => {
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
         tanggal_mulai: kg.tanggal_mulai,
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
         kendala_resolved: parseInt(kg.kendala_resolved) || 0
       };
 
-      const kinerjaResult = hitungKinerjaKegiatan(kegiatanData);
+      const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
 
       return {
         id: kg.id,
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         skor_kinerja: kinerjaResult.skor_kinerja,
         status_kinerja: kinerjaResult.status_kinerja
       };
-    });
+    }));
 
     // Calculate statistics
     const totalKegiatan = kegiatanWithKinerja.length;

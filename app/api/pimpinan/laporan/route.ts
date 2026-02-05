@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { hitungKinerjaKegiatan, KegiatanData, IndikatorSkor } from '@/lib/services/kinerjaCalculator';
+import { hitungKinerjaKegiatanAsync, KegiatanData, IndikatorSkor } from '@/lib/services/kinerjaCalculator';
 
 interface KegiatanWithKinerja {
   id: number;
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
         kendala_resolved: parseInt(kg.kendala_resolved) || 0
       };
 
-      const kinerjaResult = hitungKinerjaKegiatan(kegiatanData);
+      const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
 
       return {
         id: kg.id,

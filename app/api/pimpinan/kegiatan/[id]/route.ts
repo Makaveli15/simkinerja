@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
+import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // GET - Get kegiatan detail (read-only for pimpinan)
 export async function GET(
@@ -178,7 +178,7 @@ export async function GET(
       dokumen_stats: dokumenStats
     };
 
-    const kinerjaResult = hitungKinerjaKegiatan(kegiatanData);
+    const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
 
     return NextResponse.json({
       kegiatan: {

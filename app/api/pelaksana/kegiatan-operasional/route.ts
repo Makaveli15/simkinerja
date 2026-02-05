@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { hitungKinerjaKegiatan, KegiatanData } from '@/lib/services/kinerjaCalculator';
+import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
 // GET - List kegiatan operasional tim
 export async function GET(request: NextRequest) {
@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
       };
 
       // Calculate kinerja using the service (automatic calculation)
-      const kinerjaResult = hitungKinerjaKegiatan(kinerjaData);
+      const kinerjaResult = await hitungKinerjaKegiatanAsync(kinerjaData);
 
       const realisasiAnggaran = k.anggaran_pagu > 0 
         ? (k.total_anggaran_realisasi / k.anggaran_pagu) * 100 
