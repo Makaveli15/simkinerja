@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     `);
 
     // Calculate kinerja for each kegiatan
-    const kegiatanWithKinerja = kegiatanRows.map((kg: RowDataPacket) => {
+    const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg: RowDataPacket) => {
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
         tanggal_mulai: kg.tanggal_mulai,
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
         skor_kinerja: kinerjaResult.skor_kinerja,
         status_kinerja: kinerjaResult.status_kinerja
       };
-    });
+    }));
 
     // Calculate statistics
     const totalKegiatan = kegiatanWithKinerja.length;
