@@ -61,6 +61,7 @@ export default function MonitoringKegiatanPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.append('monitoring', 'true'); // Only show fully approved kegiatan (disetujui)
       if (selectedKro) params.append('kro_id', selectedKro);
       if (selectedTim) params.append('tim_id', selectedTim);
       if (selectedStatusKinerja) params.append('status_kinerja', selectedStatusKinerja);
@@ -177,6 +178,7 @@ export default function MonitoringKegiatanPage() {
             <div className="relative">
               <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                suppressHydrationWarning
                 type="text"
                 placeholder="Cari kegiatan, tim, KRO..."
                 value={searchTerm}
@@ -187,6 +189,7 @@ export default function MonitoringKegiatanPage() {
           </div>
 
           <select
+            suppressHydrationWarning
             value={selectedKro}
             onChange={(e) => setSelectedKro(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -198,6 +201,7 @@ export default function MonitoringKegiatanPage() {
           </select>
 
           <select
+            suppressHydrationWarning
             value={selectedTim}
             onChange={(e) => setSelectedTim(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -209,6 +213,7 @@ export default function MonitoringKegiatanPage() {
           </select>
 
           <select
+            suppressHydrationWarning
             value={selectedStatusKinerja}
             onChange={(e) => setSelectedStatusKinerja(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"

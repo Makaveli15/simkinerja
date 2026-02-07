@@ -164,6 +164,7 @@ export default function PimpinanLaporanPage() {
             <div className="relative">
               <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                suppressHydrationWarning
                 type="text"
                 placeholder="Cari judul, pelaksana, tim..."
                 value={searchTerm}
@@ -175,6 +176,7 @@ export default function PimpinanLaporanPage() {
 
           {/* Tahun Filter */}
           <select
+            suppressHydrationWarning
             value={filterTahun}
             onChange={(e) => {
               setFilterTahun(Number(e.target.value));
@@ -189,6 +191,7 @@ export default function PimpinanLaporanPage() {
 
           {/* Bulan Filter */}
           <select
+            suppressHydrationWarning
             value={filterBulan}
             onChange={(e) => {
               setFilterBulan(e.target.value ? Number(e.target.value) : '');
@@ -204,6 +207,7 @@ export default function PimpinanLaporanPage() {
 
           {/* Tim Filter */}
           <select
+            suppressHydrationWarning
             value={filterTim}
             onChange={(e) => {
               setFilterTim(e.target.value ? Number(e.target.value) : '');

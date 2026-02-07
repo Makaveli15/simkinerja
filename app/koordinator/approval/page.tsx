@@ -156,7 +156,7 @@ export default function KoordinatorApprovalPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -183,11 +183,12 @@ export default function KoordinatorApprovalPage() {
         <div className="flex-1 relative">
           <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
+            suppressHydrationWarning
             type="text"
             placeholder="Cari kegiatan, pelaksana, atau KRO..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
         <div className="flex gap-2">
@@ -285,7 +286,7 @@ export default function KoordinatorApprovalPage() {
                   {(item.status_pengajuan === 'diajukan' || item.status_pengajuan === 'review_koordinator') && (
                     <Link
                       href={`/koordinator/approval/${item.id}`}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all text-center font-medium"
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all text-center font-medium"
                     >
                       Review & Approval
                     </Link>

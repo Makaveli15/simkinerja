@@ -9,7 +9,9 @@ import {
   LuCircleX,
   LuTrendingUp,
   LuCalendar,
-  LuArrowRight
+  LuArrowRight,
+  LuWallet,
+  LuChevronRight
 } from 'react-icons/lu';
 
 interface DashboardStats {
@@ -81,8 +83,11 @@ export default function PPKDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500">Memuat dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -90,57 +95,88 @@ export default function PPKDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard PPK</h1>
-        <p className="text-gray-600">Validasi kegiatan setelah review koordinator</p>
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuWallet className="w-6 h-6" />
+              </div>
+              Dashboard PPK
+            </h1>
+            <p className="text-blue-100 mt-2">Validasi kegiatan setelah review koordinator</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
+              <LuCalendar className="w-4 h-4" />
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
+            {(stats?.menunggu_review || 0) > 0 && (
+              <Link
+                href="/ppk/kegiatan/approval"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-600 rounded-xl hover:bg-blue-50 transition-colors font-medium text-sm"
+              >
+                <LuClock className="w-4 h-4" />
+                {stats?.menunggu_review} Menunggu
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-6 border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <LuClipboardList className="w-6 h-6 text-blue-600" />
-            </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Total Kegiatan</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.total_kegiatan || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Total Kegiatan</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats?.total_kegiatan || 0}</p>
+              <p className="text-xs text-gray-400 mt-1">kegiatan diproses</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+              <LuClipboardList className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
-              <LuClock className="w-6 h-6 text-orange-600" />
-            </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Menunggu Review</p>
-              <p className="text-2xl font-bold text-orange-600">{stats?.menunggu_review || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Menunggu Review</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats?.menunggu_review || 0}</p>
+              <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                perlu validasi
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
+              <LuClock className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-              <LuClipboardCheck className="w-6 h-6 text-green-600" />
-            </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Disetujui</p>
-              <p className="text-2xl font-bold text-green-600">{stats?.disetujui || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Disetujui</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats?.disetujui || 0}</p>
+              <p className="text-xs text-green-600 mt-1">diteruskan</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white shadow-lg shadow-green-500/30">
+              <LuClipboardCheck className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
-              <LuCircleX className="w-6 h-6 text-red-600" />
-            </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Ditolak</p>
-              <p className="text-2xl font-bold text-red-600">{stats?.ditolak || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Ditolak</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{stats?.ditolak || 0}</p>
+              <p className="text-xs text-red-600 mt-1">dikembalikan</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30">
+              <LuCircleX className="w-6 h-6" />
             </div>
           </div>
         </div>
@@ -148,10 +184,10 @@ export default function PPKDashboardPage() {
 
       {/* Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100">Total Anggaran Kegiatan</p>
+              <p className="text-blue-100">Total Anggaran Kegiatan</p>
               <p className="text-3xl font-bold mt-2">{formatCurrency(stats?.total_anggaran || 0)}</p>
             </div>
             <div className="w-16 h-16 rounded-xl bg-white/20 flex items-center justify-center">
@@ -178,7 +214,7 @@ export default function PPKDashboardPage() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Menunggu Review</h2>
-            <Link href="/ppk/kegiatan/approval" className="text-orange-600 text-sm hover:underline flex items-center gap-1">
+            <Link href="/ppk/kegiatan/approval" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
               Lihat Semua <LuArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -189,7 +225,7 @@ export default function PPKDashboardPage() {
                 <Link
                   key={item.id}
                   href={`/ppk/kegiatan/approval/${item.id}`}
-                  className="block p-4 bg-gray-50 rounded-xl hover:bg-orange-50 transition-colors"
+                  className="block p-4 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

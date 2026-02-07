@@ -361,6 +361,7 @@ export default function LaporanPage() {
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">Bulan:</label>
             <select
+              suppressHydrationWarning
               value={filterBulan}
               onChange={(e) => setFilterBulan(e.target.value ? Number(e.target.value) : '')}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -374,6 +375,7 @@ export default function LaporanPage() {
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">Tahun:</label>
             <select
+              suppressHydrationWarning
               value={filterTahun}
               onChange={(e) => setFilterTahun(Number(e.target.value))}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -3,6 +3,44 @@ import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
+// Helper function to get mitra list for a kegiatan
+async function getMitraForKegiatan(kegiatanId: number): Promise<RowDataPacket[]> {
+  try {
+    // Try to get from kegiatan_mitra table first (many-to-many)
+    try {
+      const [mitraRows] = await pool.query<RowDataPacket[]>(
+        `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+         FROM kegiatan_mitra km
+         JOIN mitra m ON km.mitra_id = m.id
+         WHERE km.kegiatan_id = ?
+         ORDER BY m.nama`,
+        [kegiatanId]
+      );
+      
+      if (mitraRows.length > 0) {
+        return mitraRows;
+      }
+    } catch (e) {
+      // kegiatan_mitra table might not exist, continue to fallback
+    }
+    
+    // Fallback to legacy mitra_id column in kegiatan (kegiatan_operasional)
+    const [legacyMitra] = await pool.query<RowDataPacket[]>(
+      `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+       FROM kegiatan ko
+       JOIN mitra m ON ko.mitra_id = m.id
+       WHERE ko.id = ?`,
+      [kegiatanId]
+    );
+    
+    return legacyMitra;
+  } catch (error) {
+    // Table might not exist yet, return empty array
+    console.log('Could not fetch mitra list:', error);
+    return [];
+  }
+}
+
 // GET - Get kegiatan list for koordinator (per tim)
 export async function GET(req: NextRequest) {
   try {
@@ -37,6 +75,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status');
     const periode_mulai = searchParams.get('periode_mulai');
     const periode_selesai = searchParams.get('periode_selesai');
+    const monitoring = searchParams.get('monitoring'); // Filter for monitoring page - only show fully approved kegiatan
 
     // Build query
     let query = `
@@ -47,6 +86,7 @@ export async function GET(req: NextRequest) {
         ko.tim_id,
         ko.kro_id,
         ko.created_by,
+        ko.mitra_id,
         ko.target_output,
         ko.output_realisasi,
         ko.satuan_output,
@@ -59,12 +99,20 @@ export async function GET(req: NextRequest) {
         ko.status_verifikasi,
         ko.catatan_koordinator,
         ko.tanggal_approval_koordinator,
+        COALESCE(ko.tanggal_pengajuan, ko.created_at) as tanggal_pengajuan,
+        ko.tanggal_approval,
+        ko.approved_by,
         ko.created_at,
         t.nama as tim_nama,
         kro.kode as kro_kode,
         kro.nama as kro_nama,
         u.nama_lengkap as pelaksana_nama,
         u.email as pelaksana_email,
+        m.nama as mitra_nama,
+        m.posisi as mitra_posisi,
+        m.alamat as mitra_alamat,
+        m.no_telp as mitra_no_telp,
+        m.sobat_id as mitra_sobat_id,
         COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_realisasi_anggaran,
         COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id), 0) as total_kendala,
         COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved
@@ -72,17 +120,25 @@ export async function GET(req: NextRequest) {
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       LEFT JOIN users u ON ko.created_by = u.id
+      LEFT JOIN mitra m ON ko.mitra_id = m.id
       WHERE ko.tim_id = ?
     `;
 
     const queryParams: (string | number)[] = [timId];
+
+    // If monitoring=true, only show kegiatan that are fully approved (disetujui)
+    if (monitoring === 'true') {
+      query += ' AND ko.status_pengajuan = ?';
+      queryParams.push('disetujui');
+    }
 
     if (kro_id) {
       query += ' AND ko.kro_id = ?';
       queryParams.push(kro_id);
     }
 
-    if (status_pengajuan) {
+    // Only apply status_pengajuan filter if not in monitoring mode
+    if (status_pengajuan && monitoring !== 'true') {
       query += ' AND ko.status_pengajuan = ?';
       queryParams.push(status_pengajuan);
     }
@@ -106,7 +162,7 @@ export async function GET(req: NextRequest) {
 
     const [kegiatanRows] = await pool.query<RowDataPacket[]>(query, queryParams);
 
-    // Calculate kinerja for each kegiatan
+    // Calculate kinerja for each kegiatan and get mitra list
     const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg) => {
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
@@ -122,6 +178,9 @@ export async function GET(req: NextRequest) {
       };
 
       const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
+      
+      // Get mitra list for this kegiatan
+      const mitraList = await getMitraForKegiatan(kg.id);
 
       return {
         ...kg,
@@ -131,7 +190,9 @@ export async function GET(req: NextRequest) {
         total_realisasi_anggaran: parseFloat(kg.total_realisasi_anggaran) || 0,
         skor_kinerja: kinerjaResult.skor_kinerja,
         status_kinerja: kinerjaResult.status_kinerja,
-        indikator: kinerjaResult.indikator
+        indikator: kinerjaResult.indikator,
+        mitra_list: mitraList,
+        total_mitra: mitraList.length
       };
     }));
 

@@ -98,18 +98,20 @@ export default function PPKLaporanPage() {
           <div className="flex-1 relative">
             <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
+              suppressHydrationWarning
               type="text"
               placeholder="Cari laporan..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           
           <select
+            suppressHydrationWarning
             value={filterTahun}
             onChange={(e) => setFilterTahun(Number(e.target.value))}
-            className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {years.map(year => (
               <option key={year} value={year}>{year}</option>
@@ -117,9 +119,10 @@ export default function PPKLaporanPage() {
           </select>
 
           <select
+            suppressHydrationWarning
             value={filterBulan}
             onChange={(e) => setFilterBulan(e.target.value ? Number(e.target.value) : '')}
-            className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Semua Bulan</option>
             {BULAN_NAMES.map((bulan, index) => (
@@ -133,7 +136,7 @@ export default function PPKLaporanPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-500">Memuat laporan...</p>
           </div>
         ) : paginatedLaporan.length > 0 ? (
@@ -155,8 +158,8 @@ export default function PPKLaporanPage() {
                     <tr key={laporan.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                            <LuFileText className="w-5 h-5 text-orange-600" />
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                            <LuFileText className="w-5 h-5 text-blue-600" />
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">{laporan.judul}</p>
@@ -184,7 +187,7 @@ export default function PPKLaporanPage() {
                           href={laporan.file_path}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-3 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors"
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
                         >
                           <LuDownload className="w-4 h-4" />
                           Download

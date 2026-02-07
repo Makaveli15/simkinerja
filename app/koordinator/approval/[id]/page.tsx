@@ -13,7 +13,7 @@ import {
   LuTarget,
   LuWallet,
   LuClock,
-  LuAlertCircle
+  LuTriangleAlert
 } from 'react-icons/lu';
 
 interface Kegiatan {
@@ -134,7 +134,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -275,7 +275,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
                     value={catatan}
                     onChange={(e) => setCatatan(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     placeholder="Tambahkan catatan..."
                   />
                 </div>
@@ -283,7 +283,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
                 <button
                   onClick={() => handleApproval('approve')}
                   disabled={submitting}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50"
                 >
                   <LuCircleCheck className="w-5 h-5" />
                   Setujui & Teruskan ke PPK
@@ -311,18 +311,18 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
           )}
 
           {/* Alur Approval Info */}
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6">
-            <h3 className="font-semibold text-green-900 mb-3">Alur Persetujuan</h3>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6">
+            <h3 className="font-semibold text-blue-900 mb-3">Alur Persetujuan</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">1</div>
-                <span className="text-green-800">Pelaksana mengajukan</span>
+                <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">1</div>
+                <span className="text-blue-800">Pelaksana mengajukan</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  canApprove ? 'bg-yellow-500 text-white animate-pulse' : 'bg-green-500 text-white'
+                  canApprove ? 'bg-yellow-500 text-white animate-pulse' : 'bg-blue-500 text-white'
                 }`}>2</div>
-                <span className={canApprove ? 'text-yellow-800 font-semibold' : 'text-green-800'}>
+                <span className={canApprove ? 'text-yellow-800 font-semibold' : 'text-blue-800'}>
                   Koordinator {canApprove ? '(Anda)' : 'menyetujui'}
                 </span>
               </div>

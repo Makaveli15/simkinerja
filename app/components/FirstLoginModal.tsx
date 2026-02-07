@@ -41,7 +41,7 @@ export default function FirstLoginModal({ isOpen, onSuccess, apiEndpoint = '/api
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           newPassword: passwordData.newPassword,
-          currentPassword: '' // Empty for first login
+          confirmPassword: passwordData.confirmPassword
         }),
       });
 

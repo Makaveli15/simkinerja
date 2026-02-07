@@ -252,15 +252,15 @@ export default function KoordinatorKegiatanDetailPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <LuWallet className="w-5 h-5 text-blue-600" />
+                  <LuWallet className="w-5 h-5 text-green-600" />
                   Progress Anggaran
                 </h3>
-                <span className="text-2xl font-bold text-blue-600">{progressAnggaran}%</span>
+                <span className="text-2xl font-bold text-green-600">{progressAnggaran}%</span>
               </div>
               <div className="space-y-2">
                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-blue-500 rounded-full transition-all"
+                    className="h-full bg-green-500 rounded-full transition-all"
                     style={{ width: `${progressAnggaran}%` }}
                   ></div>
                 </div>

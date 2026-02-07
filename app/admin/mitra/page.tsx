@@ -228,6 +228,7 @@ export default function MitraPage() {
           <div className="flex-1 relative">
             <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
+              suppressHydrationWarning
               type="text"
               placeholder="Cari nama, posisi, SOBAT ID, atau email..."
               value={searchTerm}
@@ -236,6 +237,7 @@ export default function MitraPage() {
             />
           </div>
           <select
+            suppressHydrationWarning
             value={filterJK}
             onChange={(e) => setFilterJK(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"

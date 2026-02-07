@@ -141,7 +141,7 @@ export default function PPKApprovalPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white">
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex items-center gap-3 mb-2">
           <LuClipboardCheck className="w-8 h-8" />
           <h1 className="text-2xl font-bold">Approval Kegiatan</h1>
@@ -207,6 +207,7 @@ export default function PPKApprovalPage() {
       <div className="relative">
         <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
+          suppressHydrationWarning
           type="text"
           placeholder="Cari kegiatan, tim, atau pelaksana..."
           value={searchQuery}

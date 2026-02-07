@@ -159,7 +159,7 @@ export default function PPKKegiatanDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default function PPKKegiatanDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Kegiatan tidak ditemukan</p>
-        <Link href="/ppk/kegiatan" className="text-orange-600 hover:underline mt-2 inline-block">
+        <Link href="/ppk/kegiatan" className="text-blue-600 hover:underline mt-2 inline-block">
           Kembali ke daftar kegiatan
         </Link>
       </div>
@@ -218,7 +218,7 @@ export default function PPKKegiatanDetailPage() {
           {/* Deskripsi */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <LuFileText className="w-5 h-5 text-orange-600" />
+              <LuFileText className="w-5 h-5 text-blue-600" />
               Deskripsi
             </h2>
             <p className="text-gray-600 whitespace-pre-wrap">{kegiatan.deskripsi || 'Tidak ada deskripsi'}</p>
@@ -230,15 +230,15 @@ export default function PPKKegiatanDetailPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                  <LuTarget className="w-5 h-5 text-orange-600" />
+                  <LuTarget className="w-5 h-5 text-blue-600" />
                   Progress Output
                 </h3>
-                <span className="text-2xl font-bold text-orange-600">{progressOutput}%</span>
+                <span className="text-2xl font-bold text-blue-600">{progressOutput}%</span>
               </div>
               <div className="space-y-2">
                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-orange-500 rounded-full transition-all"
+                    className="h-full bg-blue-500 rounded-full transition-all"
                     style={{ width: `${progressOutput}%` }}
                   ></div>
                 </div>
@@ -338,7 +338,7 @@ export default function PPKKegiatanDetailPage() {
                         href={doc.path_file} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <LuDownload className="w-4 h-4" />
                       </a>
@@ -405,7 +405,7 @@ export default function PPKKegiatanDetailPage() {
           {/* Pelaksana Info */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <LuUser className="w-5 h-5 text-orange-600" />
+              <LuUser className="w-5 h-5 text-blue-600" />
               Pelaksana
             </h2>
             <div className="space-y-3">
@@ -423,7 +423,7 @@ export default function PPKKegiatanDetailPage() {
           {/* Timeline */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <LuCalendar className="w-5 h-5 text-orange-600" />
+              <LuCalendar className="w-5 h-5 text-blue-600" />
               Timeline
             </h2>
             <div className="space-y-3">
@@ -469,7 +469,7 @@ export default function PPKKegiatanDetailPage() {
           {kegiatan.status_pengajuan === 'review_ppk' && (
             <Link
               href={`/ppk/kegiatan/approval/${kegiatan.id}`}
-              className="block w-full text-center bg-orange-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-orange-700 transition-colors"
+              className="block w-full text-center bg-blue-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
             >
               Review & Approval
             </Link>

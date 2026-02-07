@@ -363,14 +363,14 @@ export async function PATCH(req: NextRequest) {
         ['menunggu', dokumen.kegiatan_id]
       );
 
-      // Notify kesubag
-      const [kesubagRows] = await pool.query<RowDataPacket[]>(
-        "SELECT id FROM users WHERE role = 'kesubag' AND status = 'aktif'"
+      // Notify koordinator
+      const [koordinatorRows] = await pool.query<RowDataPacket[]>(
+        "SELECT id FROM users WHERE role = 'koordinator' AND status = 'aktif'"
       );
       
-      for (const kesubag of kesubagRows) {
+      for (const koordinator of koordinatorRows) {
         await createNotification({
-          userId: kesubag.id,
+          userId: koordinator.id,
           title: '📄 Permintaan Validasi Dokumen',
           message: `${payload.nama_lengkap || 'Pelaksana'} mengajukan dokumen "${dokumen.nama_file}" untuk kegiatan "${dokumen.kegiatan_nama}" untuk divalidasi.`,
           type: 'permintaan_validasi',
@@ -381,7 +381,7 @@ export async function PATCH(req: NextRequest) {
 
       return NextResponse.json({ 
         success: true,
-        message: 'Permintaan validasi berhasil dikirim ke Kesubag' 
+        message: 'Permintaan validasi berhasil dikirim ke Koordinator' 
       });
     }
 

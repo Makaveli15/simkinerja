@@ -286,7 +286,7 @@ export default function PPKLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50" suppressHydrationWarning>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50" suppressHydrationWarning>
       {/* First Login Modal */}
       {showFirstLoginModal && (
         <FirstLoginModal 
@@ -306,7 +306,7 @@ export default function PPKLayout({
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 left-0 h-full bg-gradient-to-b from-orange-500 via-orange-500 to-orange-600 text-white z-50
+        fixed top-0 left-0 h-full bg-gradient-to-b from-blue-500 via-blue-500 to-blue-600 text-white z-50
         transition-all duration-300 ease-in-out shadow-2xl
         ${isCollapsed ? 'w-20' : 'w-64'}
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -320,7 +320,7 @@ export default function PPKLayout({
               </div>
               <div>
                 <span className="font-bold text-lg text-white">SIMKINERJA</span>
-                <p className="text-xs text-orange-100">Pejabat Pembuat Komitmen</p>
+                <p className="text-xs text-blue-100">Pejabat Pembuat Komitmen</p>
               </div>
             </div>
           )}
@@ -375,7 +375,7 @@ export default function PPKLayout({
                             className={`
                               flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm
                               ${isSubActive 
-                                ? 'bg-white text-orange-600 shadow-md font-semibold' 
+                                ? 'bg-white text-indigo-600 shadow-md font-semibold' 
                                 : 'text-white/80 hover:bg-white/15 hover:text-white'
                               }
                             `}
@@ -399,7 +399,7 @@ export default function PPKLayout({
                 className={`
                   flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
                   ${isActive 
-                    ? 'bg-white text-orange-600 shadow-lg font-semibold' 
+                    ? 'bg-white text-indigo-600 shadow-lg font-semibold' 
                     : 'text-white/90 hover:bg-white/15 hover:text-white'
                   }
                   ${isCollapsed ? 'justify-center' : ''}
@@ -430,7 +430,7 @@ export default function PPKLayout({
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shadow-lg"
+              className="lg:hidden w-10 h-10 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg"
             >
               <LuMenu className="w-5 h-5" />
             </button>
@@ -459,7 +459,7 @@ export default function PPKLayout({
                 {/* Notifications dropdown */}
                 {isNotifOpen && (
                   <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-between">
+                    <div className="px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-between">
                       <div>
                         <h3 className="font-semibold">Notifikasi</h3>
                         <p className="text-xs text-white/80">{unreadCount} notifikasi baru</p>
@@ -487,7 +487,7 @@ export default function PPKLayout({
                                 <div className="flex items-center gap-2">
                                   <p className={`font-medium text-gray-900 text-sm ${notif.read ? 'font-normal' : ''}`}>{notif.title}</p>
                                   {!notif.read && (
-                                    <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                                   )}
                                 </div>
                                 <p className="text-gray-600 text-xs truncate">{notif.message}</p>
@@ -496,7 +496,7 @@ export default function PPKLayout({
                                   {!notif.read && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
-                                      className="text-xs text-orange-500 hover:text-orange-600 transition-colors"
+                                      className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
                                     >
                                       Tandai dibaca
                                     </button>
@@ -522,7 +522,7 @@ export default function PPKLayout({
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100 transition-all"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-orange-500/30 overflow-hidden">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 overflow-hidden">
                     {user?.foto ? (
                       <img src={user.foto} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -539,7 +539,7 @@ export default function PPKLayout({
                 {/* Profile dropdown */}
                 {isProfileOpen && (
                   <div className="absolute right-0 top-14 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-                    <div className="px-4 py-4 bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+                    <div className="px-4 py-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center overflow-hidden">
                           {user?.foto ? (

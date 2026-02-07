@@ -127,6 +127,8 @@ export default function LoginPage() {
                   className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400"
                   placeholder="Masukkan username"
                   required
+                  autoComplete="username"
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -146,6 +148,8 @@ export default function LoginPage() {
                   className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-700 placeholder-gray-400"
                   placeholder="Masukkan password"
                   required
+                  autoComplete="current-password"
+                  suppressHydrationWarning
                 />
                 <button
                   type="button"

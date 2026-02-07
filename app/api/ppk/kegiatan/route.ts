@@ -3,6 +3,44 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
+// Helper function to get mitra list for a kegiatan
+async function getMitraForKegiatan(kegiatanId: number): Promise<RowDataPacket[]> {
+  try {
+    // Try to get from kegiatan_mitra table first (many-to-many)
+    try {
+      const [mitraRows] = await pool.query<RowDataPacket[]>(
+        `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+         FROM kegiatan_mitra km
+         JOIN mitra m ON km.mitra_id = m.id
+         WHERE km.kegiatan_id = ?
+         ORDER BY m.nama`,
+        [kegiatanId]
+      );
+      
+      if (mitraRows.length > 0) {
+        return mitraRows;
+      }
+    } catch (e) {
+      // kegiatan_mitra table might not exist, continue to fallback
+    }
+    
+    // Fallback to legacy mitra_id column in kegiatan (kegiatan_operasional)
+    const [legacyMitra] = await pool.query<RowDataPacket[]>(
+      `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+       FROM kegiatan ko
+       JOIN mitra m ON ko.mitra_id = m.id
+       WHERE ko.id = ?`,
+      [kegiatanId]
+    );
+    
+    return legacyMitra;
+  } catch (error) {
+    // Table might not exist yet, return empty array
+    console.log('Could not fetch mitra list:', error);
+    return [];
+  }
+}
+
 // GET - Get kegiatan list for PPK
 export async function GET(req: NextRequest) {
   try {
@@ -21,10 +59,15 @@ export async function GET(req: NextRequest) {
     const tim_id = searchParams.get('tim_id');
     const kro_id = searchParams.get('kro_id');
     const status_pengajuan = searchParams.get('status_pengajuan');
+    const status_kinerja = searchParams.get('status_kinerja');
+    const status = searchParams.get('status');
     const periode_mulai = searchParams.get('periode_mulai');
     const periode_selesai = searchParams.get('periode_selesai');
+    const monitoring = searchParams.get('monitoring'); // Filter for monitoring page - only show fully approved kegiatan
 
-    // Build query - PPK sees all kegiatan that passed koordinator approval
+    // Build query - PPK sees kegiatan based on context
+    // If monitoring=true, only show fully approved (disetujui)
+    // Otherwise, show all kegiatan that passed koordinator approval
     let query = `
       SELECT 
         ko.id,
@@ -33,6 +76,7 @@ export async function GET(req: NextRequest) {
         ko.tim_id,
         ko.kro_id,
         ko.created_by,
+        ko.mitra_id,
         ko.target_output,
         ko.output_realisasi,
         ko.satuan_output,
@@ -54,19 +98,37 @@ export async function GET(req: NextRequest) {
         u.nama_lengkap as pelaksana_nama,
         u.email as pelaksana_email,
         koordinator.nama_lengkap as koordinator_nama,
+        m.nama as mitra_nama,
+        m.posisi as mitra_posisi,
+        m.alamat as mitra_alamat,
+        m.no_telp as mitra_no_telp,
+        m.sobat_id as mitra_sobat_id,
+        COALESCE(ko.tanggal_pengajuan, ko.created_at) as tanggal_pengajuan,
+        COALESCE(ko.tanggal_approval_koordinator, ko.tanggal_approval_ppk) as tanggal_approval,
         COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_realisasi_anggaran,
         COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id), 0) as total_kendala,
-        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved
+        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND status_final = 'disahkan'), 0) as dokumen_disahkan
       FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
       LEFT JOIN users u ON ko.created_by = u.id
       LEFT JOIN users koordinator ON ko.approved_by_koordinator = koordinator.id
-      WHERE ko.status_pengajuan IN ('review_ppk', 'review_kepala', 'disetujui', 'ditolak', 'revisi')
-         OR ko.approved_by_ppk IS NOT NULL
+      LEFT JOIN mitra m ON ko.mitra_id = m.id
+      WHERE 1=1
     `;
 
     const queryParams: (string | number)[] = [];
+
+    // If monitoring=true, only show kegiatan that are fully approved (disetujui)
+    if (monitoring === 'true') {
+      query += ' AND ko.status_pengajuan = ?';
+      queryParams.push('disetujui');
+    } else {
+      // For approval page, show kegiatan that passed koordinator approval
+      query += ` AND (ko.status_pengajuan IN ('review_ppk', 'review_kepala', 'disetujui', 'ditolak', 'revisi')
+         OR ko.approved_by_ppk IS NOT NULL)`;
+    }
 
     if (tim_id) {
       query += ' AND ko.tim_id = ?';
@@ -78,7 +140,8 @@ export async function GET(req: NextRequest) {
       queryParams.push(kro_id);
     }
 
-    if (status_pengajuan) {
+    // Only apply status_pengajuan filter if not in monitoring mode
+    if (status_pengajuan && monitoring !== 'true') {
       query += ' AND ko.status_pengajuan = ?';
       queryParams.push(status_pengajuan);
     }
@@ -97,7 +160,7 @@ export async function GET(req: NextRequest) {
 
     const [kegiatanRows] = await pool.query<RowDataPacket[]>(query, queryParams);
 
-    // Calculate kinerja for each kegiatan
+    // Calculate kinerja for each kegiatan and get mitra list
     const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg) => {
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
@@ -113,6 +176,9 @@ export async function GET(req: NextRequest) {
       };
 
       const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
+      
+      // Get mitra list for this kegiatan
+      const mitraList = await getMitraForKegiatan(kg.id);
 
       return {
         ...kg,
@@ -122,9 +188,23 @@ export async function GET(req: NextRequest) {
         total_realisasi_anggaran: parseFloat(kg.total_realisasi_anggaran) || 0,
         skor_kinerja: kinerjaResult.skor_kinerja,
         status_kinerja: kinerjaResult.status_kinerja,
-        indikator: kinerjaResult.indikator
+        indikator: kinerjaResult.indikator,
+        mitra_list: mitraList,
+        total_mitra: mitraList.length,
+        realisasi_anggaran_persen: kg.anggaran_pagu > 0 
+          ? Math.round((parseFloat(kg.total_realisasi_anggaran) / parseFloat(kg.anggaran_pagu)) * 100 * 100) / 100 
+          : 0,
+        capaian_output_persen: kg.target_output > 0 
+          ? Math.round((parseFloat(kg.output_realisasi) / parseFloat(kg.target_output)) * 100 * 100) / 100 
+          : 0
       };
     }));
+
+    // Filter by status_kinerja if provided
+    let filteredKegiatan = kegiatanWithKinerja;
+    if (status_kinerja) {
+      filteredKegiatan = kegiatanWithKinerja.filter(k => k.status_kinerja === status_kinerja);
+    }
 
     // Get Tim list for filter dropdown
     const [timList] = await pool.query<RowDataPacket[]>('SELECT id, nama FROM tim ORDER BY nama');
@@ -133,7 +213,7 @@ export async function GET(req: NextRequest) {
     const [kroList] = await pool.query<RowDataPacket[]>('SELECT id, kode, nama FROM kro ORDER BY kode');
 
     return NextResponse.json({
-      kegiatan: kegiatanWithKinerja,
+      kegiatan: filteredKegiatan,
       filters: {
         tim_list: timList,
         kro_list: kroList

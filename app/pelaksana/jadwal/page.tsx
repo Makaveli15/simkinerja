@@ -433,6 +433,7 @@ export default function JadwalPage() {
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Bulan:</label>
               <select
+                suppressHydrationWarning
                 value={filterBulan}
                 onChange={e => setFilterBulan(e.target.value)}
                 className="px-3 py-2 border rounded-lg text-sm"
@@ -448,6 +449,7 @@ export default function JadwalPage() {
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Tahun:</label>
               <select
+                suppressHydrationWarning
                 value={filterTahun}
                 onChange={e => setFilterTahun(Number(e.target.value))}
                 className="px-3 py-2 border rounded-lg text-sm"
@@ -462,6 +464,7 @@ export default function JadwalPage() {
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Status:</label>
               <select
+                suppressHydrationWarning
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
                 className="px-3 py-2 border rounded-lg text-sm"

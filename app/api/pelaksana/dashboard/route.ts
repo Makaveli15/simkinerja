@@ -158,8 +158,8 @@ export async function GET() {
     const monthlyData = generateMonthlyData();
     const currentYear = new Date().getFullYear();
     
-    // Progres chart - monthly average progress
-    const progresChart = await Promise.all(monthlyData.map(async ({ bulan, monthIndex }) => {
+    // Progres chart - monthly average progress (only show if there are kegiatan)
+    const progresChart = totalKegiatan > 0 ? await Promise.all(monthlyData.map(async ({ bulan, monthIndex }) => {
       const startDate = new Date(currentYear, monthIndex, 1);
       const endDate = new Date(currentYear, monthIndex + 1, 0);
       
@@ -179,10 +179,10 @@ export async function GET() {
         progres: Math.round(progres),
         target: Math.round(target)
       };
-    }));
+    })) : [];
 
-    // Anggaran chart - monthly pagu vs realisasi
-    const anggaranChart = await Promise.all(monthlyData.map(async ({ bulan, monthIndex }) => {
+    // Anggaran chart - monthly pagu vs realisasi (only show if there are kegiatan)
+    const anggaranChart = totalKegiatan > 0 ? await Promise.all(monthlyData.map(async ({ bulan, monthIndex }) => {
       const startDate = new Date(currentYear, monthIndex, 1);
       const endDate = new Date(currentYear, monthIndex + 1, 0);
       
@@ -202,7 +202,7 @@ export async function GET() {
         pagu: Math.round(monthlyPagu),
         realisasi: Math.round(realisasi)
       };
-    }));
+    })) : [];
 
     return NextResponse.json({
       stats: {

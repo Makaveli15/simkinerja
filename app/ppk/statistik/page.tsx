@@ -66,9 +66,9 @@ export default function StatistikKinerjaPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500">Memuat statistik...</p>
         </div>
       </div>
@@ -78,63 +78,77 @@ export default function StatistikKinerjaPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Statistik Kinerja</h1>
-          <p className="text-gray-600">Ringkasan performa approval dan anggaran kegiatan</p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <LuCalendar className="w-4 h-4" />
-          <span>{new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</span>
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <LuTrendingUp className="w-6 h-6" />
+              </div>
+              Statistik Kinerja
+            </h1>
+            <p className="text-blue-100 mt-2">Ringkasan performa approval dan anggaran kegiatan</p>
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
+            <LuCalendar className="w-4 h-4" />
+            {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <LuClipboardList className="w-6 h-6 text-blue-600" />
-            </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Total Kegiatan</p>
-              <p className="text-2xl font-bold text-gray-900">{statistik?.total_kegiatan || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Total Kegiatan</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{statistik?.total_kegiatan || 0}</p>
+              <p className="text-xs text-gray-400 mt-1">kegiatan diproses</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+              <LuClipboardList className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-yellow-100 flex items-center justify-center">
-              <LuClock className="w-6 h-6 text-yellow-600" />
-            </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Menunggu Approval</p>
-              <p className="text-2xl font-bold text-gray-900">{statistik?.kegiatan_pending || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Menunggu Approval</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{statistik?.kegiatan_pending || 0}</p>
+              <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                pending
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
+              <LuClock className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-              <LuCircleCheck className="w-6 h-6 text-green-600" />
-            </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Disetujui</p>
-              <p className="text-2xl font-bold text-gray-900">{statistik?.kegiatan_approved || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Disetujui</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{statistik?.kegiatan_approved || 0}</p>
+              <p className="text-xs text-green-600 mt-1">diteruskan</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-white shadow-lg shadow-green-500/30">
+              <LuCircleCheck className="w-6 h-6" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
-              <LuCircleX className="w-6 h-6 text-red-600" />
-            </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-gray-500">Ditolak/Revisi</p>
-              <p className="text-2xl font-bold text-gray-900">{statistik?.kegiatan_rejected || 0}</p>
+              <p className="text-sm text-gray-500 font-medium">Ditolak/Revisi</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">{statistik?.kegiatan_rejected || 0}</p>
+              <p className="text-xs text-red-600 mt-1">dikembalikan</p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30">
+              <LuCircleX className="w-6 h-6" />
             </div>
           </div>
         </div>
@@ -144,13 +158,13 @@ export default function StatistikKinerjaPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <LuWallet className="w-5 h-5 text-orange-600" />
+            <LuWallet className="w-5 h-5 text-blue-600" />
             Ringkasan Anggaran
           </h2>
           <div className="space-y-4">
-            <div className="p-4 bg-orange-50 rounded-xl">
-              <p className="text-sm text-orange-700 font-medium">Total Pagu Anggaran</p>
-              <p className="text-2xl font-bold text-orange-800">{formatCurrency(statistik?.total_anggaran || 0)}</p>
+            <div className="p-4 bg-blue-50 rounded-xl">
+              <p className="text-sm text-blue-700 font-medium">Total Pagu Anggaran</p>
+              <p className="text-2xl font-bold text-blue-800">{formatCurrency(statistik?.total_anggaran || 0)}</p>
             </div>
             <div className="p-4 bg-green-50 rounded-xl">
               <p className="text-sm text-green-700 font-medium">Total Realisasi</p>
@@ -161,7 +175,7 @@ export default function StatistikKinerjaPage() {
               <div className="mt-2 flex items-center gap-2">
                 <div className="flex-1 bg-gray-200 rounded-full h-3">
                   <div 
-                    className="bg-orange-500 h-3 rounded-full" 
+                    className="bg-blue-500 h-3 rounded-full" 
                     style={{ 
                       width: `${statistik?.total_anggaran ? (statistik.total_realisasi / statistik.total_anggaran * 100) : 0}%` 
                     }}
@@ -178,7 +192,7 @@ export default function StatistikKinerjaPage() {
         {/* Kegiatan Per Bulan */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <LuTrendingUp className="w-5 h-5 text-orange-600" />
+            <LuTrendingUp className="w-5 h-5 text-blue-600" />
             Kegiatan Per Bulan
           </h2>
           <div className="space-y-3">
@@ -203,13 +217,13 @@ export default function StatistikKinerjaPage() {
       {/* Info Panel */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <LuUsers className="w-5 h-5 text-orange-600" />
+          <LuUsers className="w-5 h-5 text-blue-600" />
           Ringkasan Approval
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 bg-orange-50 rounded-xl">
-            <p className="text-sm text-orange-700 font-medium">Kegiatan Bulan Ini</p>
-            <p className="text-3xl font-bold text-orange-800">{statistik?.kegiatan_bulan_ini || 0}</p>
+          <div className="p-4 bg-blue-50 rounded-xl">
+            <p className="text-sm text-blue-700 font-medium">Kegiatan Bulan Ini</p>
+            <p className="text-3xl font-bold text-blue-800">{statistik?.kegiatan_bulan_ini || 0}</p>
           </div>
           <div className="p-4 bg-blue-50 rounded-xl">
             <p className="text-sm text-blue-700 font-medium">Rata-rata Waktu Approval</p>

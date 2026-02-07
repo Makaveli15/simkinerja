@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get user profile
+    // Get user profile (only columns that exist in database)
     const [rows] = await pool.query<RowDataPacket[]>(`
       SELECT id, username, email, nama_lengkap, role, status, foto
       FROM users
@@ -51,37 +51,29 @@ export async function PUT(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { username, nama_lengkap, email, foto } = body;
+    const { nama, email, foto } = body;
 
     // Validate required fields
-    if (!username || !email) {
-      return NextResponse.json({ error: 'Username dan email wajib diisi' }, { status: 400 });
+    if (!nama) {
+      return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
     }
 
-    // Check if username is already taken by another user
-    const [existingUsers] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM users WHERE username = ? AND id != ?',
-      [username, auth.id]
-    );
-    
-    if (existingUsers.length > 0) {
-      return NextResponse.json({ error: 'Username sudah digunakan' }, { status: 400 });
+    // Check if email is already taken by another user (if email provided)
+    if (email) {
+      const [existingEmails] = await pool.query<RowDataPacket[]>(
+        'SELECT id FROM users WHERE email = ? AND id != ?',
+        [email, auth.id]
+      );
+      
+      if (existingEmails.length > 0) {
+        return NextResponse.json({ error: 'Email sudah digunakan' }, { status: 400 });
+      }
     }
 
-    // Check if email is already taken by another user
-    const [existingEmails] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM users WHERE email = ? AND id != ?',
-      [email, auth.id]
-    );
-    
-    if (existingEmails.length > 0) {
-      return NextResponse.json({ error: 'Email sudah digunakan' }, { status: 400 });
-    }
-
-    // Update profile
+    // Update profile (only columns that exist in users table)
     await pool.query(
-      'UPDATE users SET username = ?, nama_lengkap = ?, email = ?, foto = ? WHERE id = ?',
-      [username, nama_lengkap || null, email, foto || null, auth.id]
+      'UPDATE users SET nama_lengkap = ?, email = ?, foto = ? WHERE id = ?',
+      [nama, email || null, foto || null, auth.id]
     );
 
     // Fetch updated profile
@@ -92,7 +84,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Profile updated successfully',
-      user: updatedRows[0]
+      ...updatedRows[0]
     });
   } catch (error) {
     console.error('Error updating profile:', error);

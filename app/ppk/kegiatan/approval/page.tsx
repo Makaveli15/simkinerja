@@ -193,7 +193,7 @@ export default function PPKApprovalKegiatanPage() {
       draft: 'bg-gray-100 text-gray-800 border-gray-200',
     };
 
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactNode> = {
       review_ppk: <LuClock className="w-3 h-3" />,
       review_kepala: <LuBadgeCheck className="w-3 h-3" />,
       disetujui: <LuBadgeCheck className="w-3 h-3" />,
@@ -222,7 +222,7 @@ export default function PPKApprovalKegiatanPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">
@@ -300,6 +300,7 @@ export default function PPKApprovalKegiatanPage() {
         <div className="relative">
           <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
+            suppressHydrationWarning
             type="text"
             placeholder="Cari kegiatan, tim, atau pelaksana..."
             value={searchTerm}

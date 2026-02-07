@@ -3,6 +3,44 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
 
+// Helper function to get mitra list for a kegiatan
+async function getMitraForKegiatan(kegiatanId: number): Promise<RowDataPacket[]> {
+  try {
+    // Try to get from kegiatan_mitra table first (many-to-many)
+    try {
+      const [mitraRows] = await pool.query<RowDataPacket[]>(
+        `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+         FROM kegiatan_mitra km
+         JOIN mitra m ON km.mitra_id = m.id
+         WHERE km.kegiatan_id = ?
+         ORDER BY m.nama`,
+        [kegiatanId]
+      );
+      
+      if (mitraRows.length > 0) {
+        return mitraRows;
+      }
+    } catch (e) {
+      // kegiatan_mitra table might not exist, continue to fallback
+    }
+    
+    // Fallback to legacy mitra_id column in kegiatan (kegiatan_operasional)
+    const [legacyMitra] = await pool.query<RowDataPacket[]>(
+      `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+       FROM kegiatan ko
+       JOIN mitra m ON ko.mitra_id = m.id
+       WHERE ko.id = ?`,
+      [kegiatanId]
+    );
+    
+    return legacyMitra;
+  } catch (error) {
+    // Table might not exist yet, return empty array
+    console.log('Could not fetch mitra list:', error);
+    return [];
+  }
+}
+
 // GET - Get all kegiatan for pimpinan monitoring (read-only)
 export async function GET(req: NextRequest) {
   try {
@@ -33,6 +71,7 @@ export async function GET(req: NextRequest) {
         ko.deskripsi,
         ko.tim_id,
         ko.kro_id,
+        ko.mitra_id,
         ko.target_output,
         ko.output_realisasi,
         ko.satuan_output,
@@ -46,6 +85,13 @@ export async function GET(req: NextRequest) {
         t.nama as tim_nama,
         kro.kode as kro_kode,
         kro.nama as kro_nama,
+        m.nama as mitra_nama,
+        m.posisi as mitra_posisi,
+        m.alamat as mitra_alamat,
+        m.no_telp as mitra_no_telp,
+        m.sobat_id as mitra_sobat_id,
+        COALESCE(ko.tanggal_pengajuan, ko.created_at) as tanggal_pengajuan,
+        COALESCE(ko.tanggal_approval_koordinator, ko.tanggal_approval_ppk) as tanggal_approval,
         COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_realisasi_anggaran,
         COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id), 0) as total_kendala,
         COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved,
@@ -53,6 +99,7 @@ export async function GET(req: NextRequest) {
       FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
+      LEFT JOIN mitra m ON ko.mitra_id = m.id
       WHERE ko.status_pengajuan = 'disetujui'
     `;
 
@@ -87,7 +134,7 @@ export async function GET(req: NextRequest) {
 
     const [kegiatanRows] = await pool.query<RowDataPacket[]>(query, queryParams);
 
-    // Calculate kinerja for each kegiatan
+    // Calculate kinerja for each kegiatan and get mitra list
     const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg) => {
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
@@ -103,6 +150,9 @@ export async function GET(req: NextRequest) {
       };
 
       const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
+      
+      // Get mitra list for this kegiatan
+      const mitraList = await getMitraForKegiatan(kg.id);
 
       return {
         ...kg,
@@ -113,6 +163,8 @@ export async function GET(req: NextRequest) {
         skor_kinerja: kinerjaResult.skor_kinerja,
         status_kinerja: kinerjaResult.status_kinerja,
         indikator: kinerjaResult.indikator,
+        mitra_list: mitraList,
+        total_mitra: mitraList.length,
         realisasi_anggaran_persen: kg.anggaran_pagu > 0 
           ? Math.round((parseFloat(kg.total_realisasi_anggaran) / parseFloat(kg.anggaran_pagu)) * 100 * 100) / 100 
           : 0,

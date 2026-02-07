@@ -983,6 +983,7 @@ export default function KegiatanPage() {
           <div className="relative">
             <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
+              suppressHydrationWarning
               type="text"
               placeholder="Cari kegiatan..."
               value={searchTerm}
@@ -993,6 +994,7 @@ export default function KegiatanPage() {
 
           {/* Filter KRO */}
           <select
+            suppressHydrationWarning
             value={filterKro}
             onChange={(e) => setFilterKro(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1007,6 +1009,7 @@ export default function KegiatanPage() {
 
           {/* Filter Status */}
           <select
+            suppressHydrationWarning
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"

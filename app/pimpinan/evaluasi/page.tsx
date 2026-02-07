@@ -248,6 +248,7 @@ export default function PimpinanEvaluasiPage() {
                   Kegiatan <span className="text-red-500">*</span>
                 </label>
                 <select
+                  suppressHydrationWarning
                   value={formData.kegiatan_id}
                   onChange={(e) => setFormData({...formData, kegiatan_id: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -266,6 +267,7 @@ export default function PimpinanEvaluasiPage() {
                   Jenis Evaluasi <span className="text-red-500">*</span>
                 </label>
                 <select
+                  suppressHydrationWarning
                   value={formData.jenis_evaluasi}
                   onChange={(e) => setFormData({...formData, jenis_evaluasi: e.target.value as 'catatan' | 'arahan' | 'rekomendasi'})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -325,6 +327,7 @@ export default function PimpinanEvaluasiPage() {
             <div className="relative">
               <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
+                suppressHydrationWarning
                 type="text"
                 placeholder="Cari evaluasi..."
                 value={searchTerm}
@@ -336,6 +339,7 @@ export default function PimpinanEvaluasiPage() {
 
           {/* Jenis Filter */}
           <select
+            suppressHydrationWarning
             value={selectedJenis}
             onChange={(e) => setSelectedJenis(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -348,6 +352,7 @@ export default function PimpinanEvaluasiPage() {
 
           {/* Tim Filter */}
           <select
+            suppressHydrationWarning
             value={selectedTim}
             onChange={(e) => setSelectedTim(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -360,6 +365,7 @@ export default function PimpinanEvaluasiPage() {
 
           {/* Kegiatan Filter */}
           <select
+            suppressHydrationWarning
             value={selectedKegiatan}
             onChange={(e) => setSelectedKegiatan(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
