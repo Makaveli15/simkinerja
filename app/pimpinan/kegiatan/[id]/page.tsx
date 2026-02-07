@@ -1218,7 +1218,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   <span>📁</span> Review Dokumen Output
                 </h4>
                 <p className="text-sm text-indigo-700">
-                  Review dokumen yang diupload oleh pelaksana. Validasi dokumen final setelah Kesubag menyetujui.
+                  Review dokumen yang diupload oleh pelaksana. Validasi dokumen final setelah Koordinator menyetujui.
                 </p>
               </div>
 
@@ -1328,13 +1328,13 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                               <div className="mb-4 p-3 bg-white rounded-lg border">
                                 <p className="text-xs font-semibold text-gray-600 mb-2">Status Validasi Dokumen Final:</p>
                                 <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
-                                  {/* Kesubag Validation */}
+                                  {/* Koordinator Validation */}
                                   <div className={`px-2 py-1 rounded flex items-center gap-1 ${
                                     dok.validasi_kesubag === 'valid' ? 'bg-green-100 text-green-700' :
                                     dok.validasi_kesubag === 'tidak_valid' ? 'bg-red-100 text-red-700' :
                                     'bg-amber-100 text-amber-700'
                                   }`}>
-                                    <span>Kesubag:</span>
+                                    <span>Koordinator:</span>
                                     <span className="font-medium">
                                       {dok.validasi_kesubag === 'valid' ? '✅ Valid' :
                                        dok.validasi_kesubag === 'tidak_valid' ? '❌ Tidak Valid' : '⏳ Pending'}
@@ -1362,7 +1362,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                 </div>
                                 {dok.validasi_feedback_kesubag && (
                                   <p className="text-sm text-teal-700 bg-teal-50 p-2 rounded mt-2">
-                                    💬 <strong>Kesubag:</strong> {dok.validasi_feedback_kesubag}
+                                    💬 <strong>Koordinator:</strong> {dok.validasi_feedback_kesubag}
                                   </p>
                                 )}
                                 {dok.validasi_feedback_pimpinan && (
@@ -1383,12 +1383,12 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                               </div>
                             )}
 
-                            {/* For Final documents with minta_validasi but kesubag not approved yet */}
+                            {/* For Final documents with minta_validasi but koordinator not approved yet */}
                             {isFinal && mintaValidasi && !kesubagApproved && dok.validasi_kesubag !== 'tidak_valid' && (
                               <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                                <p className="text-xs font-semibold text-amber-700 mb-2">⏳ Menunggu Validasi Kesubag:</p>
+                                <p className="text-xs font-semibold text-amber-700 mb-2">⏳ Menunggu Validasi Koordinator:</p>
                                 <p className="text-sm text-amber-600 italic">
-                                  Dokumen ini sedang menunggu validasi dari Kesubag. Anda dapat memvalidasi setelah Kesubag menyetujui.
+                                  Dokumen ini sedang menunggu validasi dari Koordinator. Anda dapat memvalidasi setelah Koordinator menyetujui.
                                 </p>
                               </div>
                             )}
@@ -1398,13 +1398,13 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                               <div className="mb-4 p-3 bg-white rounded-lg border">
                                 <p className="text-xs font-semibold text-gray-600 mb-2">Status Review Draft:</p>
                                 <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
-                                  {/* Kesubag Review */}
+                                  {/* Koordinator Review */}
                                   <div className={`px-2 py-1 rounded flex items-center gap-1 ${
                                     dok.draft_status_kesubag === 'reviewed' ? 'bg-green-100 text-green-700' :
                                     dok.draft_status_kesubag === 'revisi' ? 'bg-red-100 text-red-700' :
                                     'bg-amber-100 text-amber-700'
                                   }`}>
-                                    <span>Kesubag:</span>
+                                    <span>Koordinator:</span>
                                     <span className="font-medium">
                                       {dok.draft_status_kesubag === 'reviewed' ? '✅ Reviewed' :
                                        dok.draft_status_kesubag === 'revisi' ? '❌ Revisi' : '⏳ Pending'}
@@ -1424,7 +1424,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                 </div>
                                 {dok.draft_feedback_kesubag && (
                                   <p className="text-sm text-teal-700 bg-teal-50 p-2 rounded mt-2">
-                                    💬 <strong>Kesubag:</strong> {dok.draft_feedback_kesubag}
+                                    💬 <strong>Koordinator:</strong> {dok.draft_feedback_kesubag}
                                   </p>
                                 )}
                                 {dok.draft_feedback_pimpinan && (
@@ -1438,7 +1438,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                             {/* Final Validation Form - only if kesubag approved */}
                             {needsFinalValidation && (
                               <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                                <p className="text-sm font-medium text-indigo-700 mb-3">✅ Validasi Dokumen Final (Kesubag telah memvalidasi):</p>
+                                <p className="text-sm font-medium text-indigo-700 mb-3">✅ Validasi Dokumen Final (Koordinator telah memvalidasi):</p>
                                 <div className="space-y-3">
                                   <textarea
                                     placeholder="Catatan validasi (opsional untuk valid, wajib untuk invalid)..."

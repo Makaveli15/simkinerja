@@ -25,6 +25,8 @@ const roleColors: Record<string, string> = {
   admin: 'bg-gradient-to-r from-red-500 to-pink-500 text-white',
   pimpinan: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
   pelaksana: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white',
+  koordinator: 'bg-gradient-to-r from-purple-500 to-violet-500 text-white',
+  ppk: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white',
 };
 
 export default function UsersPage() {
@@ -56,9 +58,16 @@ export default function UsersPage() {
     try {
       const res = await fetch('/api/admin/users');
       const data = await res.json();
-      setUsers(data);
+      // Pastikan data adalah array sebelum di-set
+      if (res.ok && Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error('Error response:', data);
+        setUsers([]);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -68,9 +77,16 @@ export default function UsersPage() {
     try {
       const res = await fetch('/api/admin/tim');
       const data = await res.json();
-      setTimList(data);
+      // Pastikan data adalah array sebelum di-set
+      if (res.ok && Array.isArray(data)) {
+        setTimList(data);
+      } else {
+        console.error('Error response:', data);
+        setTimList([]);
+      }
     } catch (error) {
       console.error('Error fetching tim:', error);
+      setTimList([]);
     }
   };
 
@@ -288,6 +304,8 @@ export default function UsersPage() {
             <option value="">Semua Role</option>
             <option value="admin">Admin</option>
             <option value="pimpinan">Pimpinan</option>
+            <option value="koordinator">Koordinator</option>
+            <option value="ppk">PPK</option>
             <option value="pelaksana">Pelaksana</option>
           </select>
           <select
@@ -464,15 +482,17 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
                 <select
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value, tim_id: e.target.value !== 'pelaksana' ? '' : formData.tim_id })}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value, tim_id: (e.target.value !== 'pelaksana' && e.target.value !== 'koordinator') ? '' : formData.tim_id })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
                 >
                   <option value="admin">Admin</option>
                   <option value="pimpinan">Pimpinan</option>
+                  <option value="koordinator">Koordinator</option>
+                  <option value="ppk">PPK</option>
                   <option value="pelaksana">Pelaksana</option>
                 </select>
               </div>
-              {formData.role === 'pelaksana' && (
+              {(formData.role === 'pelaksana' || formData.role === 'koordinator') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Tim</label>
                   <select

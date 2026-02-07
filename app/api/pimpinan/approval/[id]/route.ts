@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { createNotification } from '@/lib/services/notificationService';
 
 // GET - Get single kegiatan detail for approval
 export async function GET(
@@ -25,21 +26,23 @@ export async function GET(
 
     const [kegiatan] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        k.*,
+        ko.*,
         t.nama as tim_nama,
         u.username as created_by_nama,
         u.nama_lengkap as pelaksana_nama,
         kro.kode as kro_kode,
         kro.nama as kro_nama,
-        m.nama as mitra_nama,
-        approver.nama_lengkap as approved_by_nama
-      FROM kegiatan k
-      JOIN tim t ON k.tim_id = t.id
-      JOIN users u ON k.created_by = u.id
-      LEFT JOIN kro ON k.kro_id = kro.id
-      LEFT JOIN mitra m ON k.mitra_id = m.id
-      LEFT JOIN users approver ON k.approved_by = approver.id
-      WHERE k.id = ?`,
+        koordinator.nama_lengkap as approved_by_koordinator_nama,
+        ppk.nama_lengkap as approved_by_ppk_nama,
+        kepala.nama_lengkap as approved_by_kepala_nama
+      FROM kegiatan ko
+      JOIN tim t ON ko.tim_id = t.id
+      JOIN users u ON ko.created_by = u.id
+      LEFT JOIN kro ON ko.kro_id = kro.id
+      LEFT JOIN users koordinator ON ko.approved_by_koordinator = koordinator.id
+      LEFT JOIN users ppk ON ko.approved_by_ppk = ppk.id
+      LEFT JOIN users kepala ON ko.approved_by_kepala = kepala.id
+      WHERE ko.id = ?`,
       [id]
     );
 
@@ -47,18 +50,35 @@ export async function GET(
       return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 });
     }
 
-    return NextResponse.json(kegiatan[0]);
+    // Get approval history
+    const [approvalHistory] = await pool.query<RowDataPacket[]>(`
+      SELECT 
+        ah.*,
+        u.nama_lengkap as approver_nama,
+        u.role as approver_role
+      FROM approval_history ah
+      LEFT JOIN users u ON ah.user_id = u.id
+      WHERE ah.kegiatan_id = ?
+      ORDER BY ah.created_at DESC
+    `, [id]);
+
+    return NextResponse.json({
+      ...kegiatan[0],
+      approval_history: approvalHistory
+    });
   } catch (error) {
     console.error('Error fetching kegiatan detail:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// POST - Approve or reject kegiatan
+// POST - Kepala/Pimpinan approve or reject kegiatan (Final approval stage)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const connection = await pool.getConnection();
+  
   try {
     const { id } = await params;
     const cookieStore = await cookies();
@@ -76,71 +96,166 @@ export async function POST(
 
     const { action, catatan } = await request.json();
 
-    if (!['approve', 'reject'].includes(action)) {
+    if (!['approve', 'reject', 'revisi'].includes(action)) {
       return NextResponse.json({ 
-        error: 'Action harus "approve" atau "reject"' 
+        error: 'Action harus "approve", "reject", atau "revisi"' 
       }, { status: 400 });
     }
 
-    // Check kegiatan exists and is pending approval
-    const [kegiatan] = await pool.query<RowDataPacket[]>(
-      `SELECT id, nama, status_pengajuan, created_by FROM kegiatan WHERE id = ?`,
+    // Get Kepala info
+    const [userRows] = await pool.query<RowDataPacket[]>(
+      'SELECT nama_lengkap FROM users WHERE id = ?',
+      [auth.id]
+    );
+    const kepalaNama = userRows[0]?.nama_lengkap || 'Kepala';
+
+    await connection.beginTransaction();
+
+    // Check kegiatan exists and is pending Kepala approval
+    const [kegiatan] = await connection.query<RowDataPacket[]>(
+      `SELECT ko.*, 
+        u.id as pelaksana_id, 
+        u.nama_lengkap as pelaksana_nama,
+        t.nama as tim_nama
+      FROM kegiatan ko
+      LEFT JOIN users u ON ko.created_by = u.id
+      LEFT JOIN tim t ON ko.tim_id = t.id
+      WHERE ko.id = ?`,
       [id]
     );
 
     if (kegiatan.length === 0) {
+      await connection.rollback();
       return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 });
     }
 
     const kegiatanData = kegiatan[0];
 
-    if (kegiatanData.status_pengajuan !== 'diajukan') {
+    // Verify status is pending for Kepala approval (review_kepala)
+    if (kegiatanData.status_pengajuan !== 'review_kepala') {
+      await connection.rollback();
       return NextResponse.json({ 
-        error: `Kegiatan dengan status "${kegiatanData.status_pengajuan}" tidak dapat diproses` 
+        error: `Kegiatan dengan status "${kegiatanData.status_pengajuan}" tidak dapat diproses. Kegiatan harus dalam status "review_kepala" untuk persetujuan akhir.` 
       }, { status: 400 });
     }
 
-    const newStatus = action === 'approve' ? 'disetujui' : 'ditolak';
-    const kegiatanStatus = action === 'approve' ? 'berjalan' : 'belum_mulai';
+    let newStatusPengajuan: string = '';
+    let newStatusKegiatan: string = kegiatanData.status;
+    let notificationTitle: string = '';
+    let notificationMessage: string = '';
 
-    // Update kegiatan
-    await pool.query<ResultSetHeader>(
-      `UPDATE kegiatan 
-       SET status_pengajuan = ?,
-           status = CASE WHEN ? = 'disetujui' THEN 'berjalan' ELSE status END,
-           tanggal_approval = NOW(),
-           approved_by = ?,
-           catatan_approval = ?,
-           updated_at = NOW()
-       WHERE id = ?`,
-      [newStatus, newStatus, auth.id, catatan || null, id]
-    );
+    if (action === 'approve') {
+      // Final approval - kegiatan can now run
+      newStatusPengajuan = 'disetujui';
+      newStatusKegiatan = 'berjalan';
+      notificationTitle = 'Kegiatan Disetujui - Dapat Dimulai';
+      notificationMessage = `Kegiatan "${kegiatanData.nama}" telah disetujui oleh Kepala ${kepalaNama}. Kegiatan dapat segera dimulai.`;
+
+      await connection.query(`
+        UPDATE kegiatan 
+        SET 
+          status_pengajuan = ?,
+          status = ?,
+          approved_by_kepala = ?,
+          tanggal_approval_kepala = NOW(),
+          catatan_kepala = ?,
+          tanggal_approval = NOW(),
+          updated_at = NOW()
+        WHERE id = ?
+      `, [newStatusPengajuan, newStatusKegiatan, auth.id, catatan || null, id]);
+
+    } else if (action === 'reject') {
+      // Reject - kegiatan is rejected
+      newStatusPengajuan = 'ditolak';
+      notificationTitle = 'Kegiatan Ditolak oleh Kepala';
+      notificationMessage = `Kegiatan "${kegiatanData.nama}" ditolak oleh Kepala ${kepalaNama}. Alasan: ${catatan || 'Tidak ada catatan'}`;
+
+      await connection.query(`
+        UPDATE kegiatan 
+        SET 
+          status_pengajuan = ?,
+          approved_by_kepala = ?,
+          tanggal_approval_kepala = NOW(),
+          catatan_kepala = ?,
+          updated_at = NOW()
+        WHERE id = ?
+      `, [newStatusPengajuan, auth.id, catatan || null, id]);
+
+    } else if (action === 'revisi') {
+      // Request revision - back to pelaksana
+      newStatusPengajuan = 'revisi';
+      notificationTitle = 'Kegiatan Perlu Revisi';
+      notificationMessage = `Kegiatan "${kegiatanData.nama}" perlu direvisi. Catatan dari Kepala ${kepalaNama}: ${catatan || 'Tidak ada catatan'}`;
+
+      await connection.query(`
+        UPDATE kegiatan 
+        SET 
+          status_pengajuan = ?,
+          catatan_kepala = ?,
+          updated_at = NOW()
+        WHERE id = ?
+      `, [newStatusPengajuan, catatan || null, id]);
+    }
+
+    // Insert into approval history
+    await connection.query(`
+      INSERT INTO approval_history (kegiatan_id, user_id, role_approver, action, catatan)
+      VALUES (?, ?, 'kepala', ?, ?)
+    `, [id, auth.id, action, catatan || null]);
 
     // Create notification for pelaksana
-    try {
-      const notifType = action === 'approve' ? 'approval_accepted' : 'approval_rejected';
-      const notifTitle = action === 'approve' ? 'Kegiatan Disetujui' : 'Kegiatan Ditolak';
-      const notifMessage = action === 'approve' 
-        ? `Kegiatan "${kegiatanData.nama}" telah disetujui oleh Pimpinan. Kegiatan dapat dimulai.`
-        : `Kegiatan "${kegiatanData.nama}" ditolak oleh Pimpinan.${catatan ? ` Catatan: ${catatan}` : ''}`;
-
-      await pool.query(
-        `INSERT INTO notifications (user_id, type, title, message, related_id, related_type)
-         VALUES (?, ?, ?, ?, ?, 'kegiatan')`,
-        [kegiatanData.created_by, notifType, notifTitle, notifMessage, id]
-      );
-    } catch (notifError) {
-      console.error('Error creating notification:', notifError);
+    if (kegiatanData.pelaksana_id) {
+      await createNotification({
+        userId: kegiatanData.pelaksana_id,
+        title: notificationTitle,
+        message: notificationMessage,
+        type: 'kegiatan',
+        referenceId: parseInt(id),
+        referenceType: 'kegiatan'
+      });
     }
+
+    // If rejected or revision, also notify koordinator and PPK who approved
+    if (action !== 'approve') {
+      if (kegiatanData.approved_by_koordinator) {
+        await createNotification({
+          userId: kegiatanData.approved_by_koordinator,
+          title: action === 'reject' ? 'Kegiatan Ditolak oleh Kepala' : 'Kegiatan Perlu Revisi',
+          message: `Kegiatan "${kegiatanData.nama}" yang Anda setujui telah ${action === 'reject' ? 'ditolak' : 'diminta revisi'} oleh Kepala.`,
+          type: 'kegiatan',
+          referenceId: parseInt(id),
+          referenceType: 'kegiatan'
+        });
+      }
+      
+      if (kegiatanData.approved_by_ppk) {
+        await createNotification({
+          userId: kegiatanData.approved_by_ppk,
+          title: action === 'reject' ? 'Kegiatan Ditolak oleh Kepala' : 'Kegiatan Perlu Revisi',
+          message: `Kegiatan "${kegiatanData.nama}" yang Anda setujui telah ${action === 'reject' ? 'ditolak' : 'diminta revisi'} oleh Kepala.`,
+          type: 'kegiatan',
+          referenceId: parseInt(id),
+          referenceType: 'kegiatan'
+        });
+      }
+    }
+
+    await connection.commit();
 
     return NextResponse.json({ 
       message: action === 'approve' 
-        ? 'Kegiatan berhasil disetujui' 
-        : 'Kegiatan berhasil ditolak',
-      status_pengajuan: newStatus,
+        ? 'Kegiatan berhasil disetujui dan dapat segera dimulai' 
+        : action === 'reject'
+        ? 'Kegiatan berhasil ditolak'
+        : 'Permintaan revisi berhasil dikirim',
+      status_pengajuan: newStatusPengajuan,
+      status: newStatusKegiatan
     });
   } catch (error) {
+    await connection.rollback();
     console.error('Error processing approval:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } finally {
+    connection.release();
   }
 }

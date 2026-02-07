@@ -53,7 +53,7 @@ interface Kegiatan {
   output_realisasi: number;
   satuan_output: string;
   // Approval workflow fields
-  status_pengajuan: 'draft' | 'diajukan' | 'disetujui' | 'ditolak';
+  status_pengajuan: 'draft' | 'diajukan' | 'review_koordinator' | 'review_ppk' | 'review_kepala' | 'disetujui' | 'ditolak' | 'revisi';
   tanggal_pengajuan: string;
   tanggal_approval: string;
   catatan_approval: string;
@@ -190,18 +190,26 @@ export default function KegiatanPage() {
       case 'draft':
         return { bg: 'bg-gray-100 text-gray-600 border-gray-200', icon: <LuClock className="w-3 h-3" />, label: 'Draft' };
       case 'diajukan':
-        return { bg: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: <LuClock className="w-3 h-3" />, label: 'Menunggu Persetujuan' };
+        return { bg: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: <LuClock className="w-3 h-3" />, label: 'Menunggu Koordinator' };
+      case 'review_koordinator':
+        return { bg: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: <LuClock className="w-3 h-3" />, label: 'Review Koordinator' };
+      case 'review_ppk':
+        return { bg: 'bg-orange-100 text-orange-700 border-orange-200', icon: <LuClock className="w-3 h-3" />, label: 'Menunggu PPK' };
+      case 'review_kepala':
+        return { bg: 'bg-purple-100 text-purple-700 border-purple-200', icon: <LuClock className="w-3 h-3" />, label: 'Menunggu Pimpinan' };
       case 'disetujui':
         return { bg: 'bg-green-100 text-green-700 border-green-200', icon: <LuBadgeCheck className="w-3 h-3" />, label: 'Disetujui' };
       case 'ditolak':
         return { bg: 'bg-red-100 text-red-700 border-red-200', icon: <LuBan className="w-3 h-3" />, label: 'Ditolak' };
+      case 'revisi':
+        return { bg: 'bg-amber-100 text-amber-700 border-amber-200', icon: <LuClock className="w-3 h-3" />, label: 'Perlu Revisi' };
       default:
         return { bg: 'bg-gray-100 text-gray-600 border-gray-200', icon: <LuClock className="w-3 h-3" />, label: status };
     }
   };
 
   const handleSubmitKegiatan = async (kegiatanId: number, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin mengajukan kegiatan "${nama}" ke Pimpinan untuk disetujui?`)) {
+    if (!confirm(`Apakah Anda yakin ingin mengajukan kegiatan "${nama}" untuk disetujui?`)) {
       return;
     }
     
@@ -212,7 +220,7 @@ export default function KegiatanPage() {
       });
       
       if (res.ok) {
-        alert('Kegiatan berhasil diajukan ke Pimpinan');
+        alert('Kegiatan berhasil diajukan ke Koordinator untuk review');
         fetchData();
       } else {
         const data = await res.json();
@@ -1102,7 +1110,7 @@ export default function KegiatanPage() {
                                   {badge.icon}
                                   {badge.label}
                                 </span>
-                                {k.status_pengajuan === 'ditolak' && k.catatan_approval && (
+                                {(k.status_pengajuan === 'ditolak' || k.status_pengajuan === 'revisi') && k.catatan_approval && (
                                   <p className="text-xs text-red-600 mt-1 max-w-[150px] truncate" title={k.catatan_approval}>
                                     {k.catatan_approval}
                                   </p>
@@ -1177,7 +1185,7 @@ export default function KegiatanPage() {
                                 </button>
                               </>
                             )}
-                            {k.status_pengajuan === 'ditolak' && (
+                            {(k.status_pengajuan === 'ditolak' || k.status_pengajuan === 'revisi') && (
                               <>
                                 <span className="text-gray-300">|</span>
                                 <button

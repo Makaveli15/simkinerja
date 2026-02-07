@@ -39,7 +39,10 @@ export default function FirstLoginModal({ isOpen, onSuccess, apiEndpoint = '/api
       const res = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(passwordData),
+        body: JSON.stringify({
+          newPassword: passwordData.newPassword,
+          currentPassword: '' // Empty for first login
+        }),
       });
 
       const data = await res.json();

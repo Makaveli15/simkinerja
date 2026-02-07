@@ -84,19 +84,19 @@ export async function createNotificationForAllPimpinan(
 }
 
 /**
- * Membuat notifikasi untuk semua kesubag
+ * Membuat notifikasi untuk semua koordinator
  */
-export async function createNotificationForAllKesubag(
+export async function createNotificationForAllKoordinator(
   data: Omit<NotificationData, 'userId'>
 ): Promise<number> {
   try {
-    const [kesubagUsers] = await pool.query<RowDataPacket[]>(
+    const [koordinatorUsers] = await pool.query<RowDataPacket[]>(
       'SELECT id FROM users WHERE role = ?',
-      ['kesubag']
+      ['koordinator']
     );
 
     let created = 0;
-    for (const user of kesubagUsers) {
+    for (const user of koordinatorUsers) {
       const notifId = await createNotification({
         ...data,
         userId: user.id
@@ -105,7 +105,7 @@ export async function createNotificationForAllKesubag(
     }
     return created;
   } catch (error) {
-    console.error('Error creating kesubag notifications:', error);
+    console.error('Error creating koordinator notifications:', error);
     return 0;
   }
 }

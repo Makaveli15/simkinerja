@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
-// GET - Get list of kegiatan pending approval
+// GET - Get list of kegiatan pending Kepala approval (status: review_kepala)
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') || 'diajukan'; // default to pending
+    const status = searchParams.get('status') || 'review_kepala'; // default to pending kepala review
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
@@ -29,19 +29,20 @@ export async function GET(request: NextRequest) {
     let whereClause = 'WHERE 1=1';
     const queryParams: (string | number)[] = [];
 
-    if (status === 'diajukan') {
-      whereClause += ` AND k.status_pengajuan = 'diajukan'`;
+    if (status === 'review_kepala') {
+      whereClause += ` AND ko.status_pengajuan = 'review_kepala'`;
     } else if (status === 'disetujui') {
-      whereClause += ` AND k.status_pengajuan = 'disetujui'`;
+      whereClause += ` AND ko.status_pengajuan = 'disetujui'`;
     } else if (status === 'ditolak') {
-      whereClause += ` AND k.status_pengajuan = 'ditolak'`;
+      whereClause += ` AND ko.status_pengajuan = 'ditolak'`;
     } else if (status === 'all') {
-      whereClause += ` AND k.status_pengajuan IN ('diajukan', 'disetujui', 'ditolak')`;
+      // Show all that have reached or passed kepala review stage
+      whereClause += ` AND ko.status_pengajuan IN ('review_kepala', 'disetujui', 'ditolak')`;
     }
 
     // Get total count
     const [countResult] = await pool.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total FROM kegiatan k ${whereClause}`,
+      `SELECT COUNT(*) as total FROM kegiatan ko ${whereClause}`,
       queryParams
     );
     const total = countResult[0].total;
@@ -49,79 +50,65 @@ export async function GET(request: NextRequest) {
     // Get kegiatan list with pagination
     const [kegiatan] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        k.id,
-        k.nama,
-        k.deskripsi,
-        k.tanggal_mulai,
-        k.tanggal_selesai,
-        k.target_output,
-        k.satuan_output,
-        k.anggaran_pagu,
-        k.status,
-        k.status_pengajuan,
-        k.tanggal_pengajuan,
-        k.tanggal_approval,
-        k.catatan_approval,
-        k.created_at,
+        ko.id,
+        ko.nama,
+        ko.deskripsi,
+        ko.tanggal_mulai,
+        ko.tanggal_selesai,
+        ko.target_output,
+        ko.satuan_output,
+        ko.anggaran_pagu,
+        ko.status,
+        ko.status_pengajuan,
+        ko.tanggal_pengajuan,
+        ko.tanggal_approval,
+        ko.catatan_koordinator,
+        ko.tanggal_approval_koordinator,
+        ko.catatan_ppk,
+        ko.tanggal_approval_ppk,
+        ko.catatan_kepala,
+        ko.tanggal_approval_kepala,
+        ko.created_at,
         t.nama as tim_nama,
         u.username as created_by_nama,
         u.nama_lengkap as pelaksana_nama,
         kro.kode as kro_kode,
         kro.nama as kro_nama,
-        m.id as mitra_id,
-        m.nama as mitra_nama,
-        m.posisi as mitra_posisi,
-        m.alamat as mitra_alamat,
-        m.no_telp as mitra_no_telp,
-        m.sobat_id as mitra_sobat_id,
-        approver.nama_lengkap as approved_by_nama
-      FROM kegiatan k
-      JOIN tim t ON k.tim_id = t.id
-      JOIN users u ON k.created_by = u.id
-      LEFT JOIN kro ON k.kro_id = kro.id
-      LEFT JOIN mitra m ON k.mitra_id = m.id
-      LEFT JOIN users approver ON k.approved_by = approver.id
+        koordinator.nama_lengkap as approved_by_koordinator_nama,
+        ppk.nama_lengkap as approved_by_ppk_nama,
+        kepala.nama_lengkap as approved_by_kepala_nama
+      FROM kegiatan ko
+      JOIN tim t ON ko.tim_id = t.id
+      JOIN users u ON ko.created_by = u.id
+      LEFT JOIN kro ON ko.kro_id = kro.id
+      LEFT JOIN users koordinator ON ko.approved_by_koordinator = koordinator.id
+      LEFT JOIN users ppk ON ko.approved_by_ppk = ppk.id
+      LEFT JOIN users kepala ON ko.approved_by_kepala = kepala.id
       ${whereClause}
       ORDER BY 
-        CASE k.status_pengajuan 
-          WHEN 'diajukan' THEN 1 
+        CASE ko.status_pengajuan 
+          WHEN 'review_kepala' THEN 1 
           WHEN 'disetujui' THEN 2 
           WHEN 'ditolak' THEN 3 
           ELSE 4 
         END,
-        k.tanggal_pengajuan DESC
+        ko.tanggal_pengajuan DESC
       LIMIT ? OFFSET ?`,
       [...queryParams, limit, offset]
     );
 
-    // Get mitra for each kegiatan from kegiatan_mitra table
-    const kegiatanWithMitra = await Promise.all(kegiatan.map(async (k) => {
-      const [mitraRows] = await pool.query<RowDataPacket[]>(
-        `SELECT m.id, m.nama, m.posisi, m.alamat, m.no_telp, m.sobat_id
-         FROM kegiatan_mitra km
-         JOIN mitra m ON km.mitra_id = m.id
-         WHERE km.kegiatan_id = ?`,
-        [k.id]
-      );
-      return {
-        ...k,
-        mitra_list: mitraRows,
-        total_mitra: mitraRows.length
-      };
-    }));
-
-    // Get counts by status for summary
+    // Get counts by status for summary (only statuses relevant to Kepala)
     const [statusCounts] = await pool.query<RowDataPacket[]>(
       `SELECT 
         status_pengajuan,
         COUNT(*) as count
        FROM kegiatan 
-       WHERE status_pengajuan IN ('diajukan', 'disetujui', 'ditolak')
+       WHERE status_pengajuan IN ('review_kepala', 'disetujui', 'ditolak')
        GROUP BY status_pengajuan`
     );
 
     const summary = {
-      diajukan: 0,
+      review_kepala: 0,
       disetujui: 0,
       ditolak: 0,
     };
@@ -133,7 +120,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      data: kegiatanWithMitra,
+      data: kegiatan,
       pagination: {
         total,
         page,

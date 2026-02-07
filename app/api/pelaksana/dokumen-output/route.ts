@@ -5,7 +5,7 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import { existsSync } from 'fs';
-import { createNotificationForAllPimpinan, createNotificationForAllKesubag, createNotification } from '@/lib/services/notificationService';
+import { createNotificationForAllPimpinan, createNotificationForAllKoordinator, createNotification } from '@/lib/services/notificationService';
 
 // GET - Get dokumen output for a kegiatan
 export async function GET(req: NextRequest) {
@@ -182,11 +182,11 @@ export async function POST(req: NextRequest) {
     const uploaderNama = uploaderInfo[0]?.nama_lengkap || 'Pelaksana';
 
     // Notifikasi berdasarkan tipe dokumen:
-    // - Draft: Notifikasi ke kesubag untuk review
+    // - Draft: Notifikasi ke koordinator untuk review
     // - Final: Hanya notifikasi upload, validasi setelah pelaksana klik "Minta Validasi"
     if (isDraft) {
-      // Draft otomatis masuk ke kesubag untuk review
-      await createNotificationForAllKesubag({
+      // Draft otomatis masuk ke koordinator untuk review
+      await createNotificationForAllKoordinator({
         title: '📝 Draft Dokumen Baru',
         message: `${uploaderNama} mengupload draft "${file.name}" untuk kegiatan "${kegiatanNama}". Silakan review.`,
         type: 'permintaan_validasi',
@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Final: Hanya info, validasi setelah minta validasi
-      await createNotificationForAllKesubag({
+      await createNotificationForAllKoordinator({
         title: '📄 Dokumen Final Diupload',
         message: `${uploaderNama} mengupload dokumen final "${file.name}" untuk kegiatan "${kegiatanNama}". Menunggu permintaan validasi dari pelaksana.`,
         type: 'kegiatan',

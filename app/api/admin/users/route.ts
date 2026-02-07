@@ -40,14 +40,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Username, email, dan role wajib diisi' }, { status: 400 });
     }
 
-    const validRoles = ['admin', 'pimpinan', 'pelaksana'];
+    const validRoles = ['admin', 'pimpinan', 'pelaksana', 'koordinator', 'ppk'];
     if (!validRoles.includes(role)) {
       return NextResponse.json({ error: 'Role tidak valid' }, { status: 400 });
     }
 
-    // Tim hanya wajib untuk pelaksana
-    if (role === 'pelaksana' && !tim_id) {
-      return NextResponse.json({ error: 'Tim wajib dipilih untuk pelaksana' }, { status: 400 });
+    // Tim wajib untuk pelaksana dan koordinator
+    if ((role === 'pelaksana' || role === 'koordinator') && !tim_id) {
+      return NextResponse.json({ error: 'Tim wajib dipilih untuk pelaksana dan koordinator' }, { status: 400 });
     }
 
     // Use default password
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     const [result]: any = await pool.execute(
       'INSERT INTO users (username, nama_lengkap, email, password, role, status, tim_id, is_first_login) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
-      [username, nama_lengkap || null, email, hashedPassword, role, 'aktif', role === 'pelaksana' ? tim_id : null]
+      [username, nama_lengkap || null, email, hashedPassword, role, 'aktif', (role === 'pelaksana' || role === 'koordinator') ? tim_id : null]
     );
 
     return NextResponse.json({ id: result.insertId, message: 'User berhasil dibuat dengan password default BPS5305' }, { status: 201 });

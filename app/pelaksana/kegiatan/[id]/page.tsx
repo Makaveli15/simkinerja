@@ -308,7 +308,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
   };
 
   const handleMintaValidasi = async (dokumenId: number) => {
-    if (!confirm('Apakah Anda yakin ingin mengajukan dokumen ini untuk validasi? Dokumen akan direview oleh Kesubag dan kemudian Pimpinan.')) {
+    if (!confirm('Apakah Anda yakin ingin mengajukan dokumen ini untuk validasi? Dokumen akan direview oleh Koordinator dan kemudian Pimpinan.')) {
       return;
     }
     
@@ -323,7 +323,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
       const data = await res.json();
       
       if (res.ok) {
-        setSuccess('Permintaan validasi berhasil dikirim ke Kesubag');
+        setSuccess('Permintaan validasi berhasil dikirim ke Koordinator');
         fetchDokumenOutput(); // Refresh dokumen list
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -984,13 +984,13 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                     <div className="mt-3 p-3 bg-white rounded-lg border">
                                       <p className="text-xs font-semibold text-gray-600 mb-2">✅ Alur Validasi Dokumen Final:</p>
                                       <div className="flex flex-wrap items-center gap-2 text-xs">
-                                        {/* Kesubag Validation Status */}
+                                        {/* Koordinator Validation Status */}
                                         <div className={`px-2 py-1 rounded flex items-center gap-1 ${
                                           doc.validasi_kesubag === 'valid' ? 'bg-green-100 text-green-700' :
                                           doc.validasi_kesubag === 'tidak_valid' ? 'bg-red-100 text-red-700' :
                                           'bg-yellow-100 text-yellow-700'
                                         }`}>
-                                          <span>Kesubag:</span>
+                                          <span>Koordinator:</span>
                                           <span className="font-medium">
                                             {doc.validasi_kesubag === 'valid' ? '✅ Valid' :
                                              doc.validasi_kesubag === 'tidak_valid' ? '❌ Revisi' : '⏳ Pending'}
@@ -1022,18 +1022,18 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                       </div>
                                       <p className="text-xs text-gray-500 mt-2 italic">
                                         {doc.validasi_kesubag === 'tidak_valid'
-                                          ? '⚠️ Dokumen ditolak kesubag, silakan upload ulang dokumen perbaikan'
+                                          ? '⚠️ Dokumen ditolak koordinator, silakan upload ulang dokumen perbaikan'
                                           : doc.validasi_kesubag === 'valid' && doc.validasi_pimpinan === 'tidak_valid'
                                           ? '⚠️ Dokumen ditolak pimpinan, silakan upload ulang dokumen perbaikan'
                                           : doc.validasi_kesubag === 'valid' && doc.validasi_pimpinan === 'valid'
                                           ? '🏆 Dokumen telah disahkan!'
                                           : doc.validasi_kesubag === 'valid'
                                           ? '⏳ Menunggu validasi dari pimpinan'
-                                          : '⏳ Menunggu validasi dari kesubag'}
+                                          : '⏳ Menunggu validasi dari koordinator'}
                                       </p>
                                       {doc.validasi_feedback_kesubag && (
                                         <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
-                                          💬 <strong>Kesubag:</strong> {doc.validasi_feedback_kesubag}
+                                          💬 <strong>Koordinator:</strong> {doc.validasi_feedback_kesubag}
                                         </p>
                                       )}
                                       {doc.validasi_feedback_pimpinan && (
@@ -1049,7 +1049,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                     <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                                       <p className="text-xs font-semibold text-blue-700 mb-1">📤 Belum Diminta Validasi</p>
                                       <p className="text-xs text-blue-600">
-                                        Klik tombol "Minta Validasi" untuk mengajukan dokumen ini ke kesubag dan pimpinan untuk divalidasi.
+                                        Klik tombol "Minta Validasi" untuk mengajukan dokumen ini ke koordinator dan pimpinan untuk divalidasi.
                                       </p>
                                     </div>
                                   )}
@@ -1064,7 +1064,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                           doc.draft_status_kesubag === 'ditolak' ? 'bg-red-100 text-red-700' :
                                           'bg-yellow-100 text-yellow-700'
                                         }`}>
-                                          <span>Kesubag:</span>
+                                          <span>Koordinator:</span>
                                           <span className="font-medium">
                                             {doc.draft_status_kesubag === 'diterima' ? '✅ Diterima' :
                                              doc.draft_status_kesubag === 'ditolak' ? '❌ Revisi' : '⏳ Pending'}
@@ -1088,12 +1088,12 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                         {doc.draft_status_kesubag === 'ditolak' 
                                           ? '⚠️ Draft ditolak, silakan upload ulang dokumen perbaikan'
                                           : doc.draft_status_kesubag === 'diterima'
-                                          ? '✓ Draft diterima kesubag, menunggu review pimpinan'
-                                          : '⏳ Draft sedang direview oleh kesubag'}
+                                          ? '✓ Draft diterima koordinator, menunggu review pimpinan'
+                                          : '⏳ Draft sedang direview oleh koordinator'}
                                       </p>
                                       {doc.draft_feedback_kesubag && (
                                         <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
-                                          💬 <strong>Kesubag:</strong> {doc.draft_feedback_kesubag}
+                                          💬 <strong>Koordinator:</strong> {doc.draft_feedback_kesubag}
                                         </p>
                                       )}
                                       {doc.draft_feedback_pimpinan && (
@@ -1601,14 +1601,14 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
               <div>
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-900 mb-2">Evaluasi</h3>
-                  <p className="text-sm text-gray-600">Evaluasi, arahan, dan rekomendasi dari pimpinan dan kesubag untuk kegiatan ini.</p>
+                  <p className="text-sm text-gray-600">Evaluasi, arahan, dan rekomendasi dari pimpinan dan koordinator untuk kegiatan ini.</p>
                 </div>
 
                 {evaluasiList.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-xl">
                     <div className="text-5xl mb-4">📝</div>
                     <p className="text-gray-500 mb-2">Belum ada evaluasi</p>
-                    <p className="text-sm text-gray-400">Evaluasi akan muncul di sini ketika pimpinan atau kesubag memberikan evaluasi</p>
+                    <p className="text-sm text-gray-400">Evaluasi akan muncul di sini ketika pimpinan atau koordinator memberikan evaluasi</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1638,7 +1638,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                 ? 'bg-indigo-100 text-indigo-700' 
                                 : 'bg-amber-100 text-amber-700'
                             }`}>
-                              {ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Kesubag'}
+                              {ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Koordinator'}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">
@@ -1663,11 +1663,11 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-900">
-                                {ev.pemberi_nama || (ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Kesubag')}
+                                {ev.pemberi_nama || (ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Koordinator')}
                               </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1">
                                 <LuShieldCheck className="w-3 h-3" />
-                                {ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Kepala Sub Bagian'}
+                                {ev.role_pemberi === 'pimpinan' ? 'Pimpinan' : 'Koordinator Tim'}
                               </p>
                             </div>
                           </div>
@@ -1695,7 +1695,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         <p className="text-2xl font-bold text-amber-600">
                           {evaluasiList.filter(e => e.role_pemberi === 'kesubag').length}
                         </p>
-                        <p className="text-xs text-gray-500">Dari Kesubag</p>
+                        <p className="text-xs text-gray-500">Dari Koordinator</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4">

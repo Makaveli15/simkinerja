@@ -49,7 +49,7 @@ interface Kegiatan {
 }
 
 interface ApprovalSummary {
-  diajukan: number;
+  review_kepala: number;
   disetujui: number;
   ditolak: number;
 }
@@ -57,8 +57,8 @@ interface ApprovalSummary {
 export default function ApprovalKegiatanPage() {
   const [loading, setLoading] = useState(true);
   const [approvalList, setApprovalList] = useState<Kegiatan[]>([]);
-  const [approvalSummary, setApprovalSummary] = useState<ApprovalSummary>({ diajukan: 0, disetujui: 0, ditolak: 0 });
-  const [approvalFilter, setApprovalFilter] = useState<'diajukan' | 'disetujui' | 'ditolak' | 'all'>('diajukan');
+  const [approvalSummary, setApprovalSummary] = useState<ApprovalSummary>({ review_kepala: 0, disetujui: 0, ditolak: 0 });
+  const [approvalFilter, setApprovalFilter] = useState<'review_kepala' | 'disetujui' | 'ditolak' | 'all'>('review_kepala');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Modal states
@@ -161,21 +161,21 @@ export default function ApprovalKegiatanPage() {
 
   const getStatusPengajuanBadge = (status: string) => {
     const styles = {
-      diajukan: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      review_kepala: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       disetujui: 'bg-green-100 text-green-800 border-green-200',
       ditolak: 'bg-red-100 text-red-800 border-red-200',
       draft: 'bg-gray-100 text-gray-800 border-gray-200',
     };
 
     const icons = {
-      diajukan: <LuClock className="w-3 h-3" />,
+      review_kepala: <LuClock className="w-3 h-3" />,
       disetujui: <LuBadgeCheck className="w-3 h-3" />,
       ditolak: <LuBan className="w-3 h-3" />,
       draft: <LuClock className="w-3 h-3" />,
     };
 
     const labels = {
-      diajukan: 'Menunggu',
+      review_kepala: 'Menunggu Persetujuan',
       disetujui: 'Disetujui',
       ditolak: 'Ditolak',
       draft: 'Draft',
@@ -203,9 +203,9 @@ export default function ApprovalKegiatanPage() {
             </h1>
             <p className="text-blue-100 mt-2">Kelola persetujuan kegiatan dari pelaksana</p>
           </div>
-          {approvalSummary.diajukan > 0 && (
+          {approvalSummary.review_kepala > 0 && (
             <div className="px-4 py-2 bg-yellow-400 text-yellow-900 rounded-lg text-sm font-medium">
-              {approvalSummary.diajukan} kegiatan menunggu persetujuan
+              {approvalSummary.review_kepala} kegiatan menunggu persetujuan
             </div>
           )}
         </div>
@@ -214,9 +214,9 @@ export default function ApprovalKegiatanPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div 
-          onClick={() => setApprovalFilter('diajukan')}
+          onClick={() => setApprovalFilter('review_kepala')}
           className={`p-4 rounded-xl cursor-pointer transition-all ${
-            approvalFilter === 'diajukan' 
+            approvalFilter === 'review_kepala' 
               ? 'bg-yellow-100 border-2 border-yellow-400 shadow-md' 
               : 'bg-white border border-gray-200 hover:border-yellow-300 hover:shadow-sm'
           }`}
@@ -224,7 +224,7 @@ export default function ApprovalKegiatanPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-yellow-700">Menunggu Persetujuan</p>
-              <p className="text-2xl font-bold text-yellow-800">{approvalSummary.diajukan}</p>
+              <p className="text-2xl font-bold text-yellow-800">{approvalSummary.review_kepala}</p>
             </div>
             <LuClock className="w-8 h-8 text-yellow-500" />
           </div>
@@ -289,7 +289,7 @@ export default function ApprovalKegiatanPage() {
           <LuClipboard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-1">Tidak ada kegiatan</h3>
           <p className="text-gray-500">
-            {approvalFilter === 'diajukan' 
+            {approvalFilter === 'review_kepala' 
               ? 'Tidak ada kegiatan yang menunggu persetujuan'
               : `Tidak ada kegiatan dengan status ${approvalFilter}`
             }
@@ -352,7 +352,7 @@ export default function ApprovalKegiatanPage() {
                         >
                           <LuEye className="w-4 h-4" />
                         </button>
-                        {k.status_pengajuan === 'diajukan' && (
+                        {k.status_pengajuan === 'review_kepala' && (
                           <>
                             <button
                               onClick={() => {
@@ -627,7 +627,7 @@ export default function ApprovalKegiatanPage() {
               )}
             </div>
             <div className="p-6 border-t bg-gray-50 flex justify-end gap-3 sticky bottom-0">
-              {selectedKegiatan.status_pengajuan === 'diajukan' && (
+              {selectedKegiatan.status_pengajuan === 'review_kepala' && (
                 <>
                   <button
                     onClick={() => {
