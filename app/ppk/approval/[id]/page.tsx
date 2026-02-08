@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -76,11 +76,16 @@ export default function PPKApprovalDetailPage() {
   const [kegiatan, setKegiatan] = useState<KegiatanDetail | null>(null);
   const [approvalHistory, setApprovalHistory] = useState<ApprovalHistory[]>([]);
   const [dokumen, setDokumen] = useState<Dokumen[]>([]);
+  const [mounted, setMounted] = useState(false);
 
   // Modal states
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showRevisiModal, setShowRevisiModal] = useState(false);
   const [catatan, setCatatan] = useState('');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetchKegiatan();
@@ -166,26 +171,35 @@ export default function PPKApprovalDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    if (!dateString || !mounted) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch {
+      return '-';
+    }
   };
 
   const formatDateTime = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString || !mounted) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return '-';
+    }
   };
 
   const formatCurrency = (amount: number) => {
+    if (!mounted) return '-';
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',

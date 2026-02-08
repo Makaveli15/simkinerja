@@ -322,7 +322,7 @@ export default function KoordinatorLayout({
               </div>
               <div>
                 <span className="font-bold text-lg text-white">SIMKINERJA</span>
-                <p className="text-xs text-blue-100">Koordinator Tim</p>
+                <p className="text-xs text-blue-100">BPS Kab. Timor Tengah Utara</p>
               </div>
             </div>
           )}
@@ -332,14 +332,6 @@ export default function KoordinatorLayout({
             </div>
           )}
         </div>
-
-        {/* Tim Info */}
-        {!isCollapsed && user?.tim_nama && (
-          <div className="px-4 py-3 bg-white/10 mx-3 mt-3 rounded-xl">
-            <p className="text-xs text-blue-100">Tim Anda</p>
-            <p className="font-semibold text-white">{user.tim_nama}</p>
-          </div>
-        )}
 
         {/* Menu */}
         <nav className="p-3 space-y-1 mt-2">

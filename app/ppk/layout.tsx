@@ -320,7 +320,7 @@ export default function PPKLayout({
               </div>
               <div>
                 <span className="font-bold text-lg text-white">SIMKINERJA</span>
-                <p className="text-xs text-blue-100">Pejabat Pembuat Komitmen</p>
+                <p className="text-xs text-blue-100">BPS Kab. Timor Tengah Utara</p>
               </div>
             </div>
           )}
