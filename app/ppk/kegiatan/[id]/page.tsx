@@ -116,7 +116,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
   const [evaluasi, setEvaluasi] = useState<Evaluasi[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
   
-  const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'evaluasi'>('evaluasi-kinerja');
+  const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'waktu' | 'evaluasi'>('evaluasi-kinerja');
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -352,7 +352,8 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
               { id: 'progres', label: 'Progres', icon: '📈', count: progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
-              { id: 'dokumen', label: 'Dokumen Output', icon: '📄', count: dokumenOutput.length },
+              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+              { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
               { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasi.length },
             ].map((tab) => (
               <button
@@ -651,6 +652,151 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tab: Waktu Penyelesaian */}
+          {activeTab === 'waktu' && kegiatan && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <span>⏰</span> Analisis Waktu Penyelesaian
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Perbandingan waktu rencana dengan realisasi penyelesaian kegiatan
+                </p>
+              </div>
+
+              {/* Timeline Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Waktu Rencana */}
+                <div className="bg-white border rounded-xl p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">📅</span>
+                    Waktu Rencana
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Mulai</span>
+                      <span className="font-semibold text-gray-900">{formatDate(kegiatan.tanggal_mulai)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Selesai</span>
+                      <span className="font-semibold text-gray-900">{formatDate(kegiatan.tanggal_selesai)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-blue-100 rounded-lg">
+                      <span className="text-gray-700 font-medium">Durasi Rencana</span>
+                      <span className="font-bold text-blue-700">
+                        {Math.ceil((new Date(kegiatan.tanggal_selesai).getTime() - new Date(kegiatan.tanggal_mulai).getTime()) / (1000 * 60 * 60 * 24))} hari
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Waktu Realisasi */}
+                <div className="bg-white border rounded-xl p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">✅</span>
+                    Waktu Realisasi
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Mulai Aktual</span>
+                      <span className="font-semibold text-gray-900">
+                        {kegiatan.tanggal_realisasi_mulai 
+                          ? formatDate(kegiatan.tanggal_realisasi_mulai) 
+                          : <span className="text-gray-400">Belum dimulai</span>}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Selesai Aktual</span>
+                      <span className="font-semibold text-gray-900">
+                        {kegiatan.tanggal_realisasi_selesai 
+                          ? formatDate(kegiatan.tanggal_realisasi_selesai)
+                          : <span className="text-gray-400">Belum selesai</span>}
+                      </span>
+                    </div>
+                    <div className={`flex justify-between items-center p-3 rounded-lg ${
+                      kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                        ? 'bg-green-100'
+                        : 'bg-gray-100'
+                    }`}>
+                      <span className="text-gray-700 font-medium">Durasi Aktual</span>
+                      <span className={`font-bold ${
+                        kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                          ? 'text-green-700'
+                          : 'text-gray-400'
+                      }`}>
+                        {kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                          ? `${Math.ceil((new Date(kegiatan.tanggal_realisasi_selesai).getTime() - new Date(kegiatan.tanggal_realisasi_mulai).getTime()) / (1000 * 60 * 60 * 24))} hari`
+                          : 'Belum selesai'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Ketepatan Waktu */}
+              {(() => {
+                const deadline = new Date(kegiatan.tanggal_selesai);
+                const today = new Date();
+                const realisasiSelesai = kegiatan.tanggal_realisasi_selesai ? new Date(kegiatan.tanggal_realisasi_selesai) : null;
+                
+                let status: 'tepat' | 'lebih_cepat' | 'terlambat' | 'berjalan';
+                let selisihHari = 0;
+                
+                if (realisasiSelesai) {
+                  selisihHari = Math.ceil((deadline.getTime() - realisasiSelesai.getTime()) / (1000 * 60 * 60 * 24));
+                  if (selisihHari > 0) status = 'lebih_cepat';
+                  else if (selisihHari < 0) status = 'terlambat';
+                  else status = 'tepat';
+                } else {
+                  selisihHari = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  if (selisihHari < 0) status = 'terlambat';
+                  else status = 'berjalan';
+                }
+
+                return (
+                  <div className={`rounded-xl p-6 ${
+                    status === 'tepat' || status === 'lebih_cepat' 
+                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200' 
+                      : status === 'terlambat'
+                      ? 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200'
+                      : 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-1">Status Ketepatan Waktu</h4>
+                        <p className="text-sm text-gray-600">
+                          {status === 'tepat' && 'Kegiatan selesai tepat pada waktunya'}
+                          {status === 'lebih_cepat' && `Kegiatan selesai ${Math.abs(selisihHari)} hari lebih cepat dari jadwal`}
+                          {status === 'terlambat' && realisasiSelesai && `Kegiatan selesai ${Math.abs(selisihHari)} hari terlambat dari jadwal`}
+                          {status === 'terlambat' && !realisasiSelesai && `Kegiatan sudah melewati deadline ${Math.abs(selisihHari)} hari`}
+                          {status === 'berjalan' && `${selisihHari} hari lagi menuju deadline`}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <span className={`text-4xl font-bold ${
+                          status === 'tepat' || status === 'lebih_cepat' ? 'text-green-600' :
+                          status === 'terlambat' ? 'text-red-600' : 'text-blue-600'
+                        }`}>
+                          {status === 'tepat' && '✓'}
+                          {status === 'lebih_cepat' && `+${Math.abs(selisihHari)}`}
+                          {status === 'terlambat' && `-${Math.abs(selisihHari)}`}
+                          {status === 'berjalan' && selisihHari}
+                        </span>
+                        <p className="text-sm text-gray-600">
+                          {status === 'tepat' && 'Tepat Waktu'}
+                          {status === 'lebih_cepat' && 'Hari Lebih Cepat'}
+                          {status === 'terlambat' && 'Hari Terlambat'}
+                          {status === 'berjalan' && 'Hari Tersisa'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

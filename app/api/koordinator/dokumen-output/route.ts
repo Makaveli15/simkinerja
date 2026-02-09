@@ -188,14 +188,14 @@ export async function PATCH(req: NextRequest) {
     );
     const koordinatorNama = koordinatorInfo[0]?.nama_lengkap || 'Koordinator';
 
-    // Handle draft review (reviewed/rejected mapped to diterima/ditolak)
+    // Handle draft review (reviewed/rejected mapped to reviewed/revisi for DB enum)
     if (isDraft && (action === 'reviewed' || action === 'rejected')) {
       if (action === 'rejected' && !catatan?.trim()) {
         return NextResponse.json({ error: 'Catatan diperlukan untuk penolakan draft' }, { status: 400 });
       }
 
-      // Update draft status - map reviewed/rejected to diterima/ditolak for DB
-      const dbStatus = action === 'reviewed' ? 'diterima' : 'ditolak';
+      // Update draft status - use correct enum values: 'pending', 'reviewed', 'revisi'
+      const dbStatus = action === 'reviewed' ? 'reviewed' : 'revisi';
       await pool.query<ResultSetHeader>(`
         UPDATE dokumen_output 
         SET 

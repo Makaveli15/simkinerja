@@ -104,7 +104,7 @@ interface DokumenOutput {
   // Validation fields - support both old and new column values
   minta_validasi?: number;
   minta_validasi_at?: string;
-  draft_status_kesubag?: 'pending' | 'diterima' | 'ditolak' | 'reviewed' | 'rejected' | null;
+  draft_status_kesubag?: 'pending' | 'reviewed' | 'revisi' | 'diterima' | 'ditolak' | 'rejected' | null;
   draft_feedback_kesubag?: string;
   draft_feedback_pimpinan?: string;
   validasi_kesubag?: 'pending' | 'valid' | 'tidak_valid' | null;
@@ -131,12 +131,13 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
   
   // Validation states
   const [validatingDokumen, setValidatingDokumen] = useState<number | null>(null);
-  const [validationCatatan, setValidationCatatan] = useState('');
+  const [dokumenCatatan, setDokumenCatatan] = useState<Record<number, string>>({});
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [selectedDokumen, setSelectedDokumen] = useState<DokumenOutput | null>(null);
   const [validationAction, setValidationAction] = useState<'reviewed' | 'rejected' | 'valid' | 'tidak_valid' | null>(null);
+  const [modalCatatan, setModalCatatan] = useState('');
   
-  const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'evaluasi'>('evaluasi-kinerja');
+  const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'waktu' | 'evaluasi'>('evaluasi-kinerja');
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -186,13 +187,14 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
     if (action === 'rejected' || action === 'tidak_valid') {
       setSelectedDokumen(dokumen);
       setValidationAction(action);
-      setValidationCatatan('');
+      setModalCatatan('');
       setShowValidationModal(true);
       return;
     }
     
-    // Direct action without catatan
-    await submitValidation(dokumen.id, action, '');
+    // Direct action with inline catatan
+    const catatan = dokumenCatatan[dokumen.id] || '';
+    await submitValidation(dokumen.id, action, catatan);
   };
 
   const submitValidation = async (dokumenId: number, action: string, catatan: string) => {
@@ -209,8 +211,14 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
         await fetchData();
         setShowValidationModal(false);
         setSelectedDokumen(null);
-        setValidationCatatan('');
+        setModalCatatan('');
         setValidationAction(null);
+        // Clear catatan for this dokumen
+        setDokumenCatatan(prev => {
+          const newState = { ...prev };
+          delete newState[dokumenId];
+          return newState;
+        });
       } else {
         const error = await res.json();
         alert(error.error || 'Gagal memvalidasi dokumen');
@@ -225,11 +233,11 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
 
   const handleSubmitValidation = () => {
     if (!selectedDokumen || !validationAction) return;
-    if ((validationAction === 'rejected' || validationAction === 'tidak_valid') && !validationCatatan.trim()) {
+    if ((validationAction === 'rejected' || validationAction === 'tidak_valid') && !modalCatatan.trim()) {
       alert('Catatan diperlukan untuk penolakan');
       return;
     }
-    submitValidation(selectedDokumen.id, validationAction, validationCatatan);
+    submitValidation(selectedDokumen.id, validationAction, modalCatatan);
   };
 
   const getStatusKinerjaBadge = (status: string) => {
@@ -424,7 +432,8 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
               { id: 'progres', label: 'Progres', icon: '📈', count: progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
-              { id: 'dokumen', label: 'Dokumen Output', icon: '📄', count: dokumenOutput.length },
+              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+              { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
               { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasi.length },
             ].map((tab) => (
               <button
@@ -725,6 +734,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                   <p className="text-2xl font-bold text-green-600">
                     {dokumenOutput.filter(d => 
                       d.validasi_kesubag === 'valid' || 
+                      d.draft_status_kesubag === 'reviewed' ||
                       d.draft_status_kesubag === 'diterima' || 
                       d.status_review === 'diterima'
                     ).length}
@@ -735,6 +745,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                   <p className="text-2xl font-bold text-red-600">
                     {dokumenOutput.filter(d => 
                       d.validasi_kesubag === 'tidak_valid' || 
+                      d.draft_status_kesubag === 'revisi' ||
                       d.draft_status_kesubag === 'ditolak' || 
                       d.status_review === 'ditolak'
                     ).length}
@@ -760,11 +771,11 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                     const mintaValidasi = doc.minta_validasi === 1;
                     const isDisahkan = doc.status_final === 'disahkan' || !!doc.tanggal_disahkan;
                     
-                    // Check draft status - support both old (status_review) and new columns
+                    // Check draft status - support enum values: 'pending', 'reviewed', 'revisi'
                     const draftStatus = doc.draft_status_kesubag || doc.status_review;
                     const needsDraftReview = isDraft && (!draftStatus || draftStatus === 'pending');
-                    const draftReviewed = isDraft && (draftStatus === 'diterima' || draftStatus === 'reviewed');
-                    const draftRejected = isDraft && (draftStatus === 'ditolak' || draftStatus === 'rejected');
+                    const draftReviewed = isDraft && (draftStatus === 'reviewed' || draftStatus === 'diterima');
+                    const draftRejected = isDraft && (draftStatus === 'revisi' || draftStatus === 'ditolak' || draftStatus === 'rejected');
                     
                     // Check final validation status
                     const needsFinalValidation = isFinal && mintaValidasi && (!doc.validasi_kesubag || doc.validasi_kesubag === 'pending');
@@ -939,18 +950,16 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                 <div className="space-y-3">
                                   <textarea
                                     placeholder="Catatan validasi (opsional untuk valid, wajib untuk invalid)..."
-                                    value={selectedDokumen?.id === doc.id ? validationCatatan : ''}
+                                    value={dokumenCatatan[doc.id] || ''}
                                     onChange={(e) => {
-                                      setSelectedDokumen(doc);
-                                      setValidationCatatan(e.target.value);
+                                      setDokumenCatatan(prev => ({ ...prev, [doc.id]: e.target.value }));
                                     }}
-                                    onFocus={() => setSelectedDokumen(doc)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm"
                                     rows={2}
                                   />
                                   <div className="flex gap-2">
                                     <button
-                                      onClick={() => submitValidation(doc.id, 'valid', selectedDokumen?.id === doc.id ? validationCatatan : '')}
+                                      onClick={() => submitValidation(doc.id, 'valid', dokumenCatatan[doc.id] || '')}
                                       disabled={validatingDokumen === doc.id}
                                       className="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
@@ -958,7 +967,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                     </button>
                                     <button
                                       onClick={() => {
-                                        const catatan = selectedDokumen?.id === doc.id ? validationCatatan : '';
+                                        const catatan = dokumenCatatan[doc.id] || '';
                                         if (!catatan.trim()) {
                                           alert('Harap berikan catatan alasan penolakan');
                                           return;
@@ -982,18 +991,16 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                 <div className="space-y-3">
                                   <textarea
                                     placeholder="Catatan review (opsional untuk terima, wajib untuk tolak)..."
-                                    value={selectedDokumen?.id === doc.id ? validationCatatan : ''}
+                                    value={dokumenCatatan[doc.id] || ''}
                                     onChange={(e) => {
-                                      setSelectedDokumen(doc);
-                                      setValidationCatatan(e.target.value);
+                                      setDokumenCatatan(prev => ({ ...prev, [doc.id]: e.target.value }));
                                     }}
-                                    onFocus={() => setSelectedDokumen(doc)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-sm"
                                     rows={2}
                                   />
                                   <div className="flex gap-2">
                                     <button
-                                      onClick={() => submitValidation(doc.id, 'reviewed', selectedDokumen?.id === doc.id ? validationCatatan : '')}
+                                      onClick={() => submitValidation(doc.id, 'reviewed', dokumenCatatan[doc.id] || '')}
                                       disabled={validatingDokumen === doc.id}
                                       className="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
@@ -1001,7 +1008,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                     </button>
                                     <button
                                       onClick={() => {
-                                        const catatan = selectedDokumen?.id === doc.id ? validationCatatan : '';
+                                        const catatan = dokumenCatatan[doc.id] || '';
                                         if (!catatan.trim()) {
                                           alert('Harap berikan catatan alasan penolakan');
                                           return;
@@ -1035,6 +1042,151 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Tab: Waktu Penyelesaian */}
+          {activeTab === 'waktu' && kegiatan && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <span>⏰</span> Analisis Waktu Penyelesaian
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Perbandingan waktu rencana dengan realisasi penyelesaian kegiatan
+                </p>
+              </div>
+
+              {/* Timeline Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Waktu Rencana */}
+                <div className="bg-white border rounded-xl p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">📅</span>
+                    Waktu Rencana
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Mulai</span>
+                      <span className="font-semibold text-gray-900">{formatDate(kegiatan.tanggal_mulai)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Selesai</span>
+                      <span className="font-semibold text-gray-900">{formatDate(kegiatan.tanggal_selesai)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-blue-100 rounded-lg">
+                      <span className="text-gray-700 font-medium">Durasi Rencana</span>
+                      <span className="font-bold text-blue-700">
+                        {Math.ceil((new Date(kegiatan.tanggal_selesai).getTime() - new Date(kegiatan.tanggal_mulai).getTime()) / (1000 * 60 * 60 * 24))} hari
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Waktu Realisasi */}
+                <div className="bg-white border rounded-xl p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">✅</span>
+                    Waktu Realisasi
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Mulai Aktual</span>
+                      <span className="font-semibold text-gray-900">
+                        {kegiatan.tanggal_realisasi_mulai 
+                          ? formatDate(kegiatan.tanggal_realisasi_mulai) 
+                          : <span className="text-gray-400">Belum dimulai</span>}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                      <span className="text-gray-600">Tanggal Selesai Aktual</span>
+                      <span className="font-semibold text-gray-900">
+                        {kegiatan.tanggal_realisasi_selesai 
+                          ? formatDate(kegiatan.tanggal_realisasi_selesai)
+                          : <span className="text-gray-400">Belum selesai</span>}
+                      </span>
+                    </div>
+                    <div className={`flex justify-between items-center p-3 rounded-lg ${
+                      kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                        ? 'bg-green-100'
+                        : 'bg-gray-100'
+                    }`}>
+                      <span className="text-gray-700 font-medium">Durasi Aktual</span>
+                      <span className={`font-bold ${
+                        kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                          ? 'text-green-700'
+                          : 'text-gray-400'
+                      }`}>
+                        {kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                          ? `${Math.ceil((new Date(kegiatan.tanggal_realisasi_selesai).getTime() - new Date(kegiatan.tanggal_realisasi_mulai).getTime()) / (1000 * 60 * 60 * 24))} hari`
+                          : 'Belum selesai'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Ketepatan Waktu */}
+              {(() => {
+                const deadline = new Date(kegiatan.tanggal_selesai);
+                const today = new Date();
+                const realisasiSelesai = kegiatan.tanggal_realisasi_selesai ? new Date(kegiatan.tanggal_realisasi_selesai) : null;
+                
+                let status: 'tepat' | 'lebih_cepat' | 'terlambat' | 'berjalan';
+                let selisihHari = 0;
+                
+                if (realisasiSelesai) {
+                  selisihHari = Math.ceil((deadline.getTime() - realisasiSelesai.getTime()) / (1000 * 60 * 60 * 24));
+                  if (selisihHari > 0) status = 'lebih_cepat';
+                  else if (selisihHari < 0) status = 'terlambat';
+                  else status = 'tepat';
+                } else {
+                  selisihHari = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  if (selisihHari < 0) status = 'terlambat';
+                  else status = 'berjalan';
+                }
+
+                return (
+                  <div className={`rounded-xl p-6 ${
+                    status === 'tepat' || status === 'lebih_cepat' 
+                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200' 
+                      : status === 'terlambat'
+                      ? 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200'
+                      : 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-1">Status Ketepatan Waktu</h4>
+                        <p className="text-sm text-gray-600">
+                          {status === 'tepat' && 'Kegiatan selesai tepat pada waktunya'}
+                          {status === 'lebih_cepat' && `Kegiatan selesai ${Math.abs(selisihHari)} hari lebih cepat dari jadwal`}
+                          {status === 'terlambat' && realisasiSelesai && `Kegiatan selesai ${Math.abs(selisihHari)} hari terlambat dari jadwal`}
+                          {status === 'terlambat' && !realisasiSelesai && `Kegiatan sudah melewati deadline ${Math.abs(selisihHari)} hari`}
+                          {status === 'berjalan' && `${selisihHari} hari lagi menuju deadline`}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <span className={`text-4xl font-bold ${
+                          status === 'tepat' || status === 'lebih_cepat' ? 'text-green-600' :
+                          status === 'terlambat' ? 'text-red-600' : 'text-blue-600'
+                        }`}>
+                          {status === 'tepat' && '✓'}
+                          {status === 'lebih_cepat' && `+${Math.abs(selisihHari)}`}
+                          {status === 'terlambat' && `-${Math.abs(selisihHari)}`}
+                          {status === 'berjalan' && selisihHari}
+                        </span>
+                        <p className="text-sm text-gray-600">
+                          {status === 'tepat' && 'Tepat Waktu'}
+                          {status === 'lebih_cepat' && 'Hari Lebih Cepat'}
+                          {status === 'terlambat' && 'Hari Terlambat'}
+                          {status === 'berjalan' && 'Hari Tersisa'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
