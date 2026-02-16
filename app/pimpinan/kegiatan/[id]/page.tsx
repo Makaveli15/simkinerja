@@ -14,6 +14,7 @@ interface KegiatanDetail {
   target_output: number;
   output_realisasi: number;
   satuan_output: string;
+  jenis_validasi?: 'dokumen' | 'kuantitas';
   tanggal_mulai: string;
   tanggal_selesai: string;
   tanggal_realisasi_mulai: string | null;
@@ -118,6 +119,32 @@ interface DokumenOutput {
   tanggal_disahkan?: string;
 }
 
+interface Mitra {
+  id: number;
+  nama: string;
+  nik?: string;
+  alamat?: string;
+  no_hp?: string;
+  email?: string;
+  jenis_kelamin?: string;
+  pekerjaan?: string;
+}
+
+interface ValidasiKuantitas {
+  id: number;
+  kegiatan_id: number;
+  jumlah_output: number;
+  bukti_path?: string;
+  keterangan?: string;
+  status_kesubag: 'pending' | 'valid' | 'tidak_valid';
+  status_pimpinan: 'pending' | 'valid' | 'tidak_valid';
+  feedback_kesubag?: string;
+  feedback_pimpinan?: string;
+  created_at: string;
+  validated_kesubag_at?: string;
+  validated_pimpinan_at?: string;
+}
+
 export default function PimpinanKegiatanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const kegiatanId = resolvedParams.id;
@@ -130,6 +157,8 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
   const [kendala, setKendala] = useState<Kendala[]>([]);
   const [evaluasi, setEvaluasi] = useState<Evaluasi[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
+  const [mitra, setMitra] = useState<Mitra[]>([]);
+  const [validasiKuantitas, setValidasiKuantitas] = useState<ValidasiKuantitas[]>([]);
   
   const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'waktu' | 'evaluasi'>('evaluasi-kinerja');
   const [updatingVerifikasi, setUpdatingVerifikasi] = useState(false);
@@ -150,6 +179,12 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
     status: '' as 'diterima' | 'ditolak' | '',
     catatan: ''
   });
+
+  // Bulk validation states
+  const [bulkValidating, setBulkValidating] = useState(false);
+  const [showBulkValidationModal, setShowBulkValidationModal] = useState(false);
+  const [bulkValidationType, setBulkValidationType] = useState<'valid' | 'draft_feedback'>('valid');
+  const [bulkCatatan, setBulkCatatan] = useState('');
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -180,6 +215,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
         setRealisasiAnggaran(data.realisasi_anggaran);
         setKendala(data.kendala);
         setEvaluasi(data.evaluasi);
+        setMitra(data.mitra || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -200,14 +236,61 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
     }
   };
 
+  const fetchValidasiKuantitas = async () => {
+    try {
+      const res = await fetch(`/api/pimpinan/validasi-kuantitas?kegiatan_id=${kegiatanId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setValidasiKuantitas(data.validasi || []);
+      }
+    } catch (error) {
+      console.error('Error fetching validasi kuantitas:', error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchDokumen();
+    fetchValidasiKuantitas();
   }, [kegiatanId]);
 
-  // Hitung status verifikasi berdasarkan dokumen
-  const hitungStatusVerifikasiBerdasarkanDokumen = () => {
-    // Filter dokumen final yang sudah minta validasi
+  // Hitung status verifikasi berdasarkan jenis validasi (dokumen atau kuantitas)
+  const hitungStatusVerifikasi = () => {
+    const targetOutput = kegiatan?.target_output || 0;
+    
+    // Jika jenis_validasi adalah kuantitas, hitung dari validasiKuantitas
+    if (kegiatan?.jenis_validasi === 'kuantitas') {
+      // Hitung total output yang sudah disahkan (status_pimpinan = 'valid')
+      const totalDisahkan = validasiKuantitas
+        .filter(v => v.status_pimpinan === 'valid')
+        .reduce((sum, v) => sum + Number(v.jumlah_output), 0);
+      
+      // Hitung jumlah yang ditolak
+      const jumlahDitolak = validasiKuantitas.filter(v => v.status_pimpinan === 'tidak_valid').length;
+      
+      // Hitung jumlah yang menunggu validasi pimpinan
+      const jumlahMenunggu = validasiKuantitas.filter(v => v.status_kesubag === 'valid' && v.status_pimpinan === 'pending').length;
+      
+      if (validasiKuantitas.length === 0) {
+        return { status: 'belum_verifikasi', disahkan: 0, target: targetOutput };
+      }
+      
+      if (totalDisahkan >= targetOutput && totalDisahkan > 0) {
+        return { status: 'valid', disahkan: Math.round(totalDisahkan), target: targetOutput };
+      }
+      
+      if (jumlahDitolak > 0) {
+        return { status: 'revisi', disahkan: Math.round(totalDisahkan), target: targetOutput, ditolak: jumlahDitolak };
+      }
+      
+      if (jumlahMenunggu > 0) {
+        return { status: 'menunggu', disahkan: Math.round(totalDisahkan), target: targetOutput };
+      }
+      
+      return { status: 'menunggu', disahkan: Math.round(totalDisahkan), target: targetOutput };
+    }
+    
+    // Jika jenis_validasi adalah dokumen, hitung dari dokumenOutput
     const dokumenFinalValidasi = dokumenOutput.filter(
       d => d.tipe_dokumen === 'final' && d.minta_validasi === 1
     );
@@ -219,26 +302,23 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
     ).length;
     const totalValidasi = dokumenFinalValidasi.length;
     
-    // Gunakan target_output jika tersedia, jika tidak gunakan total dokumen
-    const targetOutput = kegiatan?.target_output || totalValidasi;
-    
     if (totalValidasi === 0) {
-      return { status: 'belum_verifikasi', disahkan: 0, target: targetOutput };
+      return { status: 'belum_verifikasi', disahkan: 0, target: targetOutput || totalValidasi };
     }
     
     if (jumlahDisahkan === targetOutput && jumlahDisahkan > 0) {
-      return { status: 'valid', disahkan: jumlahDisahkan, target: targetOutput };
+      return { status: 'valid', disahkan: jumlahDisahkan, target: targetOutput || totalValidasi };
     }
     
     if (jumlahDitolak > 0) {
-      return { status: 'revisi', disahkan: jumlahDisahkan, target: targetOutput, ditolak: jumlahDitolak };
+      return { status: 'revisi', disahkan: jumlahDisahkan, target: targetOutput || totalValidasi, ditolak: jumlahDitolak };
     }
     
-    return { status: 'menunggu', disahkan: jumlahDisahkan, target: targetOutput };
+    return { status: 'menunggu', disahkan: jumlahDisahkan, target: targetOutput || totalValidasi };
   };
 
-  // Status verifikasi yang dihitung dari dokumen
-  const statusVerifikasiDokumen = hitungStatusVerifikasiBerdasarkanDokumen();
+  // Status verifikasi yang dihitung
+  const statusVerifikasiDokumen = hitungStatusVerifikasi();
 
   const handleVerifikasi = async (newStatus: 'valid' | 'revisi') => {
     setUpdatingVerifikasi(true);
@@ -370,6 +450,85 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
       setReviewingDokumenId(null);
     }
   };
+
+  // Handle validasi kuantitas
+  const handleValidasiKuantitas = async (id: number, status: 'valid' | 'tidak_valid', feedback?: string) => {
+    try {
+      const res = await fetch('/api/pimpinan/validasi-kuantitas', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          status,
+          catatan: feedback
+        })
+      });
+
+      if (res.ok) {
+        setSuccess(`Data kuantitas berhasil ${status === 'valid' ? 'disahkan' : 'ditolak'}`);
+        fetchValidasiKuantitas();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || 'Gagal memvalidasi');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error validating kuantitas:', err);
+      setError('Terjadi kesalahan');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  // Handle bulk validation
+  const handleBulkValidation = async () => {
+    setBulkValidating(true);
+    try {
+      const res = await fetch('/api/pimpinan/dokumen-output', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kegiatan_id: kegiatanId,
+          action: bulkValidationType,
+          catatan: bulkCatatan || undefined
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSuccess(`${data.count} dokumen berhasil ${bulkValidationType === 'valid' ? 'divalidasi dan disahkan' : 'direview'}`);
+        setShowBulkValidationModal(false);
+        setBulkCatatan('');
+        fetchDokumen();
+        fetchData(); // Refresh data
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const errorData = await res.json();
+        setError(errorData.error || 'Gagal melakukan validasi massal');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error bulk validating:', err);
+      setError('Terjadi kesalahan');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setBulkValidating(false);
+    }
+  };
+
+  // Count pending documents for bulk validation
+  const pendingFinalDocs = dokumenOutput.filter(d => 
+    d.tipe_dokumen === 'final' && 
+    d.minta_validasi === 1 && 
+    d.validasi_kesubag === 'valid' && 
+    (!d.validasi_pimpinan || d.validasi_pimpinan === 'pending')
+  ).length;
+  
+  const pendingDraftDocs = dokumenOutput.filter(d => 
+    d.tipe_dokumen === 'draft' && 
+    d.draft_status_kesubag === 'reviewed' && 
+    !d.draft_feedback_pimpinan
+  ).length;
 
   // Format file size
   const formatFileSize = (bytes: number): string => {
@@ -634,6 +793,36 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                 <p className="font-medium text-green-600">{formatCurrency(summary.total_realisasi_anggaran)}</p>
               </div>
             </div>
+          </div>
+
+          {/* Section Mitra */}
+          <div className="mt-6 pt-6 border-t">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="text-indigo-500">👥</span> Mitra yang Ditugaskan
+              <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full">
+                {mitra.length} orang
+              </span>
+            </h3>
+            {mitra.length === 0 ? (
+              <div className="bg-gray-50 rounded-lg p-4 text-center">
+                <p className="text-gray-500 text-sm">Belum ada mitra yang ditugaskan untuk kegiatan ini</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {mitra.map((m, index) => (
+                  <div key={m.id} className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                      {m.nama.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">{m.nama}</p>
+                      {m.pekerjaan && <p className="text-xs text-gray-500 truncate">{m.pekerjaan}</p>}
+                      {m.no_hp && <p className="text-xs text-gray-400">{m.no_hp}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1063,15 +1252,82 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
           {/* Tab: Progres */}
           {activeTab === 'progres' && (
             <div>
-              {/* Info Output dari Kegiatan */}
-              <div className="mb-6 p-4 bg-blue-50 rounded-xl">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Summary Cards - Berdasarkan jenis_validasi */}
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 bg-blue-50 rounded-xl">
+                  <p className="text-sm text-gray-600">Target Output</p>
+                  <p className="text-2xl font-bold text-gray-900">{Math.round(kegiatan?.target_output || 0)}</p>
+                  <p className="text-sm text-gray-500">{kegiatan?.satuan_output}</p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-xl">
+                  <p className="text-sm text-gray-600">Output Tervalidasi</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {kegiatan?.jenis_validasi === 'kuantitas'
+                      ? Math.round(validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0))
+                      : dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {kegiatan?.jenis_validasi === 'kuantitas' ? `${kegiatan?.satuan_output} disahkan` : 'Dokumen disahkan'}
+                  </p>
+                </div>
+                <div className="p-4 bg-yellow-50 rounded-xl">
+                  <p className="text-sm text-gray-600">Menunggu Validasi</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {kegiatan?.jenis_validasi === 'kuantitas'
+                      ? Math.round(validasiKuantitas.filter(v => v.status_kesubag === 'valid' && v.status_pimpinan === 'pending').reduce((sum, v) => sum + Number(v.jumlah_output), 0))
+                      : dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.minta_validasi === 1 && d.status_final !== 'disahkan' && d.status_final !== 'revisi').length}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {kegiatan?.jenis_validasi === 'kuantitas' ? `${kegiatan?.satuan_output} diproses` : 'Dokumen diproses'}
+                  </p>
+                </div>
+                <div className="p-4 bg-purple-50 rounded-xl">
+                  <p className="text-sm text-gray-600">Progres Validasi</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {kegiatan?.target_output && kegiatan.target_output > 0
+                      ? kegiatan?.jenis_validasi === 'kuantitas'
+                        ? Math.round((validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                        : Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100)
+                      : 0}%
+                  </p>
+                  <p className="text-sm text-gray-500">dari target</p>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mb-6 p-4 bg-white border rounded-xl">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">Progres Validasi Output</span>
+                  <span className="text-sm font-bold text-blue-600">
+                    {kegiatan?.jenis_validasi === 'kuantitas'
+                      ? `${Math.round(validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0))} / ${Math.round(kegiatan?.target_output || 0)} ${kegiatan?.satuan_output} tervalidasi`
+                      : `${dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length} / ${Math.round(kegiatan?.target_output || 0)} tervalidasi`}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500"
+                    style={{ 
+                      width: `${kegiatan?.target_output && kegiatan.target_output > 0 
+                        ? kegiatan?.jenis_validasi === 'kuantitas'
+                          ? Math.min((validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
+                          : Math.min((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100, 100)
+                        : 0}%` 
+                    }}
+                  ></div>
+                </div>
+                <div className="flex justify-between mt-2 text-xs text-gray-500">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* Riwayat Info */}
+              <div className="mb-4 p-4 bg-gray-50 rounded-xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Target Output</p>
-                    <p className="font-semibold text-gray-900">{Math.round(kegiatan?.target_output || 0)} {kegiatan?.satuan_output}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Output Realisasi</p>
+                    <p className="text-sm text-gray-600">Output Realisasi (Manual)</p>
                     <p className="font-semibold text-gray-900">{Math.round(kegiatan?.output_realisasi || 0)} {kegiatan?.satuan_output}</p>
                   </div>
                   <div>
@@ -1212,14 +1468,203 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
           {/* Tab: Dokumen Output */}
           {activeTab === 'dokumen' && (
             <div className="space-y-6">
+              {/* Conditional rendering based on jenis_validasi */}
+              {(kegiatan?.jenis_validasi === 'kuantitas') ? (
+                /* ==================== KUANTITAS VALIDATION UI ==================== */
+                <div>
+                  {/* Info Box for Kuantitas */}
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+                    <h4 className="font-medium text-indigo-800 mb-2 flex items-center gap-2">
+                      <span>📊</span> Validasi & Pengesahan Kuantitas Output
+                    </h4>
+                    <p className="text-sm text-indigo-700">
+                      Validasi data kuantitas output yang sudah divalidasi oleh Koordinator. Satuan output: <strong>{kegiatan?.satuan_output}</strong>
+                    </p>
+                  </div>
+
+                  {/* Kuantitas Summary Cards */}
+                  <div className="grid grid-cols-4 gap-4 mb-6">
+                    <div className="bg-blue-50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-blue-600">{Math.round(kegiatan?.target_output || 0)}</p>
+                      <p className="text-sm text-blue-600">Target Output</p>
+                    </div>
+                    <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {validasiKuantitas.filter(v => v.status_kesubag === 'valid' && v.status_pimpinan === 'pending').length}
+                      </p>
+                      <p className="text-sm text-yellow-600">Menunggu Validasi</p>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-green-600">
+                        {Math.round(validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0))}
+                      </p>
+                      <p className="text-sm text-green-600">Disahkan ({kegiatan?.satuan_output})</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-4 text-center">
+                      <p className="text-2xl font-bold text-red-600">
+                        {validasiKuantitas.filter(v => v.status_pimpinan === 'tidak_valid').length}
+                      </p>
+                      <p className="text-sm text-red-600">Ditolak</p>
+                    </div>
+                  </div>
+
+                  {/* Kuantitas List */}
+                  {validasiKuantitas.filter(v => v.status_kesubag === 'valid').length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg">
+                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-3xl">📊</span>
+                      </div>
+                      <p className="text-gray-500 mb-2">Belum ada data kuantitas yang siap divalidasi</p>
+                      <p className="text-sm text-gray-400">Data kuantitas akan muncul setelah divalidasi oleh Koordinator</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {validasiKuantitas.filter(v => v.status_kesubag === 'valid').map((val) => {
+                        const needsValidation = val.status_pimpinan === 'pending';
+                        const isValidated = val.status_pimpinan === 'valid';
+                        const isRejected = val.status_pimpinan === 'tidak_valid';
+                        
+                        return (
+                          <div key={val.id} className={`p-4 border rounded-xl ${
+                            isValidated ? 'bg-green-50 border-green-200' : 
+                            isRejected ? 'bg-red-50 border-red-200' : 
+                            'bg-white border-gray-200'
+                          }`}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex items-start gap-3 flex-1">
+                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                  isValidated ? 'bg-green-100' : 
+                                  isRejected ? 'bg-red-100' : 
+                                  'bg-indigo-100'
+                                }`}>
+                                  <span className="text-2xl">{isValidated ? '🏆' : isRejected ? '❌' : '📊'}</span>
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-xl font-bold text-gray-900">
+                                    {Math.round(Number(val.jumlah_output))} <span className="text-sm font-normal text-gray-500">{kegiatan?.satuan_output}</span>
+                                  </p>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    Disubmit: {formatDate(val.created_at)}
+                                  </p>
+                                  {val.keterangan && (
+                                    <p className="text-sm text-gray-600 mt-2 bg-gray-100 p-2 rounded">
+                                      💬 {val.keterangan}
+                                    </p>
+                                  )}
+                                  
+                                  {/* Validation Status */}
+                                  <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                                    <span className="px-2 py-1 rounded bg-green-100 text-green-700">
+                                      Koordinator: ✅ Valid
+                                    </span>
+                                    <span className="text-gray-400">→</span>
+                                    <span className={`px-2 py-1 rounded ${
+                                      isValidated ? 'bg-green-100 text-green-700' :
+                                      isRejected ? 'bg-red-100 text-red-700' :
+                                      'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                      Pimpinan: {isValidated ? '🏆 Disahkan' : isRejected ? '❌ Ditolak' : '⏳ Pending'}
+                                    </span>
+                                  </div>
+
+                                  {val.feedback_kesubag && (
+                                    <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
+                                      💬 <strong>Koordinator:</strong> {val.feedback_kesubag}
+                                    </p>
+                                  )}
+                                  {val.feedback_pimpinan && (
+                                    <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded">
+                                      💬 <strong>Anda:</strong> {val.feedback_pimpinan}
+                                    </p>
+                                  )}
+
+                                  {/* Validation Form */}
+                                  {needsValidation && (
+                                    <div className="mt-4 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                                      <p className="text-sm font-medium text-indigo-700 mb-3">🏆 Validasi & Sahkan Data Kuantitas:</p>
+                                      <div className="space-y-3">
+                                        <textarea
+                                          placeholder="Catatan (opsional untuk valid, wajib untuk tolak)..."
+                                          id={`catatan-kuantitas-pimpinan-${val.id}`}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                                          rows={2}
+                                        />
+                                        <div className="flex gap-2">
+                                          <button
+                                            onClick={() => {
+                                              const textarea = document.getElementById(`catatan-kuantitas-pimpinan-${val.id}`) as HTMLTextAreaElement;
+                                              handleValidasiKuantitas(val.id, 'valid', textarea?.value || '');
+                                            }}
+                                            className="flex-1 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
+                                          >
+                                            <span>🏆</span> Valid & Sahkan
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              const textarea = document.getElementById(`catatan-kuantitas-pimpinan-${val.id}`) as HTMLTextAreaElement;
+                                              const catatan = textarea?.value || '';
+                                              if (!catatan.trim()) {
+                                                setError('Harap berikan catatan alasan penolakan');
+                                                return;
+                                              }
+                                              handleValidasiKuantitas(val.id, 'tidak_valid', catatan);
+                                            }}
+                                            className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
+                                          >
+                                            <span>❌</span> Tidak Valid
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Bukti Button */}
+                              {val.bukti_path && (
+                                <a 
+                                  href={val.bukti_path} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded-lg hover:bg-blue-200 inline-flex items-center gap-2 flex-shrink-0"
+                                >
+                                  👁️ Lihat Bukti
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* ==================== DOKUMEN VALIDATION UI ==================== */
+                <div>
               {/* Info Box */}
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
-                <h4 className="font-medium text-indigo-800 mb-2 flex items-center gap-2">
-                  <span>📁</span> Review Dokumen Output
-                </h4>
-                <p className="text-sm text-indigo-700">
-                  Review dokumen yang diupload oleh pelaksana. Validasi dokumen final setelah Koordinator menyetujui.
-                </p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-medium text-indigo-800 mb-2 flex items-center gap-2">
+                      <span>📁</span> Review Dokumen Output
+                    </h4>
+                    <p className="text-sm text-indigo-700">
+                      Review dokumen yang diupload oleh pelaksana. Validasi dokumen final setelah Koordinator menyetujui.
+                    </p>
+                  </div>
+                  
+                  {/* Bulk Validation Button */}
+                  {(pendingFinalDocs > 0 || pendingDraftDocs > 0) && (
+                    <button
+                      onClick={() => setShowBulkValidationModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md"
+                    >
+                      <LuCheck className="w-4 h-4" />
+                      <span>Validasi Semua</span>
+                      <span className="bg-white/20 px-2 py-0.5 rounded text-xs">{pendingFinalDocs + pendingDraftDocs}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Statistics */}
@@ -1548,6 +1993,8 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   })}
                 </div>
               )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1805,6 +2252,117 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
           )}
         </div>
       </div>
+
+      {/* Bulk Validation Modal */}
+      {showBulkValidationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-6 text-white">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <LuCheck className="w-6 h-6" />
+                Validasi Massal Dokumen
+              </h3>
+              <p className="text-sm text-white/80 mt-1">
+                Validasi dan sahkan semua dokumen yang menunggu dalam satu kali proses
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-indigo-50 rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-indigo-600">{pendingFinalDocs}</p>
+                  <p className="text-xs text-indigo-700">Dokumen Final Menunggu</p>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-amber-600">{pendingDraftDocs}</p>
+                  <p className="text-xs text-amber-700">Draft Menunggu Feedback</p>
+                </div>
+              </div>
+
+              {/* Validation Type Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Jenis Validasi:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setBulkValidationType('valid')}
+                    disabled={pendingFinalDocs === 0}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      bulkValidationType === 'valid' 
+                        ? 'border-indigo-500 bg-indigo-50' 
+                        : 'border-gray-200 hover:border-indigo-300'
+                    } ${pendingFinalDocs === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <p className="font-medium text-gray-900">🏆 Validasi & Sahkan</p>
+                    <p className="text-xs text-gray-500">{pendingFinalDocs} dokumen</p>
+                  </button>
+                  <button
+                    onClick={() => setBulkValidationType('draft_feedback')}
+                    disabled={pendingDraftDocs === 0}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      bulkValidationType === 'draft_feedback' 
+                        ? 'border-amber-500 bg-amber-50' 
+                        : 'border-gray-200 hover:border-amber-300'
+                    } ${pendingDraftDocs === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <p className="font-medium text-gray-900">💬 Feedback Draft</p>
+                    <p className="text-xs text-gray-500">{pendingDraftDocs} dokumen</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Optional Note */}
+              <div>
+                <label className="text-sm font-medium text-gray-700">Catatan (opsional):</label>
+                <textarea
+                  value={bulkCatatan}
+                  onChange={(e) => setBulkCatatan(e.target.value)}
+                  placeholder="Tambahkan catatan untuk semua dokumen..."
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  rows={2}
+                />
+              </div>
+
+              {/* Warning */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-sm text-amber-800">
+                  ⚠️ Tindakan ini akan memproses <strong>{bulkValidationType === 'valid' ? pendingFinalDocs : pendingDraftDocs}</strong> dokumen sekaligus. 
+                  {bulkValidationType === 'valid' && ' Dokumen akan langsung disahkan.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 bg-gray-50 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowBulkValidationModal(false);
+                  setBulkCatatan('');
+                }}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleBulkValidation}
+                disabled={bulkValidating || (bulkValidationType === 'valid' ? pendingFinalDocs === 0 : pendingDraftDocs === 0)}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium rounded-lg hover:from-indigo-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              >
+                {bulkValidating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    <LuCheck className="w-4 h-4" />
+                    {bulkValidationType === 'valid' ? 'Validasi & Sahkan Semua' : 'Feedback Semua'}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

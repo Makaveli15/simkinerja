@@ -51,7 +51,9 @@ interface Kegiatan {
   // New fields for progress calculation
   target_output: number;
   output_realisasi: number;
+  output_tervalidasi: number;
   satuan_output: string;
+  jenis_validasi: 'dokumen' | 'kuantitas';
   // Approval workflow fields
   status_pengajuan: 'draft' | 'diajukan' | 'review_koordinator' | 'review_ppk' | 'review_kepala' | 'disetujui' | 'ditolak' | 'revisi';
   tanggal_pengajuan: string;
@@ -379,9 +381,9 @@ export default function KegiatanPage() {
           'Realisasi Anggaran (%)': realisasiAnggaranPersen,
           'Sisa Anggaran (Rp)': sisaAnggaran,
           'Target Output': k.target_output || 0,
-          'Output Realisasi': k.output_realisasi || 0,
+          'Output Realisasi': k.jenis_validasi === 'kuantitas' ? (k.output_tervalidasi || 0) : (k.output_realisasi || 0),
           'Satuan Output': k.satuan_output || '-',
-          'Progres Output (%)': k.target_output > 0 ? Math.round(Math.min((k.output_realisasi || 0) / k.target_output * 100, 100)) : 0,
+          'Progres Output (%)': k.target_output > 0 ? Math.round(Math.min(((k.jenis_validasi === 'kuantitas' ? (k.output_tervalidasi || 0) : (k.output_realisasi || 0)) / k.target_output) * 100, 100)) : 0,
           'Kendala Total': k.kendala_total || 0,
           'Kendala Selesai': k.kendala_resolved || 0,
           'Kendala Belum Selesai': k.kendala_open || 0,
@@ -494,7 +496,8 @@ export default function KegiatanPage() {
         : 0;
       const avgProgres = dataForExport.length > 0 
         ? (dataForExport.reduce((sum, k) => {
-            const progres = k.target_output > 0 ? Math.min((k.output_realisasi || 0) / k.target_output * 100, 100) : 0;
+            const outputRealisasi = k.jenis_validasi === 'kuantitas' ? (k.output_tervalidasi || 0) : (k.output_realisasi || 0);
+            const progres = k.target_output > 0 ? Math.min(outputRealisasi / k.target_output * 100, 100) : 0;
             return sum + progres;
           }, 0) / dataForExport.length).toFixed(1)
         : 0;
@@ -643,7 +646,8 @@ export default function KegiatanPage() {
                 const realisasiNominal = (pagu * realisasiPersen) / 100;
                 const kinerjaBg = k.skor_kinerja >= 80 ? 'sukses' : k.skor_kinerja >= 60 ? 'perhatian' : k.skor_kinerja > 0 ? 'bermasalah' : '';
                 const hasKendala = (k.kendala_open || 0) > 0;
-                const progresOutput = k.target_output > 0 ? Math.round(Math.min((k.output_realisasi || 0) / k.target_output * 100, 100)) : 0;
+                const outputRealisasi = k.jenis_validasi === 'kuantitas' ? (k.output_tervalidasi || 0) : (k.output_realisasi || 0);
+                const progresOutput = k.target_output > 0 ? Math.round(Math.min(outputRealisasi / k.target_output * 100, 100)) : 0;
                 return `
                 <tr>
                   <td class="text-center">${index + 1}</td>
@@ -653,7 +657,7 @@ export default function KegiatanPage() {
                   <td>${formatDate(k.tanggal_mulai)}<br><small style="color:#666">s/d ${formatDate(k.tanggal_selesai)}</small></td>
                   <td class="text-right">${formatCurrency(pagu)}</td>
                   <td class="text-right">${formatCurrency(realisasiNominal)}<br><small style="color:#666">(${realisasiPersen}%)</small></td>
-                  <td class="text-center">${progresOutput}%<br><small style="color:#666">${Math.round(k.output_realisasi || 0)}/${Math.round(k.target_output || 0)}</small></td>
+                  <td class="text-center">${progresOutput}%<br><small style="color:#666">${Math.round(outputRealisasi)}/${Math.round(k.target_output || 0)}</small></td>
                   <td class="text-center">${k.kendala_total > 0 ? `<span style="color: ${hasKendala ? '#dc2626' : '#16a34a'}; font-weight: bold;">${k.kendala_resolved || 0}/${k.kendala_total}</span>` : '-'}</td>
                   <td class="text-center"><span class="kinerja ${kinerjaBg ? 'kinerja-' + kinerjaBg : ''}">${k.skor_kinerja || 0}</span><br><small style="color:#666">${k.status_kinerja || '-'}</small></td>
                   <td>${k.mitra_nama || '-'}</td>
@@ -1134,8 +1138,12 @@ export default function KegiatanPage() {
                         <td className="px-6 py-4">
                           <div className="w-28">
                             {(() => {
+                              // Gunakan output_tervalidasi untuk kuantitas, output_realisasi untuk lainnya
+                              const outputRealisasi = k.jenis_validasi === 'kuantitas' 
+                                ? (k.output_tervalidasi || 0) 
+                                : (k.output_realisasi || 0);
                               const progres = k.target_output > 0 
-                                ? Math.min((k.output_realisasi || 0) / k.target_output * 100, 100) 
+                                ? Math.min(outputRealisasi / k.target_output * 100, 100) 
                                 : 0;
                               return (
                                 <>
@@ -1155,7 +1163,7 @@ export default function KegiatanPage() {
                                     />
                                   </div>
                                   <div className="text-xs text-gray-400 mt-0.5">
-                                    {Math.round(k.output_realisasi || 0)}/{Math.round(k.target_output || 0)} {k.satuan_output || ''}
+                                    {Math.round(outputRealisasi)}/{Math.round(k.target_output || 0)} {k.satuan_output || ''}
                                   </div>
                                 </>
                               );

@@ -67,11 +67,11 @@ export default function KoordinatorLayout({
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Kegiatan submenu state - auto open when on kegiatan page
-  const [isKegiatanOpen, setIsKegiatanOpen] = useState(pathname.startsWith('/koordinator/kegiatan'));
+  const [isKegiatanOpen, setIsKegiatanOpen] = useState(pathname.startsWith('/koordinator/kegiatan') || pathname.startsWith('/koordinator/statistik'));
 
   // Auto open kegiatan submenu when navigating to kegiatan pages
   useEffect(() => {
-    if (pathname.startsWith('/koordinator/kegiatan')) {
+    if (pathname.startsWith('/koordinator/kegiatan') || pathname.startsWith('/koordinator/statistik')) {
       setIsKegiatanOpen(true);
     }
   }, [pathname]);
@@ -98,12 +98,12 @@ export default function KoordinatorLayout({
           label: 'Monitoring', 
           icon: <LuActivity className="w-4 h-4" />
         },
+        { 
+          href: '/koordinator/statistik', 
+          label: 'Statistik Kinerja', 
+          icon: <LuTrendingUp className="w-4 h-4" />
+        },
       ]
-    },
-    { 
-      href: '/koordinator/statistik', 
-      label: 'Statistik Kinerja', 
-      icon: <LuTrendingUp className="w-5 h-5" />
     },
     { 
       href: '/koordinator/laporan', 
@@ -361,7 +361,7 @@ export default function KoordinatorLayout({
                       {!isCollapsed && <span className="font-medium">{item.label}</span>}
                     </div>
                     {!isCollapsed && (
-                      <LuChevronRight className={`w-4 h-4 transition-transform duration-200 ${isKegiatanOpen ? 'rotate-90' : ''}`} />
+                      <LuChevronDown className={`w-4 h-4 transition-transform duration-200 ${isKegiatanOpen ? 'rotate-180' : ''}`} />
                     )}
                   </button>
                   

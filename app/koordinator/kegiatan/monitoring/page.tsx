@@ -17,6 +17,8 @@ interface Kegiatan {
   target_output: number;
   output_realisasi: number;
   satuan_output: string;
+  jenis_validasi?: 'dokumen' | 'kuantitas';
+  output_tervalidasi?: number;
   tanggal_mulai: string;
   tanggal_selesai: string;
   anggaran_pagu: number;
@@ -119,7 +121,10 @@ export default function MonitoringKegiatanPage() {
   };
 
   const getVerifikasiBadge = (kg: Kegiatan) => {
-    const disahkan = kg.dokumen_disahkan || 0;
+    // Untuk kegiatan kuantitas, gunakan output_tervalidasi; untuk dokumen gunakan dokumen_disahkan
+    const disahkan = kg.jenis_validasi === 'kuantitas' 
+      ? Math.round(kg.output_tervalidasi || 0) 
+      : (kg.dokumen_disahkan || 0);
     const target = Math.round(kg.target_output) || 0;
     
     if (target > 0) {
@@ -274,22 +279,21 @@ export default function MonitoringKegiatanPage() {
                     </td>
                     <td className="px-4 py-4 text-center">
                       <div className="flex flex-col items-center">
-                        <span className="text-sm font-medium text-gray-900">
-                          {kg.capaian_output_persen !== undefined ? `${kg.capaian_output_persen}%` : 
-                            kg.target_output > 0 ? `${Math.round((kg.output_realisasi || 0) / kg.target_output * 100)}%` : '0%'}
-                        </span>
-                        <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
-                          <div 
-                            className="h-full bg-green-500 rounded-full"
-                            style={{ 
-                              width: `${Math.min(
-                                kg.capaian_output_persen !== undefined ? kg.capaian_output_persen : 
-                                kg.target_output > 0 ? Math.round((kg.output_realisasi || 0) / kg.target_output * 100) : 0, 
-                                100
-                              )}%` 
-                            }}
-                          ></div>
-                        </div>
+                        {(() => {
+                          const outputRealisasi = kg.jenis_validasi === 'kuantitas' ? (kg.output_tervalidasi || 0) : (kg.output_realisasi || 0);
+                          const capaianPersen = kg.target_output > 0 ? Math.round(outputRealisasi / kg.target_output * 100) : 0;
+                          return (
+                            <>
+                              <span className="text-sm font-medium text-gray-900">{capaianPersen}%</span>
+                              <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
+                                <div 
+                                  className="h-full bg-green-500 rounded-full"
+                                  style={{ width: `${Math.min(capaianPersen, 100)}%` }}
+                                ></div>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-center">

@@ -67,6 +67,28 @@ export async function GET(
       return NextResponse.json({ error: 'Kegiatan tidak ditemukan' }, { status: 404 });
     }
 
+    // jenis_validasi is now stored directly in kegiatan table
+    // Only fallback to satuan_output lookup if kegiatan.jenis_validasi is null
+    if (!kegiatan[0].jenis_validasi) {
+      try {
+        const [satuanRows] = await pool.query<RowDataPacket[]>(
+          `SELECT jenis_validasi FROM satuan_output WHERE nama = ? LIMIT 1`,
+          [kegiatan[0].satuan_output]
+        );
+        if (satuanRows.length > 0 && satuanRows[0].jenis_validasi) {
+          kegiatan[0].jenis_validasi = satuanRows[0].jenis_validasi;
+        } else {
+          kegiatan[0].jenis_validasi = 'dokumen'; // default
+        }
+      } catch (err) {
+        // Column might not exist in satuan_output, use default
+        console.log('jenis_validasi lookup failed, using default');
+        kegiatan[0].jenis_validasi = 'dokumen';
+      }
+    }
+    
+    console.log('Debug - jenis_validasi for kegiatan', id, ':', kegiatan[0].jenis_validasi);
+
     // Get mitra list from kegiatan_mitra table
     let mitraList: RowDataPacket[] = [];
     try {

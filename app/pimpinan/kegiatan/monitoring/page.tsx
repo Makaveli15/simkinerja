@@ -16,6 +16,8 @@ interface Kegiatan {
   target_output: number;
   output_realisasi: number;
   satuan_output: string;
+  jenis_validasi?: 'dokumen' | 'kuantitas';
+  output_tervalidasi?: number;
   tanggal_mulai: string;
   tanggal_selesai: string;
   anggaran_pagu: number;
@@ -120,7 +122,10 @@ export default function MonitoringKegiatanPage() {
   };
 
   const getVerifikasiBadge = (kg: Kegiatan) => {
-    const disahkan = kg.dokumen_disahkan || 0;
+    // Untuk kegiatan kuantitas, gunakan output_tervalidasi; untuk dokumen gunakan dokumen_disahkan
+    const disahkan = kg.jenis_validasi === 'kuantitas' 
+      ? Math.round(kg.output_tervalidasi || 0) 
+      : (kg.dokumen_disahkan || 0);
     const target = Math.round(kg.target_output) || 0;
     
     if (target > 0) {

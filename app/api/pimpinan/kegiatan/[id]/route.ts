@@ -44,6 +44,24 @@ export async function GET(
 
     const kegiatan = kegiatanRows[0];
 
+    // Try to get jenis_validasi from satuan_output table
+    let jenis_validasi = 'dokumen'; // default
+    try {
+      const [satuanRows] = await pool.query<RowDataPacket[]>(
+        `SELECT jenis_validasi FROM satuan_output WHERE nama = ? LIMIT 1`,
+        [kegiatan.satuan_output]
+      );
+      if (satuanRows.length > 0 && satuanRows[0].jenis_validasi) {
+        jenis_validasi = satuanRows[0].jenis_validasi;
+      }
+    } catch (err) {
+      // Column might not exist yet, use default
+      console.log('jenis_validasi column not found, using default');
+    }
+    
+    // Add jenis_validasi to kegiatan object
+    kegiatan.jenis_validasi = jenis_validasi;
+
     // Get progres history
     const [progres] = await pool.query<RowDataPacket[]>(`
       SELECT * FROM progres_kegiatan 
@@ -139,6 +157,64 @@ export async function GET(
       dokumenOutput = [];
     }
 
+    // Get mitra terkait kegiatan dari kedua sumber
+    let mitraList: RowDataPacket[] = [];
+    
+    // 1. First: try to get mitra from mitra_id column in kegiatan table (direct relation)
+    if (kegiatan.mitra_id) {
+      try {
+        const [directMitra] = await pool.query<RowDataPacket[]>(`
+          SELECT 
+            id, 
+            nama, 
+            sobat_id as nik, 
+            alamat, 
+            no_telp as no_hp, 
+            email, 
+            jk as jenis_kelamin, 
+            posisi as pekerjaan
+          FROM mitra WHERE id = ?
+        `, [kegiatan.mitra_id]);
+        if (directMitra.length > 0) {
+          mitraList = directMitra;
+        }
+      } catch (err) {
+        console.error('Error fetching direct mitra:', err);
+      }
+    }
+    
+    // 2. Also try to get additional mitra from kegiatan_mitra junction table
+    try {
+      const [junctionMitra] = await pool.query<RowDataPacket[]>(`
+        SELECT 
+          m.id, 
+          m.nama, 
+          m.sobat_id as nik, 
+          m.alamat, 
+          m.no_telp as no_hp, 
+          m.email, 
+          m.jk as jenis_kelamin, 
+          m.posisi as pekerjaan
+        FROM kegiatan_mitra km
+        JOIN mitra m ON km.mitra_id = m.id
+        WHERE km.kegiatan_id = ?
+        ORDER BY m.nama ASC
+      `, [kegiatanId]);
+      
+      // Merge and deduplicate by id
+      if (junctionMitra.length > 0) {
+        const existingIds = new Set(mitraList.map(m => m.id));
+        for (const m of junctionMitra) {
+          if (!existingIds.has(m.id)) {
+            mitraList.push(m);
+            existingIds.add(m.id);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching junction mitra (table may not exist):', err);
+    }
+
     // Calculate summary
     const totalRealisasiAnggaran = realisasiAnggaran.reduce(
       (sum: number, r: RowDataPacket) => sum + (parseFloat(r.jumlah) || 0), 
@@ -195,6 +271,7 @@ export async function GET(
       })),
       dokumen_output: dokumenOutput,
       evaluasi,
+      mitra: mitraList,
       summary: {
         total_realisasi_anggaran: totalRealisasiAnggaran,
         realisasi_anggaran_persen: kegiatan.anggaran_pagu > 0 

@@ -318,7 +318,7 @@ export default function PPKApprovalDetailPage() {
               </h3>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Pagu</span>
+                  <span className="text-gray-500">Target</span>
                   <span className="font-semibold text-gray-900">{formatCurrency(kegiatan.anggaran_pagu)}</span>
                 </div>
                 <div className="flex justify-between">

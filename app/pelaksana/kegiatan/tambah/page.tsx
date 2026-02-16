@@ -27,10 +27,18 @@ interface Mitra {
   } | null;
 }
 
+interface SatuanOutput {
+  id: number;
+  nama: string;
+  deskripsi: string | null;
+  is_active: boolean;
+}
+
 export default function TambahKegiatanPage() {
   const router = useRouter();
   const [kroList, setKroList] = useState<KRO[]>([]);
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
+  const [satuanOutputList, setSatuanOutputList] = useState<SatuanOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMitra, setLoadingMitra] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -55,7 +63,7 @@ export default function TambahKegiatanPage() {
     tanggal_mulai: '',
     tanggal_selesai: '',
     target_output: '',
-    satuan_output: 'dokumen',
+    satuan_output: '',
     anggaran_pagu: ''
   });
 
@@ -77,6 +85,7 @@ export default function TambahKegiatanPage() {
   useEffect(() => {
     fetchKRO();
     fetchMitra();
+    fetchSatuanOutput();
   }, []);
 
   // Fetch mitra with availability when dates change
@@ -95,6 +104,22 @@ export default function TambahKegiatanPage() {
       }
     } catch (error) {
       console.error('Error fetching KRO:', error);
+    }
+  };
+
+  const fetchSatuanOutput = async () => {
+    try {
+      const res = await fetch('/api/admin/satuan-output?active=true');
+      if (res.ok) {
+        const data = await res.json();
+        setSatuanOutputList(data.satuan || []);
+        // Set default satuan_output if list is not empty
+        if (data.satuan && data.satuan.length > 0) {
+          setFormData(prev => ({ ...prev, satuan_output: data.satuan[0].nama }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching satuan output:', error);
     }
   };
 
@@ -491,12 +516,15 @@ export default function TambahKegiatanPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 required
               >
-                <option value="dokumen">Dokumen</option>
-                <option value="publikasi">Publikasi</option>
-                <option value="layanan">Layanan</option>
-                <option value="wilayah">Wilayah</option>
-                <option value="data">Data</option>
-                <option value="peta">Peta</option>
+                {satuanOutputList.length === 0 ? (
+                  <option value="">Memuat satuan output...</option>
+                ) : (
+                  satuanOutputList.map((satuan) => (
+                    <option key={satuan.id} value={satuan.nama}>
+                      {satuan.nama}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>

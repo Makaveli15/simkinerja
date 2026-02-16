@@ -19,7 +19,9 @@ import {
   LuUser,
   LuLogOut,
   LuX,
-  LuGauge
+  LuGauge,
+  LuRuler,
+  LuDatabase
 } from 'react-icons/lu';
 
 interface User {
@@ -59,6 +61,7 @@ export default function AdminLayout({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
 
   // Search state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -84,29 +87,17 @@ export default function AdminLayout({
       icon: <LuLayoutDashboard className="w-5 h-5" />
     },
     { 
-      href: '/admin/users', 
-      label: 'Data Pengguna', 
-      icon: <LuUsers className="w-5 h-5" />
-    },
-    { 
-      href: '/admin/tim', 
-      label: 'Data Tim', 
-      icon: <LuBuilding2 className="w-5 h-5" />
-    },
-    { 
-      href: '/admin/kro', 
-      label: 'Data KRO', 
-      icon: <LuFileText className="w-5 h-5" />
-    },
-    { 
-      href: '/admin/mitra', 
-      label: 'Data Mitra', 
-      icon: <LuBriefcase className="w-5 h-5" />
-    },
-    { 
-      href: '/admin/indikator', 
-      label: 'Indikator Kinerja', 
-      icon: <LuGauge className="w-5 h-5" />
+      href: '#', 
+      label: 'Data Master', 
+      icon: <LuDatabase className="w-5 h-5" />,
+      subMenu: [
+        { href: '/admin/users', label: 'Data Pengguna', icon: <LuUsers className="w-4 h-4" /> },
+        { href: '/admin/tim', label: 'Data Tim', icon: <LuBuilding2 className="w-4 h-4" /> },
+        { href: '/admin/kro', label: 'Data KRO', icon: <LuFileText className="w-4 h-4" /> },
+        { href: '/admin/satuan-output', label: 'Satuan Output', icon: <LuRuler className="w-4 h-4" /> },
+        { href: '/admin/mitra', label: 'Data Mitra', icon: <LuBriefcase className="w-4 h-4" /> },
+        { href: '/admin/indikator', label: 'Indikator Kinerja', icon: <LuGauge className="w-4 h-4" /> },
+      ]
     },
     { 
       href: '/admin/settings', 
@@ -114,6 +105,15 @@ export default function AdminLayout({
       icon: <LuSettings className="w-5 h-5" />
     },
   ];
+
+  // Auto open Data Master submenu if on any of its pages
+  const isDataMasterActive = ['/admin/users', '/admin/tim', '/admin/kro', '/admin/satuan-output', '/admin/mitra', '/admin/indikator'].some(path => pathname.startsWith(path));
+  
+  useEffect(() => {
+    if (isDataMasterActive) {
+      setOpenSubMenu('Data Master');
+    }
+  }, [isDataMasterActive]);
 
   // Fetch user profile
   const fetchProfile = useCallback(async () => {
@@ -429,7 +429,60 @@ export default function AdminLayout({
         {/* Menu */}
         <nav className="p-3 space-y-1 mt-2">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href;
+            const hasSubMenu = item.subMenu && item.subMenu.length > 0;
+            const isSubMenuOpen = openSubMenu === item.label;
+            const isActive = pathname === item.href || (hasSubMenu && item.subMenu!.some(sub => pathname.startsWith(sub.href)));
+
+            if (hasSubMenu) {
+              return (
+                <div key={item.label}>
+                  <button
+                    onClick={() => setOpenSubMenu(isSubMenuOpen ? null : item.label)}
+                    className={`
+                      w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
+                      ${isActive 
+                        ? 'bg-white/20 text-white font-semibold' 
+                        : 'text-white/90 hover:bg-white/15 hover:text-white'
+                      }
+                      ${isCollapsed ? 'justify-center' : 'justify-between'}
+                    `}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.icon}
+                      {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                    </div>
+                    {!isCollapsed && (
+                      <LuChevronDown className={`w-4 h-4 transition-transform duration-200 ${isSubMenuOpen ? 'rotate-180' : ''}`} />
+                    )}
+                  </button>
+                  {isSubMenuOpen && !isCollapsed && (
+                    <div className="mt-1 ml-4 pl-3 border-l-2 border-white/30 space-y-1">
+                      {item.subMenu!.map((sub) => {
+                        const isSubActive = pathname.startsWith(sub.href);
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            className={`
+                              flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200
+                              ${isSubActive 
+                                ? 'bg-white text-blue-600 shadow-lg font-semibold' 
+                                : 'text-white/90 hover:bg-white/15 hover:text-white'
+                              }
+                            `}
+                          >
+                            {sub.icon}
+                            <span className="text-sm font-medium">{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.href}

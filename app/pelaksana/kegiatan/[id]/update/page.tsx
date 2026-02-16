@@ -10,7 +10,8 @@ import {
   LuCircleX,
   LuCircleCheck,
   LuInfo,
-  LuFileText
+  LuFileText,
+  LuTrash2
 } from 'react-icons/lu';
 
 // Helper function untuk format angka (hilangkan desimal jika tidak perlu)
@@ -29,10 +30,31 @@ interface KegiatanDetail {
   target_output: number;
   output_realisasi: number;
   satuan_output: string;
+  jenis_validasi?: 'dokumen' | 'kuantitas';
   anggaran_pagu: number;
   status: string;
   status_verifikasi: 'belum_verifikasi' | 'menunggu' | 'valid' | 'revisi';
   tim_nama: string;
+}
+
+interface ValidasiKuantitas {
+  id: number;
+  kegiatan_id: number;
+  jumlah_output: number;
+  bukti_path?: string;
+  keterangan?: string;
+  status: 'draft' | 'menunggu' | 'disahkan' | 'ditolak';
+  koordinator_id?: number;
+  pimpinan_id?: number;
+  catatan_koordinator?: string;
+  catatan_pimpinan?: string;
+  status_kesubag: 'pending' | 'valid' | 'tidak_valid';
+  status_pimpinan: 'pending' | 'valid' | 'tidak_valid';
+  feedback_kesubag?: string;
+  feedback_pimpinan?: string;
+  nama_koordinator?: string;
+  nama_pimpinan?: string;
+  created_at: string;
 }
 
 interface Summary {
@@ -117,6 +139,9 @@ interface DokumenOutput {
   status_review: 'pending' | 'diterima' | 'ditolak';
   catatan_reviewer?: string;
   reviewed_at?: string;
+  // Final validation workflow
+  minta_validasi?: number; // 0 or 1
+  status_final?: 'draft' | 'menunggu_kesubag' | 'menunggu_pimpinan' | 'ditolak' | 'disahkan';
 }
 
 type TabType = 'progres' | 'waktu' | 'realisasi-anggaran' | 'kendala' | 'evaluasi' | 'dokumen';
@@ -149,6 +174,15 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   const [realisasiAnggaran, setRealisasiAnggaran] = useState<RealisasiAnggaran[]>([]);
   const [kendala, setKendala] = useState<Kendala[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
+  const [validasiKuantitas, setValidasiKuantitas] = useState<ValidasiKuantitas[]>([]);
+
+  // Kuantitas Output Form (dengan upload bukti dukung)
+  const [kuantitasForm, setKuantitasForm] = useState({
+    jumlah_output: '',
+    keterangan: '',
+    bukti_file: null as File | null
+  });
+  const [submittingKuantitas, setSubmittingKuantitas] = useState(false);
 
   // Dokumen Output Form
   const [dokumenForm, setDokumenForm] = useState({
@@ -203,6 +237,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     fetchData();
     fetchDokumenOutput();
+    fetchValidasiKuantitas();
     fetchIndikatorConfig();
   }, [kegiatanId]);
 
@@ -227,6 +262,24 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
       }
     } catch (error) {
       console.error('Error fetching dokumen:', error);
+    }
+  };
+
+  const fetchValidasiKuantitas = async () => {
+    try {
+      console.log('Fetching validasi kuantitas for kegiatan:', kegiatanId);
+      const res = await fetch(`/api/pelaksana/validasi-kuantitas?kegiatan_id=${kegiatanId}`);
+      console.log('Validasi kuantitas response status:', res.status);
+      if (res.ok) {
+        const data = await res.json();
+        console.log('Validasi kuantitas data:', data);
+        setValidasiKuantitas(data.validasi || []);
+      } else {
+        const errorData = await res.json();
+        console.error('Validasi kuantitas error:', errorData);
+      }
+    } catch (error) {
+      console.error('Error fetching validasi kuantitas:', error);
     }
   };
 
@@ -409,6 +462,113 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  // Handle submit kuantitas output (untuk jenis_validasi = 'kuantitas') dengan upload bukti
+  const handleSubmitKuantitas = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!kuantitasForm.jumlah_output || parseFloat(kuantitasForm.jumlah_output) <= 0) {
+      setError('Jumlah output harus lebih dari 0');
+      return;
+    }
+
+    setSubmittingKuantitas(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      // Gunakan FormData untuk upload file
+      const formData = new FormData();
+      formData.append('kegiatan_id', kegiatanId);
+      formData.append('jumlah_output', kuantitasForm.jumlah_output);
+      if (kuantitasForm.keterangan) {
+        formData.append('keterangan', kuantitasForm.keterangan);
+      }
+      if (kuantitasForm.bukti_file) {
+        formData.append('bukti_file', kuantitasForm.bukti_file);
+      }
+
+      const res = await fetch('/api/pelaksana/validasi-kuantitas', {
+        method: 'POST',
+        body: formData
+      });
+
+      console.log('Submit kuantitas response status:', res.status);
+      const data = await res.json();
+      console.log('Submit kuantitas response data:', data);
+
+      if (res.ok) {
+        setSuccess('✅ Output kuantitas berhasil dicatat!');
+        setKuantitasForm({ jumlah_output: '', keterangan: '', bukti_file: null });
+        // Reset file input
+        const fileInput = document.getElementById('kuantitas-bukti-file') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+        await fetchValidasiKuantitas();
+        await fetchData(); // Refresh untuk update summary
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(data.error || 'Gagal menyimpan output kuantitas');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Terjadi kesalahan saat menyimpan output kuantitas');
+    } finally {
+      setSubmittingKuantitas(false);
+    }
+  };
+
+  // Handle delete kuantitas
+  const handleDeleteKuantitas = async (id: number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus catatan kuantitas ini?')) return;
+
+    setError('');
+
+    try {
+      const res = await fetch(`/api/pelaksana/validasi-kuantitas?id=${id}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        setSuccess('Catatan kuantitas berhasil dihapus');
+        fetchValidasiKuantitas();
+        fetchData();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Gagal menghapus catatan kuantitas');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Terjadi kesalahan saat menghapus catatan kuantitas');
+    }
+  };
+
+  // Handle minta validasi kuantitas (ubah status dari draft ke menunggu)
+  const handleMintaValidasiKuantitas = async (id: number) => {
+    if (!confirm('Apakah Anda yakin ingin mengajukan validasi? Status akan berubah dan tidak dapat diubah kembali.')) return;
+
+    setError('');
+
+    try {
+      const res = await fetch('/api/pelaksana/validasi-kuantitas', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'minta_validasi' })
+      });
+
+      if (res.ok) {
+        setSuccess('✅ Validasi berhasil diajukan! Menunggu persetujuan Koordinator.');
+        fetchValidasiKuantitas();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Gagal mengajukan validasi');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Terjadi kesalahan saat mengajukan validasi');
+    }
+  };
+
   // Format file size
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B';
@@ -426,7 +586,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
     return '📎';
   };
 
-  // Handle submit progres gabungan (data monitoring + keterangan progres)
+  // Handle submit progres gabungan (keterangan aktivitas)
   const handleSubmitProgresGabungan = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmittingProgres(true);
@@ -434,34 +594,17 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
     setSuccess('');
 
     try {
-      // 1. Update data monitoring dulu (tanpa status_verifikasi)
-      const resMonitoring = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nama: kegiatan?.nama,
-          tanggal_mulai: kegiatan?.tanggal_mulai,
-          output_realisasi: parseFloat(rawDataForm.output_realisasi) || 0,
-          tanggal_realisasi_selesai: rawDataForm.tanggal_realisasi_selesai || null
-        })
-      });
-
-      if (!resMonitoring.ok) {
-        const data = await resMonitoring.json();
-        setError(data.error || 'Gagal menyimpan data monitoring');
-        return;
-      }
-
-      // 2. Hitung capaian output dari data monitoring
+      // Hitung capaian output berdasarkan dokumen yang disahkan
+      const dokumenDisahkan = dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length;
       const capaianOutput = kegiatan?.target_output 
-        ? Math.min((parseFloat(rawDataForm.output_realisasi) || 0) / kegiatan.target_output * 100, 100)
+        ? Math.min((dokumenDisahkan / kegiatan.target_output) * 100, 100)
         : 0;
 
       // Ambil nilai dari summary jika ada
       const ketepatanWaktu = summary?.indikator?.ketepatan_waktu || 0;
       const kualitasOutput = summary?.indikator?.kualitas_output || 0;
 
-      // 3. Simpan progres dengan keterangan
+      // Simpan progres dengan keterangan
       const resProgres = await fetch('/api/pelaksana/progres', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -475,17 +618,17 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
       });
 
       if (resProgres.ok) {
-        setSuccess('✅ Progres berhasil disimpan! Data monitoring dan keterangan telah dicatat.');
+        setSuccess('✅ Aktivitas berhasil dicatat! Progres dihitung berdasarkan dokumen yang disahkan.');
         setProgresForm({ keterangan: '' });
         fetchData(); // Refresh untuk update riwayat dan skor kinerja
         setTimeout(() => setSuccess(''), 4000);
       } else {
         const data = await resProgres.json();
-        setError(data.error || 'Gagal menyimpan progres');
+        setError(data.error || 'Gagal menyimpan aktivitas');
       }
     } catch (error) {
       console.error('Error:', error);
-      setError('Terjadi kesalahan saat menyimpan progres');
+      setError('Terjadi kesalahan saat menyimpan aktivitas');
     } finally {
       setSubmittingProgres(false);
     }
@@ -843,10 +986,16 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
               <div className="bg-blue-50 p-3 rounded-lg">
                 <p className="text-xs text-blue-600 font-medium">Capaian Output</p>
                 <p className="text-xl font-bold text-blue-700">
-                  {summary?.indikator?.capaian_output?.toFixed(1) || 0}%
+                  {kegiatan?.jenis_validasi === 'kuantitas'
+                    ? (kegiatan?.target_output && kegiatan.target_output > 0
+                        ? ((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100).toFixed(1)
+                        : 0)
+                    : (summary?.indikator?.capaian_output?.toFixed(1) || 0)}%
                 </p>
                 <p className="text-xs text-blue-600 truncate">
-                  {formatNumber(rawDataForm.output_realisasi)} / {formatNumber(kegiatan.target_output)} {kegiatan.satuan_output}
+                  {kegiatan?.jenis_validasi === 'kuantitas'
+                    ? `${Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))} / ${formatNumber(kegiatan.target_output)} ${kegiatan.satuan_output}`
+                    : `${formatNumber(rawDataForm.output_realisasi)} / ${formatNumber(kegiatan.target_output)} ${kegiatan.satuan_output}`}
                 </p>
               </div>
               <div className="bg-green-50 p-3 rounded-lg">
@@ -930,69 +1079,215 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
             {/* Tab: Progres - Input Data Monitoring */}
             {activeTab === 'progres' && (
               <div className="space-y-6">
-                {/* Form Catat Progres Terpadu */}
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <span>📝</span> Catat Progres Kegiatan
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-4">Masukkan data monitoring dan keterangan aktivitas, skor kinerja akan dihitung otomatis oleh sistem</p>
-                  
-                  <form onSubmit={handleSubmitProgresGabungan} className="space-y-6">
-                    {/* Data Monitoring */}
-                    <div className="bg-white/70 rounded-lg p-4 border border-blue-100">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <span className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs">1</span>
-                        Data Monitoring
-                      </h4>
-                      <div className="grid grid-cols-1 gap-4">
-                        {/* Output Realisasi */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Output Realisasi
-                            <span className="text-xs text-gray-500 ml-1">({kegiatan.satuan_output})</span>
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              value={rawDataForm.output_realisasi}
-                              onChange={(e) => setRawDataForm({...rawDataForm, output_realisasi: e.target.value})}
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                              placeholder="0"
-                              min="0"
-                              step="0.01"
-                            />
-                            <span className="px-3 py-2 bg-gray-50 border text-gray-600 rounded-lg text-sm">
-                              / {formatNumber(kegiatan.target_output)}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-gray-500">Target: {formatNumber(kegiatan.target_output)} {kegiatan.satuan_output}</p>
+                {/* Summary Cards - Berdasarkan jenis validasi */}
+                {kegiatan?.jenis_validasi === 'kuantitas' ? (
+                  /* KUANTITAS: Summary Cards untuk validasi berbasis kuantitas */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Target Output</p>
+                      <p className="text-2xl font-bold text-gray-900">{Math.round(kegiatan?.target_output || 0)}</p>
+                      <p className="text-sm text-gray-500">{kegiatan?.satuan_output}</p>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Output Tervalidasi</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))}
+                      </p>
+                      <p className="text-sm text-gray-500">{kegiatan?.satuan_output}</p>
+                    </div>
+                    <div className="p-4 bg-yellow-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Menunggu Validasi</p>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {Math.round(validasiKuantitas.filter(v => v.status === 'menunggu').reduce((sum, v) => sum + Number(v.jumlah_output), 0))}
+                      </p>
+                      <p className="text-sm text-gray-500">{kegiatan?.satuan_output} diproses</p>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Progres Validasi</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {kegiatan?.target_output && kegiatan.target_output > 0
+                          ? Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                          : 0}%
+                      </p>
+                      <p className="text-sm text-gray-500">dari target</p>
+                    </div>
+                  </div>
+                ) : (
+                  /* DOKUMEN: Summary Cards untuk validasi berbasis dokumen (default) */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Target Output</p>
+                      <p className="text-2xl font-bold text-gray-900">{Math.round(kegiatan?.target_output || 0)}</p>
+                      <p className="text-sm text-gray-500">{kegiatan?.satuan_output}</p>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Output Tervalidasi</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length}
+                      </p>
+                      <p className="text-sm text-gray-500">Dokumen disahkan</p>
+                    </div>
+                    <div className="p-4 bg-yellow-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Menunggu Validasi</p>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.minta_validasi === 1 && d.status_final !== 'disahkan' && d.status_final !== 'ditolak').length}
+                      </p>
+                      <p className="text-sm text-gray-500">Dokumen diproses</p>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-xl">
+                      <p className="text-sm text-gray-600">Progres Validasi</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {kegiatan?.target_output && kegiatan.target_output > 0
+                          ? Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100)
+                          : 0}%
+                      </p>
+                      <p className="text-sm text-gray-500">dari target</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress Bar - Kondisional berdasarkan jenis validasi */}
+                {kegiatan?.jenis_validasi === 'kuantitas' ? (
+                  /* KUANTITAS: Progress Bar */
+                  <div className="p-4 bg-white border rounded-xl">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Progres Validasi Output</span>
+                      <span className="text-sm font-bold text-blue-600">
+                        {Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))} / {Math.round(kegiatan?.target_output || 0)} {kegiatan?.satuan_output} tervalidasi
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${kegiatan?.target_output && kegiatan.target_output > 0 
+                            ? Math.min((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
+                            : 0}%` 
+                        }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between mt-2 text-xs text-gray-500">
+                      <span>0%</span>
+                      <span>50%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                ) : (
+                  /* DOKUMEN: Progress Bar */
+                  <div className="p-4 bg-white border rounded-xl">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Progres Validasi Output</span>
+                      <span className="text-sm font-bold text-blue-600">
+                        {dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length} / {Math.round(kegiatan?.target_output || 0)} tervalidasi
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${kegiatan?.target_output && kegiatan.target_output > 0 
+                            ? Math.min((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100, 100)
+                            : 0}%` 
+                        }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between mt-2 text-xs text-gray-500">
+                      <span>0%</span>
+                      <span>50%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Form Input - Kondisional berdasarkan jenis validasi */}
+                {kegiatan?.jenis_validasi === 'kuantitas' ? (
+                  /* KUANTITAS: Info Box mengarahkan ke tab Validasi */
+                  <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <span>📊</span> Validasi Output Kuantitas
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Untuk kegiatan dengan validasi kuantitas, progres dihitung berdasarkan output yang sudah divalidasi oleh Koordinator dan Pimpinan.
+                    </p>
+                    
+                    {/* Summary status validasi */}
+                    <div className="bg-white/70 rounded-lg p-4 border border-green-100 mb-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-green-50 rounded-lg p-3 text-center border border-green-100">
+                          <p className="text-xs text-gray-600 mb-1">Output Tervalidasi</p>
+                          <p className="text-xl font-bold text-green-600">
+                            {Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">dari target {Math.round(kegiatan?.target_output || 0)} {kegiatan?.satuan_output}</p>
+                        </div>
+                        <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-100">
+                          <p className="text-xs text-gray-600 mb-1">Progres Validasi</p>
+                          <p className="text-xl font-bold text-blue-600">
+                            {kegiatan?.target_output && kegiatan.target_output > 0
+                              ? Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                              : 0}%
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">berdasarkan output disahkan</p>
                         </div>
                       </div>
                     </div>
-
-                    {/* Preview Skor */}
-                    <div className="bg-white/70 rounded-lg p-4 border border-green-100">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">2</span>
-                        Preview Skor (dihitung otomatis)
+                    
+                    <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <LuInfo className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                      <p className="text-sm text-amber-700">
+                        Untuk mencatat output kuantitas dan upload bukti dukung, gunakan tab <strong>&quot;Validasi Kualitas Output&quot;</strong>.
+                      </p>
+                    </div>
+                    
+                    <button
+                      onClick={() => setActiveTab('dokumen')}
+                      className="mt-4 w-full px-4 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-teal-700 flex items-center justify-center gap-2 shadow-md"
+                    >
+                      <span>📊</span> Buka Tab Validasi Kualitas Output
+                    </button>
+                  </div>
+                ) : (
+                  /* DOKUMEN: Form Catat Aktivitas (existing) */
+                  <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <span>📝</span> Catat Aktivitas Kegiatan
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4">Catat aktivitas yang telah dilakukan. Progres akan dihitung otomatis berdasarkan dokumen output yang sudah disahkan.</p>
+                    
+                    <form onSubmit={handleSubmitProgresGabungan} className="space-y-6">
+                      {/* Info Progres Validasi */}
+                      <div className="bg-white/70 rounded-lg p-4 border border-green-100">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                          <span className="w-5 h-5 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">📊</span>
+                          Status Progres Saat Ini
                       </h4>
-                      <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-100">
-                        <p className="text-xs text-gray-600 mb-1">Capaian Output</p>
-                        <p className="text-xl font-bold text-blue-600">
-                          {kegiatan.target_output 
-                            ? Math.min((parseFloat(rawDataForm.output_realisasi) || 0) / kegiatan.target_output * 100, 100).toFixed(1)
-                            : 0}%
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatNumber(parseFloat(rawDataForm.output_realisasi) || 0)} / {formatNumber(kegiatan.target_output)} {kegiatan.satuan_output}
-                        </p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-green-50 rounded-lg p-3 text-center border border-green-100">
+                          <p className="text-xs text-gray-600 mb-1">Dokumen Disahkan</p>
+                          <p className="text-xl font-bold text-green-600">
+                            {dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">dari target {Math.round(kegiatan.target_output)} {kegiatan.satuan_output}</p>
+                        </div>
+                        <div className="bg-blue-50 rounded-lg p-3 text-center border border-blue-100">
+                          <p className="text-xs text-gray-600 mb-1">Progres Validasi</p>
+                          <p className="text-xl font-bold text-blue-600">
+                            {kegiatan.target_output 
+                              ? Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100)
+                              : 0}%
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">berdasarkan dokumen disahkan</p>
+                        </div>
                       </div>
+                      <p className="mt-3 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg">
+                        💡 Upload dokumen output di tab &quot;Dokumen&quot; dan ajukan validasi untuk meningkatkan progres.
+                      </p>
                     </div>
 
-                    {/* Keterangan Progres */}
+                    {/* Keterangan Aktivitas */}
                     <div className="bg-white/70 rounded-lg p-4 border border-gray-100">
                       <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <span className="w-5 h-5 bg-gray-500 text-white rounded-full flex items-center justify-center text-xs">3</span>
+                        <span className="w-5 h-5 bg-gray-500 text-white rounded-full flex items-center justify-center text-xs">✏️</span>
                         Keterangan Aktivitas <span className="text-red-500">*</span>
                       </h4>
                       <textarea
@@ -1023,59 +1318,59 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                         ) : (
                           <>
                             <LuCheck className="w-4 h-4" />
-                            Simpan Progres
+                            Simpan Aktivitas
                           </>
                         )}
                       </button>
                     </div>
                   </form>
-                </div>
+                  </div>
+                )}
 
-                {/* Riwayat Progres */}
-                <div className="bg-white border rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <span>📜</span> Riwayat Update Progres
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">{progres.length} catatan</span>
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-4">Catatan historis progres kegiatan yang telah diinput</p>
-                  
-                  {progres.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg">
-                      <LuFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500">Belum ada riwayat progres</p>
-                      <p className="text-sm text-gray-400 mt-1">Gunakan form di atas untuk mencatat progres pertama</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                      {progres.map((p, index) => (
-                        <div key={p.id} className="bg-gray-50 border rounded-lg p-4 hover:bg-gray-100 transition-colors">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-2">
-                              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
-                                {progres.length - index}
-                              </span>
-                              <span className="text-sm font-medium text-gray-700">{formatDate(p.tanggal_update)}</span>
+                {/* Riwayat Aktivitas - hanya tampil untuk jenis_validasi dokumen */}
+                {kegiatan?.jenis_validasi !== 'kuantitas' && (
+                  <div className="bg-white border rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                      <span>📜</span> Riwayat Aktivitas
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">{progres.length} catatan</span>
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4">Catatan historis aktivitas kegiatan yang telah dicatat</p>
+                    
+                    {progres.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg">
+                        <LuFileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500">Belum ada riwayat aktivitas</p>
+                        <p className="text-sm text-gray-400 mt-1">Gunakan form di atas untuk mencatat aktivitas pertama</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                        {progres.map((p, index) => (
+                          <div key={p.id} className="bg-gray-50 border rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
+                                  {progres.length - index}
+                                </span>
+                                <span className="text-sm font-medium text-gray-700">{formatDate(p.tanggal_update)}</span>
+                              </div>
+                              <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                                <span>📊</span>
+                                <span>Progres saat itu: {Math.round(Number(p.capaian_output || 0))}%</span>
+                              </div>
                             </div>
+                            
+                            {p.keterangan && (
+                              <div className="bg-white border rounded-lg p-3">
+                                <p className="text-xs text-gray-500 mb-1">Keterangan Aktivitas:</p>
+                                <p className="text-sm text-gray-700">{p.keterangan}</p>
+                              </div>
+                            )}
                           </div>
-                          
-                          <div className="mb-3">
-                            <div className="bg-white rounded-lg p-2 text-center border">
-                              <p className="text-xs text-gray-500">Capaian Output</p>
-                              <p className="text-lg font-bold text-blue-600">{Math.round(Number(p.capaian_output || 0))}%</p>
-                            </div>
-                          </div>
-                          
-                          {p.keterangan && (
-                            <div className="bg-white border rounded-lg p-3">
-                              <p className="text-xs text-gray-500 mb-1">Keterangan:</p>
-                              <p className="text-sm text-gray-700">{p.keterangan}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1526,231 +1821,479 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
             {/* Tab: Verifikasi Kualitas Output */}
             {activeTab === 'dokumen' && (
               <div className="space-y-6">
-                {/* Info Box */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                    <span>📁</span> Dokumen Output Kegiatan
-                  </h4>
-                  <p className="text-sm text-blue-700">
-                    Upload dokumen draft atau output final kegiatan untuk direview oleh pimpinan. 
-                    Pimpinan akan memvalidasi dokumen sebagai bukti penyelesaian kegiatan.
-                  </p>
-                </div>
+                {/* Conditional rendering berdasarkan jenis_validasi */}
+                {kegiatan?.jenis_validasi === 'kuantitas' ? (
+                  /* KUANTITAS: Form Input Jumlah Output dengan Bukti Dukung */
+                  <>
+                    {/* Info Box */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                        <span>📊</span> Validasi Output Kuantitas
+                      </h4>
+                      <p className="text-sm text-green-700">
+                        Catat jumlah output yang telah diselesaikan beserta bukti dukung. 
+                        Output akan divalidasi oleh Koordinator dan Pimpinan.
+                      </p>
+                    </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Form Upload */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <span>⬆️</span> Upload Dokumen
-                    </h3>
-                    <form onSubmit={handleUploadDokumen} className="space-y-4">
-                      {/* Tipe Dokumen */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Tipe Dokumen <span className="text-red-500">*</span>
-                        </label>
-                        <div className="flex gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setDokumenForm({ ...dokumenForm, tipe_dokumen: 'draft' })}
-                            className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
-                              dokumenForm.tipe_dokumen === 'draft'
-                                ? 'border-amber-500 bg-amber-50 text-amber-700'
-                                : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                            }`}
-                          >
-                            <span className="block text-lg mb-1">📝</span>
-                            Draft
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDokumenForm({ ...dokumenForm, tipe_dokumen: 'final' })}
-                            className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
-                              dokumenForm.tipe_dokumen === 'final'
-                                ? 'border-green-500 bg-green-50 text-green-700'
-                                : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                            }`}
-                          >
-                            <span className="block text-lg mb-1">✅</span>
-                            Final
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {dokumenForm.tipe_dokumen === 'draft' 
-                            ? 'Draft: Dokumen yang masih dalam proses atau perlu review'
-                            : 'Final: Dokumen output akhir yang siap divalidasi'}
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="p-4 bg-blue-50 rounded-xl">
+                        <p className="text-sm text-gray-600">Target Output</p>
+                        <p className="text-2xl font-bold text-gray-900">{Math.round(kegiatan?.target_output || 0)}</p>
+                        <p className="text-sm text-gray-500">{kegiatan?.satuan_output}</p>
+                      </div>
+                      <div className="p-4 bg-green-50 rounded-xl">
+                        <p className="text-sm text-gray-600">Output Tervalidasi</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))}
                         </p>
+                        <p className="text-sm text-gray-500">{kegiatan?.satuan_output}</p>
                       </div>
-
-                      {/* File Upload */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          File Dokumen <span className="text-red-500">*</span>
-                        </label>
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-indigo-400 transition-colors">
-                          <input
-                            type="file"
-                            id="dokumen-file"
-                            onChange={(e) => setDokumenForm({ ...dokumenForm, file: e.target.files?.[0] || null })}
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar"
-                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
-                          />
-                          {dokumenForm.file && (
-                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                              <span>{getFileIcon(dokumenForm.file.type)}</span>
-                              <span className="truncate">{dokumenForm.file.name}</span>
-                              <span className="text-gray-400">({formatFileSize(dokumenForm.file.size)})</span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Max 10MB. Format: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, ZIP, RAR
+                      <div className="p-4 bg-yellow-50 rounded-xl">
+                        <p className="text-sm text-gray-600">Menunggu Validasi</p>
+                        <p className="text-2xl font-bold text-yellow-600">
+                          {Math.round(validasiKuantitas.filter(v => v.status === 'menunggu').reduce((sum, v) => sum + Number(v.jumlah_output), 0))}
                         </p>
+                        <p className="text-sm text-gray-500">{kegiatan?.satuan_output} diproses</p>
                       </div>
-
-                      {/* Deskripsi */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Deskripsi Dokumen
-                        </label>
-                        <textarea
-                          value={dokumenForm.deskripsi}
-                          onChange={(e) => setDokumenForm({ ...dokumenForm, deskripsi: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                          rows={3}
-                          placeholder="Jelaskan isi atau tujuan dokumen ini..."
-                        />
+                      <div className="p-4 bg-purple-50 rounded-xl">
+                        <p className="text-sm text-gray-600">Progres Validasi</p>
+                        <p className="text-2xl font-bold text-purple-600">
+                          {kegiatan?.target_output && kegiatan.target_output > 0
+                            ? Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                            : 0}%
+                        </p>
+                        <p className="text-sm text-gray-500">dari target</p>
                       </div>
+                    </div>
 
-                      <button
-                        type="submit"
-                        disabled={uploadingDokumen || !dokumenForm.file}
-                        className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
-                      >
-                        {uploadingDokumen ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Mengupload...
-                          </>
-                        ) : (
-                          <>
-                            <span>⬆️</span> Upload Dokumen
-                          </>
-                        )}
-                      </button>
-                    </form>
-                  </div>
-
-                  {/* Daftar Dokumen */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <span>📋</span> Daftar Dokumen ({dokumenOutput.length})
-                    </h3>
-
-                    {dokumenOutput.length === 0 ? (
-                      <div className="bg-gray-50 border-2 border-dashed rounded-lg p-8 text-center">
-                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <span className="text-3xl">📁</span>
-                        </div>
-                        <p className="text-gray-500 mb-2">Belum ada dokumen diupload</p>
-                        <p className="text-sm text-gray-400">Upload dokumen draft atau final untuk direview pimpinan</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                        {dokumenOutput.map((dok) => (
-                          <div key={dok.id} className={`border rounded-lg p-4 ${
-                            dok.status_review === 'diterima' ? 'bg-green-50 border-green-200' :
-                            dok.status_review === 'ditolak' ? 'bg-red-50 border-red-200' :
-                            'bg-white border-gray-200'
-                          }`}>
-                            <div className="flex items-start gap-3">
-                              <span className="text-2xl">{getFileIcon(dok.tipe_file)}</span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="font-medium text-gray-900 truncate">{dok.nama_file}</h4>
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    dok.tipe_dokumen === 'final' 
-                                      ? 'bg-green-100 text-green-700' 
-                                      : 'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    {dok.tipe_dokumen === 'final' ? 'Final' : 'Draft'}
-                                  </span>
-                                </div>
-                                {dok.deskripsi && (
-                                  <p className="text-sm text-gray-600 mb-2">{dok.deskripsi}</p>
-                                )}
-                                <div className="flex items-center gap-3 text-xs text-gray-500">
-                                  <span>{formatFileSize(dok.ukuran_file)}</span>
-                                  <span>•</span>
-                                  <span>{new Date(dok.uploaded_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                </div>
-
-                                {/* Status Review */}
-                                <div className="mt-3">
-                                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                                    dok.status_review === 'diterima' 
-                                      ? 'bg-green-100 text-green-700' 
-                                      : dok.status_review === 'ditolak'
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    {dok.status_review === 'diterima' && '✅ Diterima'}
-                                    {dok.status_review === 'ditolak' && '❌ Ditolak'}
-                                    {dok.status_review === 'pending' && '⏳ Menunggu Review'}
-                                  </span>
-                                  {dok.catatan_reviewer && (
-                                    <p className={`mt-2 text-sm p-2 rounded ${
-                                      dok.status_review === 'ditolak' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-                                    }`}>
-                                      <strong>Catatan Reviewer:</strong> {dok.catatan_reviewer}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              {/* Actions */}
-                              <div className="flex flex-col gap-2">
-                                <a
-                                  href={dok.path_file}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-center"
-                                >
-                                  👁️ Lihat
-                                </a>
-                                {dok.status_review === 'pending' && (
-                                  <button
-                                    onClick={() => handleDeleteDokumen(dok.id)}
-                                    disabled={deletingDokumenId === dok.id}
-                                    className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50"
-                                  >
-                                    {deletingDokumenId === dok.id ? '...' : '🗑️ Hapus'}
-                                  </button>
-                                )}
-                              </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Form Input Kuantitas dengan Upload Bukti */}
+                      <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <span>📊</span> Catat Output Kuantitas
+                        </h3>
+                        <form onSubmit={handleSubmitKuantitas} className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Jumlah Output <span className="text-red-500">*</span>
+                            </label>
+                            <div className="flex">
+                              <input
+                                type="number"
+                                step="1"
+                                min="0"
+                                value={kuantitasForm.jumlah_output}
+                                onChange={(e) => setKuantitasForm({ ...kuantitasForm, jumlah_output: e.target.value })}
+                                className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-green-500"
+                                placeholder="Masukkan jumlah..."
+                                required
+                              />
+                              <span className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg text-sm text-gray-600">
+                                {kegiatan?.satuan_output}
+                              </span>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Statistics */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4 text-center">
-                    <p className="text-3xl font-bold text-gray-700">{dokumenOutput.filter(d => d.status_review === 'pending').length}</p>
-                    <p className="text-sm text-gray-500">Menunggu Review</p>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-4 text-center">
-                    <p className="text-3xl font-bold text-green-600">{dokumenOutput.filter(d => d.status_review === 'diterima').length}</p>
-                    <p className="text-sm text-green-600">Diterima</p>
-                  </div>
-                  <div className="bg-red-50 rounded-lg p-4 text-center">
-                    <p className="text-3xl font-bold text-red-600">{dokumenOutput.filter(d => d.status_review === 'ditolak').length}</p>
-                    <p className="text-sm text-red-600">Ditolak</p>
-                  </div>
-                </div>
+                          {/* Upload Bukti Dukung */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Bukti Dukung (Opsional)
+                            </label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-green-400 transition-colors">
+                              <input
+                                type="file"
+                                id="kuantitas-bukti-file"
+                                onChange={(e) => setKuantitasForm({ ...kuantitasForm, bukti_file: e.target.files?.[0] || null })}
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.rar"
+                                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-100 file:text-green-700 hover:file:bg-green-200"
+                              />
+                              {kuantitasForm.bukti_file && (
+                                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                                  <span>{getFileIcon(kuantitasForm.bukti_file.type)}</span>
+                                  <span className="truncate">{kuantitasForm.bukti_file.name}</span>
+                                  <span className="text-gray-400">({formatFileSize(kuantitasForm.bukti_file.size)})</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Max 10MB. Format: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, ZIP, RAR
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Keterangan
+                            </label>
+                            <textarea
+                              value={kuantitasForm.keterangan}
+                              onChange={(e) => setKuantitasForm({ ...kuantitasForm, keterangan: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                              rows={3}
+                              placeholder="Keterangan singkat tentang output yang dikerjakan..."
+                            />
+                          </div>
+                          
+                          <button
+                            type="submit"
+                            disabled={submittingKuantitas || !kuantitasForm.jumlah_output}
+                            className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white font-medium rounded-lg hover:from-green-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+                          >
+                            {submittingKuantitas ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Menyimpan...
+                              </>
+                            ) : (
+                              <>
+                                <LuCheck className="w-4 h-4" />
+                                Simpan Output
+                              </>
+                            )}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Daftar Output Kuantitas */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <span>📋</span> Riwayat Output ({validasiKuantitas.length})
+                        </h3>
+
+                        {validasiKuantitas.length === 0 ? (
+                          <div className="bg-gray-50 border-2 border-dashed rounded-lg p-8 text-center">
+                            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <span className="text-3xl">📊</span>
+                            </div>
+                            <p className="text-gray-500 mb-2">Belum ada output yang dicatat</p>
+                            <p className="text-sm text-gray-400">Catat jumlah output dan upload bukti dukung</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                            {validasiKuantitas.map((v) => (
+                              <div key={v.id} className={`border rounded-lg p-4 ${
+                                v.status === 'disahkan' ? 'bg-green-50 border-green-200' :
+                                v.status === 'ditolak' ? 'bg-red-50 border-red-200' :
+                                v.status === 'menunggu' ? 'bg-yellow-50 border-yellow-200' :
+                                'bg-white border-gray-200'
+                              }`}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-bold text-lg text-gray-900">
+                                      {Math.round(Number(v.jumlah_output))} <span className="text-sm font-normal text-gray-500">{kegiatan?.satuan_output}</span>
+                                    </p>
+                                    {v.keterangan && <p className="text-sm text-gray-600 mt-1">{v.keterangan}</p>}
+                                    {v.bukti_path && (
+                                      <a 
+                                        href={v.bukti_path} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mt-2"
+                                      >
+                                        📎 Lihat Bukti Dukung
+                                      </a>
+                                    )}
+                                    <p className="text-xs text-gray-400 mt-2">{formatDate(v.created_at)}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-1 text-xs rounded-full ${
+                                      v.status === 'disahkan' ? 'bg-green-100 text-green-700' :
+                                      v.status === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                      v.status === 'menunggu' ? 'bg-yellow-100 text-yellow-700' :
+                                      'bg-gray-100 text-gray-700'
+                                    }`}>
+                                      {v.status === 'disahkan' ? '✅ Disahkan' :
+                                       v.status === 'ditolak' ? '❌ Ditolak' :
+                                       v.status === 'menunggu' ? '⏳ Menunggu' : '📝 Draft'}
+                                    </span>
+                                    {v.status === 'draft' && (
+                                      <>
+                                        <button
+                                          onClick={() => handleMintaValidasiKuantitas(v.id)}
+                                          className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                                          title="Minta Validasi"
+                                        >
+                                          📤 Ajukan
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeleteKuantitas(v.id)}
+                                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                                          title="Hapus"
+                                        >
+                                          <LuTrash2 className="w-4 h-4" />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                {v.catatan_koordinator && (
+                                  <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
+                                    <span className="font-medium text-blue-700">Catatan Koordinator:</span> {v.catatan_koordinator}
+                                  </div>
+                                )}
+                                {v.catatan_pimpinan && (
+                                  <div className="mt-2 p-2 bg-purple-50 rounded text-xs">
+                                    <span className="font-medium text-purple-700">Catatan Pimpinan:</span> {v.catatan_pimpinan}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Statistics */}
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <p className="text-2xl font-bold text-gray-700">{validasiKuantitas.filter(v => v.status === 'draft').length}</p>
+                        <p className="text-sm text-gray-500">Draft</p>
+                      </div>
+                      <div className="bg-yellow-50 rounded-lg p-4 text-center">
+                        <p className="text-2xl font-bold text-yellow-600">{validasiKuantitas.filter(v => v.status === 'menunggu').length}</p>
+                        <p className="text-sm text-yellow-600">Menunggu</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-4 text-center">
+                        <p className="text-2xl font-bold text-green-600">{validasiKuantitas.filter(v => v.status === 'disahkan').length}</p>
+                        <p className="text-sm text-green-600">Disahkan</p>
+                      </div>
+                      <div className="bg-red-50 rounded-lg p-4 text-center">
+                        <p className="text-2xl font-bold text-red-600">{validasiKuantitas.filter(v => v.status === 'ditolak').length}</p>
+                        <p className="text-sm text-red-600">Ditolak</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* DOKUMEN: Form Upload Dokumen (existing) */
+                  <>
+                    {/* Info Box */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                        <span>📁</span> Dokumen Output Kegiatan
+                      </h4>
+                      <p className="text-sm text-blue-700">
+                        Upload dokumen draft atau output final kegiatan untuk direview oleh pimpinan. 
+                        Pimpinan akan memvalidasi dokumen sebagai bukti penyelesaian kegiatan.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Form Upload */}
+                      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <span>⬆️</span> Upload Dokumen
+                        </h3>
+                        <form onSubmit={handleUploadDokumen} className="space-y-4">
+                          {/* Tipe Dokumen */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Tipe Dokumen <span className="text-red-500">*</span>
+                            </label>
+                            <div className="flex gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setDokumenForm({ ...dokumenForm, tipe_dokumen: 'draft' })}
+                                className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                                  dokumenForm.tipe_dokumen === 'draft'
+                                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                }`}
+                              >
+                                <span className="block text-lg mb-1">📝</span>
+                                Draft
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDokumenForm({ ...dokumenForm, tipe_dokumen: 'final' })}
+                                className={`flex-1 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+                                  dokumenForm.tipe_dokumen === 'final'
+                                    ? 'border-green-500 bg-green-50 text-green-700'
+                                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                }`}
+                              >
+                                <span className="block text-lg mb-1">✅</span>
+                                Final
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {dokumenForm.tipe_dokumen === 'draft' 
+                                ? 'Draft: Dokumen yang masih dalam proses atau perlu review'
+                                : 'Final: Dokumen output akhir yang siap divalidasi'}
+                            </p>
+                          </div>
+
+                          {/* File Upload */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              File Dokumen <span className="text-red-500">*</span>
+                            </label>
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-indigo-400 transition-colors">
+                              <input
+                                type="file"
+                                id="dokumen-file"
+                                onChange={(e) => setDokumenForm({ ...dokumenForm, file: e.target.files?.[0] || null })}
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar"
+                                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200"
+                              />
+                              {dokumenForm.file && (
+                                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                                  <span>{getFileIcon(dokumenForm.file.type)}</span>
+                                  <span className="truncate">{dokumenForm.file.name}</span>
+                                  <span className="text-gray-400">({formatFileSize(dokumenForm.file.size)})</span>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Max 10MB. Format: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, GIF, ZIP, RAR
+                            </p>
+                          </div>
+
+                          {/* Deskripsi */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Deskripsi Dokumen
+                            </label>
+                            <textarea
+                              value={dokumenForm.deskripsi}
+                              onChange={(e) => setDokumenForm({ ...dokumenForm, deskripsi: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                              rows={3}
+                              placeholder="Jelaskan isi atau tujuan dokumen ini..."
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={uploadingDokumen || !dokumenForm.file}
+                            className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium flex items-center justify-center gap-2"
+                          >
+                            {uploadingDokumen ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Mengupload...
+                              </>
+                            ) : (
+                              <>
+                                <span>⬆️</span> Upload Dokumen
+                              </>
+                            )}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Daftar Dokumen */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <span>📋</span> Daftar Dokumen ({dokumenOutput.length})
+                        </h3>
+
+                        {dokumenOutput.length === 0 ? (
+                          <div className="bg-gray-50 border-2 border-dashed rounded-lg p-8 text-center">
+                            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <span className="text-3xl">📁</span>
+                            </div>
+                            <p className="text-gray-500 mb-2">Belum ada dokumen diupload</p>
+                            <p className="text-sm text-gray-400">Upload dokumen draft atau final untuk direview pimpinan</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                            {dokumenOutput.map((dok) => (
+                              <div key={dok.id} className={`border rounded-lg p-4 ${
+                                dok.status_review === 'diterima' ? 'bg-green-50 border-green-200' :
+                                dok.status_review === 'ditolak' ? 'bg-red-50 border-red-200' :
+                                'bg-white border-gray-200'
+                              }`}>
+                                <div className="flex items-start gap-3">
+                                  <span className="text-2xl">{getFileIcon(dok.tipe_file)}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h4 className="font-medium text-gray-900 truncate">{dok.nama_file}</h4>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        dok.tipe_dokumen === 'final' 
+                                          ? 'bg-green-100 text-green-700' 
+                                          : 'bg-amber-100 text-amber-700'
+                                      }`}>
+                                        {dok.tipe_dokumen === 'final' ? 'Final' : 'Draft'}
+                                      </span>
+                                    </div>
+                                    {dok.deskripsi && (
+                                      <p className="text-sm text-gray-600 mb-2">{dok.deskripsi}</p>
+                                    )}
+                                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                                      <span>{formatFileSize(dok.ukuran_file)}</span>
+                                      <span>•</span>
+                                      <span>{new Date(dok.uploaded_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    </div>
+
+                                    {/* Status Review */}
+                                    <div className="mt-3">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                        dok.status_review === 'diterima' 
+                                          ? 'bg-green-100 text-green-700' 
+                                          : dok.status_review === 'ditolak'
+                                          ? 'bg-red-100 text-red-700'
+                                          : 'bg-gray-100 text-gray-700'
+                                      }`}>
+                                        {dok.status_review === 'diterima' && '✅ Diterima'}
+                                        {dok.status_review === 'ditolak' && '❌ Ditolak'}
+                                        {dok.status_review === 'pending' && '⏳ Menunggu Review'}
+                                      </span>
+                                      {dok.catatan_reviewer && (
+                                        <p className={`mt-2 text-sm p-2 rounded ${
+                                          dok.status_review === 'ditolak' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                                        }`}>
+                                          <strong>Catatan Reviewer:</strong> {dok.catatan_reviewer}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Actions */}
+                                  <div className="flex flex-col gap-2">
+                                    <a
+                                      href={dok.path_file}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-center"
+                                    >
+                                      👁️ Lihat
+                                    </a>
+                                    {dok.status_review === 'pending' && (
+                                      <button
+                                        onClick={() => handleDeleteDokumen(dok.id)}
+                                        disabled={deletingDokumenId === dok.id}
+                                        className="px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50"
+                                      >
+                                        {deletingDokumenId === dok.id ? '...' : '🗑️ Hapus'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Statistics */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-gray-50 rounded-lg p-4 text-center">
+                        <p className="text-3xl font-bold text-gray-700">{dokumenOutput.filter(d => d.status_review === 'pending').length}</p>
+                        <p className="text-sm text-gray-500">Menunggu Review</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-4 text-center">
+                        <p className="text-3xl font-bold text-green-600">{dokumenOutput.filter(d => d.status_review === 'diterima').length}</p>
+                        <p className="text-sm text-green-600">Diterima</p>
+                      </div>
+                      <div className="bg-red-50 rounded-lg p-4 text-center">
+                        <p className="text-3xl font-bold text-red-600">{dokumenOutput.filter(d => d.status_review === 'ditolak').length}</p>
+                        <p className="text-sm text-red-600">Ditolak</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

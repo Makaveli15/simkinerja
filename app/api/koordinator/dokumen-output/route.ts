@@ -307,3 +307,123 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// POST - Bulk validate all pending documents (koordinator)
+export async function POST(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const authCookie = cookieStore.get('auth');
+    
+    if (!authCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = JSON.parse(authCookie.value);
+    if (!payload || payload.role !== 'koordinator') {
+      return NextResponse.json({ error: 'Forbidden - Only koordinator can bulk validate' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { kegiatan_id, action, catatan } = body;
+
+    if (!kegiatan_id) {
+      return NextResponse.json({ error: 'kegiatan_id is required' }, { status: 400 });
+    }
+
+    if (!action || !['valid', 'reviewed'].includes(action)) {
+      return NextResponse.json({ error: 'Action must be "valid" or "reviewed"' }, { status: 400 });
+    }
+
+    // Get all pending documents for this kegiatan
+    const [pendingDocs] = await pool.query<RowDataPacket[]>(`
+      SELECT d.*, k.nama as kegiatan_nama
+      FROM dokumen_output d
+      JOIN kegiatan k ON d.kegiatan_id = k.id
+      WHERE d.kegiatan_id = ?
+      AND (
+        (d.tipe_dokumen = 'final' AND d.minta_validasi = 1 AND (d.validasi_kesubag = 'pending' OR d.validasi_kesubag IS NULL))
+        OR
+        (d.tipe_dokumen = 'draft' AND (d.draft_status_kesubag = 'pending' OR d.draft_status_kesubag IS NULL))
+      )
+    `, [kegiatan_id]);
+
+    if (pendingDocs.length === 0) {
+      return NextResponse.json({ error: 'Tidak ada dokumen yang menunggu validasi' }, { status: 400 });
+    }
+
+    const kegiatanNama = pendingDocs[0]?.kegiatan_nama || 'Kegiatan';
+    let validatedCount = 0;
+    const uniqueUploaders = new Set<number>();
+
+    // Process each document
+    for (const doc of pendingDocs) {
+      const isFinal = doc.tipe_dokumen === 'final' && doc.minta_validasi === 1;
+      const isDraft = doc.tipe_dokumen === 'draft';
+
+      if (isFinal && action === 'valid') {
+        // Validate final document
+        await pool.query<ResultSetHeader>(`
+          UPDATE dokumen_output 
+          SET 
+            validasi_kesubag = 'valid',
+            validasi_feedback_kesubag = ?,
+            validasi_by_kesubag = ?,
+            validasi_at_kesubag = NOW(),
+            status_final = 'menunggu_pimpinan'
+          WHERE id = ?
+        `, [catatan || 'Divalidasi melalui validasi massal', payload.id, doc.id]);
+        
+        validatedCount++;
+        uniqueUploaders.add(doc.uploaded_by);
+      } else if (isDraft && action === 'reviewed') {
+        // Review draft document
+        await pool.query<ResultSetHeader>(`
+          UPDATE dokumen_output 
+          SET 
+            draft_status_kesubag = 'reviewed',
+            draft_feedback_kesubag = ?,
+            draft_reviewed_by_kesubag = ?,
+            draft_reviewed_at_kesubag = NOW()
+          WHERE id = ?
+        `, [catatan || 'Direview melalui review massal', payload.id, doc.id]);
+        
+        validatedCount++;
+        uniqueUploaders.add(doc.uploaded_by);
+      }
+    }
+
+    // Notify each unique uploader
+    for (const uploaderId of uniqueUploaders) {
+      await createNotification({
+        userId: uploaderId,
+        title: action === 'valid' ? '✅ Dokumen Valid (Koordinator)' : '📝 Draft Direview (Koordinator)',
+        message: action === 'valid'
+          ? `Beberapa dokumen untuk kegiatan "${kegiatanNama}" telah divalidasi oleh Koordinator melalui validasi massal. Menunggu validasi Pimpinan.`
+          : `Beberapa draft untuk kegiatan "${kegiatanNama}" telah direview oleh Koordinator melalui review massal.`,
+        type: 'validasi',
+        referenceId: parseInt(kegiatan_id),
+        referenceType: 'kegiatan'
+      });
+    }
+
+    // Notify pimpinan for final documents
+    if (action === 'valid' && validatedCount > 0) {
+      await createNotificationForAllPimpinan({
+        title: '📋 Dokumen Menunggu Validasi Akhir',
+        message: `${validatedCount} dokumen untuk kegiatan "${kegiatanNama}" sudah divalidasi Koordinator melalui validasi massal. Silakan validasi dan sahkan.`,
+        type: 'permintaan_validasi',
+        referenceId: parseInt(kegiatan_id),
+        referenceType: 'kegiatan'
+      });
+    }
+
+    return NextResponse.json({
+      message: `${validatedCount} dokumen berhasil ${action === 'valid' ? 'divalidasi' : 'direview'}`,
+      success: true,
+      count: validatedCount
+    });
+  } catch (error) {
+    console.error('Error bulk validating dokumen:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

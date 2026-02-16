@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         ko.target_output,
         ko.output_realisasi,
         ko.satuan_output,
+        ko.jenis_validasi,
         ko.anggaran_pagu,
         ko.status,
         ko.status_pengajuan,
@@ -65,7 +66,8 @@ export async function GET(request: NextRequest) {
         m.nama as mitra_nama,
         approver.username as approved_by_nama,
         COALESCE((SELECT persentase FROM realisasi_fisik WHERE kegiatan_id = ko.id ORDER BY tanggal_realisasi DESC LIMIT 1), 0) as realisasi_fisik,
-        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_anggaran_realisasi
+        COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_anggaran_realisasi,
+        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status = 'disahkan'), 0) as output_tervalidasi
       FROM kegiatan ko
       JOIN tim t ON ko.tim_id = t.id
       JOIN users u ON ko.created_by = u.id

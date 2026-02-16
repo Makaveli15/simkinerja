@@ -90,6 +90,8 @@ export async function GET(req: NextRequest) {
         ko.target_output,
         ko.output_realisasi,
         ko.satuan_output,
+        ko.jenis_validasi,
+        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status_kesubag = 'valid'), 0) as output_tervalidasi,
         ko.tanggal_mulai,
         ko.tanggal_selesai,
         ko.tanggal_realisasi_selesai,

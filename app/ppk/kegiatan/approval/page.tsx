@@ -637,7 +637,7 @@ export default function PPKApprovalKegiatanPage() {
                   Anggaran
                 </h3>
                 <div className="bg-white p-4 rounded-lg border border-emerald-100">
-                  <label className="text-sm text-emerald-700">Pagu Anggaran</label>
+                  <label className="text-sm text-emerald-700">Target Anggaran</label>
                   <p className="text-2xl font-bold text-emerald-600">{formatCurrency(selectedKegiatan.anggaran_pagu)}</p>
                 </div>
               </div>

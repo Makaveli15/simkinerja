@@ -54,6 +54,7 @@ export default function PelaksanaLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
+  const [isKegiatanOpen, setIsKegiatanOpen] = useState(false);
 
   // Notifications state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -72,19 +73,19 @@ export default function PelaksanaLayout({
       icon: <LuLayoutDashboard className="w-5 h-5" />
     },
     { 
-      href: '/pelaksana/kegiatan', 
+      href: '/pelaksana/kegiatan',
       label: 'Kegiatan', 
-      icon: <LuClipboardList className="w-5 h-5" />
+      icon: <LuClipboardList className="w-5 h-5" />,
+      hasSubmenu: true,
+      submenu: [
+        { href: '/pelaksana/kegiatan', label: 'Daftar Kegiatan', icon: <LuClipboardList className="w-4 h-4" /> },
+        { href: '/pelaksana/jadwal', label: 'Jadwal Kegiatan', icon: <LuCalendar className="w-4 h-4" /> },
+      ]
     },
     { 
       href: '/pelaksana/laporan', 
-      label: 'Laporan Kinerja', 
+      label: 'Laporan', 
       icon: <LuFileText className="w-5 h-5" />
-    },
-    { 
-      href: '/pelaksana/jadwal', 
-      label: 'Jadwal Kegiatan', 
-      icon: <LuCalendar className="w-5 h-5" />
     },
   ];
 
@@ -319,6 +320,83 @@ export default function PelaksanaLayout({
         <nav className="p-3 space-y-1 mt-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isSubmenuActive = item.hasSubmenu && item.submenu?.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/'));
+            
+            if (item.hasSubmenu) {
+              return (
+                <div key={item.label}>
+                  <button
+                    onClick={() => setIsKegiatanOpen(!isKegiatanOpen)}
+                    className={`
+                      w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
+                      ${isSubmenuActive 
+                        ? 'bg-white/20 text-white font-semibold' 
+                        : 'text-white/90 hover:bg-white/15 hover:text-white'
+                      }
+                      ${isCollapsed ? 'justify-center' : 'justify-between'}
+                    `}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.icon}
+                      {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                    </div>
+                    {!isCollapsed && (
+                      <LuChevronDown className={`w-4 h-4 transition-transform ${isKegiatanOpen ? 'rotate-180' : ''}`} />
+                    )}
+                  </button>
+                  {/* Submenu */}
+                  {(isKegiatanOpen || isCollapsed) && !isCollapsed && (
+                    <div className="mt-1 ml-4 pl-3 border-l-2 border-white/30 space-y-1">
+                      {item.submenu?.map((sub) => {
+                        const isSubActive = pathname === sub.href || (sub.href !== '/pelaksana/kegiatan' && pathname.startsWith(sub.href + '/')) || (sub.href === '/pelaksana/kegiatan' && (pathname === '/pelaksana/kegiatan' || (pathname.startsWith('/pelaksana/kegiatan/') && !pathname.includes('/jadwal'))));
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            className={`
+                              flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200
+                              ${isSubActive 
+                                ? 'bg-white text-blue-600 shadow-lg font-semibold' 
+                                : 'text-white/90 hover:bg-white/15 hover:text-white'
+                              }
+                            `}
+                          >
+                            {sub.icon}
+                            <span className="font-medium text-sm">{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Collapsed submenu tooltip */}
+                  {isCollapsed && (
+                    <div className="mt-1 space-y-1">
+                      {item.submenu?.map((sub) => {
+                        const isSubActive = pathname === sub.href || pathname.startsWith(sub.href + '/');
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            className={`
+                              flex items-center justify-center px-3 py-2.5 rounded-xl transition-all duration-200
+                              ${isSubActive 
+                                ? 'bg-white text-blue-600 shadow-lg' 
+                                : 'text-white/90 hover:bg-white/15 hover:text-white'
+                              }
+                            `}
+                            title={sub.label}
+                          >
+                            {sub.icon}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            
             return (
               <Link
                 key={item.href}

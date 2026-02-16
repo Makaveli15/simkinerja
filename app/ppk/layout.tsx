@@ -7,7 +7,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import FirstLoginModal from '../components/FirstLoginModal';
 import { 
   LuLayoutDashboard, 
-  LuClipboardList, 
   LuTrendingUp, 
   LuCloudDownload,
   LuChevronLeft,
@@ -17,8 +16,9 @@ import {
   LuBell,
   LuUser,
   LuLogOut,
-  LuActivity,
-  LuClipboardCheck
+  LuClipboardList,
+  LuClipboardCheck,
+  LuWallet
 } from 'react-icons/lu';
 
 interface User {
@@ -64,12 +64,12 @@ export default function PPKLayout({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Kegiatan submenu state - auto open when on kegiatan page
-  const [isKegiatanOpen, setIsKegiatanOpen] = useState(pathname.startsWith('/ppk/kegiatan'));
+  // Kegiatan submenu state
+  const [isKegiatanOpen, setIsKegiatanOpen] = useState(pathname.startsWith('/ppk/kegiatan') || pathname.startsWith('/ppk/statistik'));
 
-  // Auto open kegiatan submenu when navigating to kegiatan pages
+  // Auto open kegiatan submenu when navigating to kegiatan/statistik pages
   useEffect(() => {
-    if (pathname.startsWith('/ppk/kegiatan')) {
+    if (pathname.startsWith('/ppk/kegiatan') || pathname.startsWith('/ppk/statistik')) {
       setIsKegiatanOpen(true);
     }
   }, [pathname]);
@@ -88,20 +88,15 @@ export default function PPKLayout({
       submenu: [
         { 
           href: '/ppk/kegiatan/approval', 
-          label: 'Approval', 
+          label: 'Approval Kegiatan', 
           icon: <LuClipboardCheck className="w-4 h-4" />
         },
         { 
-          href: '/ppk/kegiatan/monitoring', 
-          label: 'Monitoring', 
-          icon: <LuActivity className="w-4 h-4" />
+          href: '/ppk/statistik', 
+          label: 'Statistik Anggaran', 
+          icon: <LuWallet className="w-4 h-4" />
         },
       ]
-    },
-    { 
-      href: '/ppk/statistik', 
-      label: 'Statistik Kinerja', 
-      icon: <LuTrendingUp className="w-5 h-5" />
     },
     { 
       href: '/ppk/laporan', 
@@ -339,7 +334,7 @@ export default function PPKLayout({
             
             if (hasSubmenu && 'submenu' in item) {
               // Menu with submenu (Kegiatan)
-              const isSubmenuActive = pathname.startsWith('/ppk/kegiatan');
+              const isSubmenuActive = pathname.startsWith('/ppk/kegiatan') || pathname.startsWith('/ppk/statistik');
               return (
                 <div key={item.href}>
                   <button
@@ -359,7 +354,7 @@ export default function PPKLayout({
                       {!isCollapsed && <span className="font-medium">{item.label}</span>}
                     </div>
                     {!isCollapsed && (
-                      <LuChevronRight className={`w-4 h-4 transition-transform duration-200 ${isKegiatanOpen ? 'rotate-90' : ''}`} />
+                      <LuChevronDown className={`w-4 h-4 transition-transform duration-200 ${isKegiatanOpen ? 'rotate-180' : ''}`} />
                     )}
                   </button>
                   
