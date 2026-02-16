@@ -91,6 +91,7 @@ export async function GET(req: NextRequest) {
         ko.tanggal_approval_koordinator,
         ko.catatan_ppk,
         ko.tanggal_approval_ppk,
+        ko.approved_by_ppk,
         ko.created_at,
         t.nama as tim_nama,
         kro.kode as kro_kode,
@@ -125,9 +126,15 @@ export async function GET(req: NextRequest) {
       query += ' AND ko.status_pengajuan = ?';
       queryParams.push('disetujui');
     } else {
-      // For approval page, show kegiatan that passed koordinator approval
-      query += ` AND (ko.status_pengajuan IN ('review_ppk', 'review_kepala', 'disetujui', 'ditolak', 'revisi')
-         OR ko.approved_by_ppk IS NOT NULL)`;
+      // For approval page, show kegiatan that:
+      // 1. Status review_ppk (menunggu approval PPK)
+      // 2. Status review_kepala, disetujui (sudah diproses PPK, diteruskan)
+      // 3. Status ditolak DAN tanggal_approval_ppk IS NOT NULL (ditolak oleh PPK, bukan koordinator)
+      // 4. Status revisi
+      query += ` AND (
+        ko.status_pengajuan IN ('review_ppk', 'review_kepala', 'disetujui', 'revisi')
+        OR (ko.status_pengajuan = 'ditolak' AND ko.tanggal_approval_ppk IS NOT NULL)
+      )`;
     }
 
     if (tim_id) {

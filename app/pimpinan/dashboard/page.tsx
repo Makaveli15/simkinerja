@@ -86,6 +86,7 @@ interface AnggaranData {
 
 export default function PimpinanDashboard() {
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalKegiatan: 0,
     kegiatanSelesai: 0,
@@ -110,6 +111,7 @@ export default function PimpinanDashboard() {
   const [anggaranData, setAnggaranData] = useState<AnggaranData[]>([]);
 
   useEffect(() => {
+    setMounted(true);
     fetchDashboard();
   }, []);
 
@@ -244,7 +246,7 @@ export default function PimpinanDashboard() {
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
             <LuCalendar className="w-4 h-4" />
-            {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {mounted ? new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
           </div>
         </div>
       </div>

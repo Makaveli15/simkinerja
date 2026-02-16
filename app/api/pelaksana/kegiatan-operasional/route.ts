@@ -67,7 +67,9 @@ export async function GET(request: NextRequest) {
         approver.username as approved_by_nama,
         COALESCE((SELECT persentase FROM realisasi_fisik WHERE kegiatan_id = ko.id ORDER BY tanggal_realisasi DESC LIMIT 1), 0) as realisasi_fisik,
         COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_anggaran_realisasi,
-        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status = 'disahkan'), 0) as output_tervalidasi
+        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status = 'disahkan'), 0) as output_tervalidasi,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final' AND status_final = 'disahkan'), 0) as dokumen_disahkan,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final'), 0) as total_dokumen
       FROM kegiatan ko
       JOIN tim t ON ko.tim_id = t.id
       JOIN users u ON ko.created_by = u.id
@@ -244,15 +246,27 @@ export async function POST(request: NextRequest) {
     // Round anggaran to avoid floating-point precision issues (e.g., 10000000 becoming 9999999.99)
     const roundedAnggaran = anggaran_pagu ? Math.round(Number(anggaran_pagu) * 100) / 100 : 0;
 
+    // Get jenis_validasi from satuan_output table
+    let jenisValidasi = 'dokumen'; // default
+    if (satuan_output) {
+      const [satuanRows] = await pool.query<RowDataPacket[]>(
+        'SELECT jenis_validasi FROM satuan_output WHERE nama = ? LIMIT 1',
+        [satuan_output]
+      );
+      if (satuanRows.length > 0 && satuanRows[0].jenis_validasi) {
+        jenisValidasi = satuanRows[0].jenis_validasi;
+      }
+    }
+
     // New kegiatan starts as 'draft' and 'belum_mulai' until approved
     // Keep mitra_id as first mitra for backward compatibility
     const primaryMitraId = mitraIdList.length > 0 ? mitraIdList[0] : null;
     
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO kegiatan 
-       (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, anggaran_pagu, status, status_pengajuan, kro_id, mitra_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'belum_mulai', 'draft', ?, ?)`,
-      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', roundedAnggaran, kro_id || null, primaryMitraId]
+       (tim_id, created_by, nama, deskripsi, tanggal_mulai, tanggal_selesai, target_output, satuan_output, jenis_validasi, anggaran_pagu, status, status_pengajuan, kro_id, mitra_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'belum_mulai', 'draft', ?, ?)`,
+      [timId, auth.id, nama, deskripsi || null, tanggal_mulai, tanggal_selesai || null, target_output || null, satuan_output || 'kegiatan', jenisValidasi, roundedAnggaran, kro_id || null, primaryMitraId]
     );
 
     const kegiatanId = result.insertId;

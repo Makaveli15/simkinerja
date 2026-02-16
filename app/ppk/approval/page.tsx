@@ -23,6 +23,8 @@ interface Kegiatan {
   status_pengajuan: string;
   anggaran_pagu: number;
   tanggal_approval_koordinator: string;
+  tanggal_approval_ppk: string;
+  approved_by_ppk: number | null;
   tanggal_mulai: string;
   tanggal_selesai: string;
 }
@@ -113,7 +115,11 @@ export default function PPKApprovalPage() {
     // Filter by status
     if (statusFilter === 'pending' && k.status_pengajuan !== 'review_ppk') return false;
     if (statusFilter === 'approved' && !['review_kepala', 'disetujui'].includes(k.status_pengajuan)) return false;
-    if (statusFilter === 'rejected' && !['ditolak', 'revisi'].includes(k.status_pengajuan)) return false;
+    // Untuk rejected, hanya tampilkan yang ditolak oleh PPK (ada tanggal_approval_ppk)
+    if (statusFilter === 'rejected' && !(
+      (k.status_pengajuan === 'ditolak' && k.tanggal_approval_ppk) || 
+      k.status_pengajuan === 'revisi'
+    )) return false;
     
     // Filter by search
     if (searchQuery) {
@@ -127,7 +133,11 @@ export default function PPKApprovalPage() {
   const counts = {
     pending: kegiatan.filter(k => k.status_pengajuan === 'review_ppk').length,
     approved: kegiatan.filter(k => ['review_kepala', 'disetujui'].includes(k.status_pengajuan)).length,
-    rejected: kegiatan.filter(k => ['ditolak', 'revisi'].includes(k.status_pengajuan)).length
+    // Hanya hitung yang ditolak oleh PPK (ada tanggal_approval_ppk)
+    rejected: kegiatan.filter(k => 
+      (k.status_pengajuan === 'ditolak' && k.tanggal_approval_ppk) || 
+      k.status_pengajuan === 'revisi'
+    ).length
   };
 
   if (loading) {

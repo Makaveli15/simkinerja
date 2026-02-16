@@ -46,6 +46,7 @@ interface Kegiatan {
 
 export default function KoordinatorDashboard() {
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [tim, setTim] = useState<Tim | null>(null);
   const [statistics, setStatistics] = useState<Statistics>({
     total_kegiatan: 0,
@@ -62,6 +63,7 @@ export default function KoordinatorDashboard() {
   const [recentActivities, setRecentActivities] = useState<Kegiatan[]>([]);
 
   useEffect(() => {
+    setMounted(true);
     fetchDashboardData();
   }, []);
 
@@ -121,7 +123,7 @@ export default function KoordinatorDashboard() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
               <LuCalendar className="w-4 h-4" />
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {mounted ? new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
             </div>
             {statistics.menunggu_approval > 0 && (
               <Link

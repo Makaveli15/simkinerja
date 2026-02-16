@@ -58,6 +58,18 @@ interface KegiatanDetail {
   mitra_nama?: string;
   mitra_list?: MitraItem[];
   total_mitra?: number;
+  // Pengajuan dan Approval fields
+  status_pengajuan?: string;
+  tanggal_pengajuan?: string;
+  catatan_koordinator?: string;
+  tanggal_approval_koordinator?: string;
+  approved_by_koordinator?: number;
+  catatan_ppk?: string;
+  tanggal_approval_ppk?: string;
+  approved_by_ppk?: number;
+  catatan_kepala?: string;
+  tanggal_approval_kepala?: string;
+  approved_by_kepala?: number;
 }
 
 interface Progres {
@@ -878,6 +890,141 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 </table>
               </div>
             </div>
+
+            {/* Status Pengajuan & Catatan Approval */}
+            {kegiatan.status_pengajuan && kegiatan.status_pengajuan !== 'draft' && (
+              <div className="mt-6 border-t pt-4">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <LuShieldCheck className="w-4 h-4 text-purple-600" />
+                  Status Pengajuan & Catatan Approval
+                </h3>
+                
+                {/* Status Badge */}
+                <div className="mb-4">
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${
+                    kegiatan.status_pengajuan === 'disetujui' ? 'bg-green-100 text-green-800' :
+                    kegiatan.status_pengajuan === 'ditolak' ? 'bg-red-100 text-red-800' :
+                    kegiatan.status_pengajuan === 'review_kepala' ? 'bg-purple-100 text-purple-800' :
+                    kegiatan.status_pengajuan === 'review_ppk' ? 'bg-orange-100 text-orange-800' :
+                    kegiatan.status_pengajuan === 'review_koordinator' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {kegiatan.status_pengajuan === 'disetujui' ? '✅ Disetujui' :
+                     kegiatan.status_pengajuan === 'ditolak' ? '❌ Ditolak' :
+                     kegiatan.status_pengajuan === 'review_kepala' ? '⏳ Menunggu Persetujuan Pimpinan' :
+                     kegiatan.status_pengajuan === 'review_ppk' ? '⏳ Menunggu Persetujuan PPK' :
+                     kegiatan.status_pengajuan === 'review_koordinator' ? '⏳ Menunggu Persetujuan Koordinator' :
+                     kegiatan.status_pengajuan}
+                  </span>
+                  {kegiatan.tanggal_pengajuan && (
+                    <span className="ml-3 text-sm text-gray-500">
+                      Diajukan: {formatDate(kegiatan.tanggal_pengajuan)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Timeline Catatan */}
+                <div className="space-y-4">
+                  {/* Catatan Koordinator */}
+                  {(kegiatan.catatan_koordinator || kegiatan.tanggal_approval_koordinator) && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-lg">👨‍💼</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-blue-900">Koordinator</span>
+                            <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded">Tahap 1</span>
+                          </div>
+                          {kegiatan.tanggal_approval_koordinator && (
+                            <p className="text-xs text-blue-600 mb-2">
+                              📅 {formatDate(kegiatan.tanggal_approval_koordinator)}
+                            </p>
+                          )}
+                          {kegiatan.catatan_koordinator ? (
+                            <div className="bg-white rounded-lg p-3 border border-blue-100">
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{kegiatan.catatan_koordinator}</p>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-blue-600 italic">Tidak ada catatan</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Catatan PPK */}
+                  {(kegiatan.catatan_ppk || kegiatan.tanggal_approval_ppk) && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-lg">📋</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-orange-900">PPK (Pejabat Pembuat Komitmen)</span>
+                            <span className="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded">Tahap 2</span>
+                          </div>
+                          {kegiatan.tanggal_approval_ppk && (
+                            <p className="text-xs text-orange-600 mb-2">
+                              📅 {formatDate(kegiatan.tanggal_approval_ppk)}
+                            </p>
+                          )}
+                          {kegiatan.catatan_ppk ? (
+                            <div className="bg-white rounded-lg p-3 border border-orange-100">
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{kegiatan.catatan_ppk}</p>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-orange-600 italic">Tidak ada catatan</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Catatan Pimpinan/Kepala */}
+                  {(kegiatan.catatan_kepala || kegiatan.tanggal_approval_kepala) && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-white text-lg">👔</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-purple-900">Pimpinan / Kepala</span>
+                            <span className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">Tahap 3 (Final)</span>
+                          </div>
+                          {kegiatan.tanggal_approval_kepala && (
+                            <p className="text-xs text-purple-600 mb-2">
+                              📅 {formatDate(kegiatan.tanggal_approval_kepala)}
+                            </p>
+                          )}
+                          {kegiatan.catatan_kepala ? (
+                            <div className="bg-white rounded-lg p-3 border border-purple-100">
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">{kegiatan.catatan_kepala}</p>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-purple-600 italic">Tidak ada catatan</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Jika belum ada catatan sama sekali */}
+                  {!kegiatan.catatan_koordinator && !kegiatan.tanggal_approval_koordinator &&
+                   !kegiatan.catatan_ppk && !kegiatan.tanggal_approval_ppk &&
+                   !kegiatan.catatan_kepala && !kegiatan.tanggal_approval_kepala && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                      <LuCircleAlert className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Belum ada catatan dari approver</p>
+                      <p className="text-xs text-gray-400 mt-1">Catatan akan muncul setelah kegiatan diproses oleh Koordinator, PPK, atau Pimpinan</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1443,26 +1590,6 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                 >
                                   Lihat
                                 </a>
-                                {/* Minta Validasi button - only for final docs not yet requested */}
-                                {isFinal && !mintaValidasi && (
-                                  <button
-                                    onClick={() => handleMintaValidasi(doc.id)}
-                                    disabled={submitting}
-                                    className="px-3 py-1.5 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50"
-                                  >
-                                    Minta Validasi
-                                  </button>
-                                )}
-                                {/* Delete button - only for docs not yet validated/reviewed */}
-                                {!mintaValidasi && !isDisahkan && (
-                                  <button
-                                    onClick={() => handleDeleteDokumen(doc.id)}
-                                    disabled={deletingDokumenId === doc.id}
-                                    className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
-                                  >
-                                    {deletingDokumenId === doc.id ? 'Menghapus...' : '🗑️ Hapus'}
-                                  </button>
-                                )}
                               </div>
                             </div>
                           </div>

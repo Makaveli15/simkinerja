@@ -3,6 +3,43 @@ import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
+// Helper function to get mitra list for a kegiatan
+async function getMitraForKegiatan(kegiatanId: number): Promise<RowDataPacket[]> {
+  try {
+    // Try to get from kegiatan_mitra table first (many-to-many)
+    try {
+      const [mitraRows] = await pool.query<RowDataPacket[]>(
+        `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+         FROM kegiatan_mitra km
+         JOIN mitra m ON km.mitra_id = m.id
+         WHERE km.kegiatan_id = ?
+         ORDER BY m.nama`,
+        [kegiatanId]
+      );
+      
+      if (mitraRows.length > 0) {
+        return mitraRows;
+      }
+    } catch (e) {
+      // kegiatan_mitra table might not exist, continue to fallback
+    }
+    
+    // Fallback to legacy mitra_id column in kegiatan
+    const [legacyMitra] = await pool.query<RowDataPacket[]>(
+      `SELECT m.id, m.nama, m.sobat_id, m.alamat, m.no_telp, m.posisi
+       FROM kegiatan ko
+       JOIN mitra m ON ko.mitra_id = m.id
+       WHERE ko.id = ?`,
+      [kegiatanId]
+    );
+    
+    return legacyMitra;
+  } catch (error) {
+    console.log('Could not fetch mitra list:', error);
+    return [];
+  }
+}
+
 // GET - Get list of kegiatan pending Kepala approval (status: review_kepala)
 export async function GET(request: NextRequest) {
   try {
@@ -32,12 +69,13 @@ export async function GET(request: NextRequest) {
     if (status === 'review_kepala') {
       whereClause += ` AND ko.status_pengajuan = 'review_kepala'`;
     } else if (status === 'disetujui') {
-      whereClause += ` AND ko.status_pengajuan = 'disetujui'`;
+      whereClause += ` AND ko.status_pengajuan = 'disetujui' AND ko.approved_by_kepala IS NOT NULL`;
     } else if (status === 'ditolak') {
-      whereClause += ` AND ko.status_pengajuan = 'ditolak'`;
+      // Hanya tampilkan yang ditolak oleh pimpinan (sudah melewati PPK)
+      whereClause += ` AND ko.status_pengajuan = 'ditolak' AND ko.approved_by_ppk IS NOT NULL AND ko.tanggal_approval_kepala IS NOT NULL`;
     } else if (status === 'all') {
-      // Show all that have reached or passed kepala review stage
-      whereClause += ` AND ko.status_pengajuan IN ('review_kepala', 'disetujui', 'ditolak')`;
+      // Show all that have reached kepala review stage (harus sudah disetujui PPK)
+      whereClause += ` AND ko.approved_by_ppk IS NOT NULL AND (ko.status_pengajuan IN ('review_kepala', 'disetujui') OR (ko.status_pengajuan = 'ditolak' AND ko.tanggal_approval_kepala IS NOT NULL))`;
     }
 
     // Get total count
@@ -97,14 +135,41 @@ export async function GET(request: NextRequest) {
       [...queryParams, limit, offset]
     );
 
+    // Enrich kegiatan with mitra data
+    const kegiatanWithMitra = await Promise.all(
+      kegiatan.map(async (kg) => {
+        const mitraList = await getMitraForKegiatan(kg.id);
+        return {
+          ...kg,
+          mitra_list: mitraList,
+          total_mitra: mitraList.length,
+          // Also set legacy mitra fields if available
+          mitra_nama: mitraList.length > 0 ? mitraList[0].nama : null,
+          mitra_posisi: mitraList.length > 0 ? mitraList[0].posisi : null,
+          mitra_alamat: mitraList.length > 0 ? mitraList[0].alamat : null,
+          mitra_no_telp: mitraList.length > 0 ? mitraList[0].no_telp : null,
+          mitra_sobat_id: mitraList.length > 0 ? mitraList[0].sobat_id : null,
+        };
+      })
+    );
+
     // Get counts by status for summary (only statuses relevant to Kepala)
+    // Hanya hitung yang sudah melewati PPK (approved_by_ppk IS NOT NULL)
     const [statusCounts] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        status_pengajuan,
+        CASE 
+          WHEN status_pengajuan = 'review_kepala' THEN 'review_kepala'
+          WHEN status_pengajuan = 'disetujui' AND approved_by_kepala IS NOT NULL THEN 'disetujui'
+          WHEN status_pengajuan = 'ditolak' AND approved_by_ppk IS NOT NULL AND tanggal_approval_kepala IS NOT NULL THEN 'ditolak'
+          ELSE 'other'
+        END as status_group,
         COUNT(*) as count
        FROM kegiatan 
-       WHERE status_pengajuan IN ('review_kepala', 'disetujui', 'ditolak')
-       GROUP BY status_pengajuan`
+       WHERE approved_by_ppk IS NOT NULL
+         AND (status_pengajuan = 'review_kepala' 
+              OR (status_pengajuan = 'disetujui' AND approved_by_kepala IS NOT NULL)
+              OR (status_pengajuan = 'ditolak' AND tanggal_approval_kepala IS NOT NULL))
+       GROUP BY status_group`
     );
 
     const summary = {
@@ -114,13 +179,13 @@ export async function GET(request: NextRequest) {
     };
 
     statusCounts.forEach((row) => {
-      if (row.status_pengajuan in summary) {
-        summary[row.status_pengajuan as keyof typeof summary] = row.count;
+      if (row.status_group in summary) {
+        summary[row.status_group as keyof typeof summary] = row.count;
       }
     });
 
     return NextResponse.json({
-      data: kegiatan,
+      data: kegiatanWithMitra,
       pagination: {
         total,
         page,

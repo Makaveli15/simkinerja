@@ -40,11 +40,13 @@ interface StatusDistribution {
 
 export default function PPKDashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [statusDistribution, setStatusDistribution] = useState<StatusDistribution[]>([]);
 
   useEffect(() => {
+    setMounted(true);
     fetchDashboard();
   }, []);
 
@@ -109,7 +111,7 @@ export default function PPKDashboardPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
               <LuCalendar className="w-4 h-4" />
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {mounted ? new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
             </div>
             {(stats?.menunggu_review || 0) > 0 && (
               <Link

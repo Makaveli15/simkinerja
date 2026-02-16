@@ -471,6 +471,18 @@ export async function PUT(
       : currentKegiatan.anggaran_pagu;
     const finalStatus = status !== undefined && status !== '' ? status : currentKegiatan.status;
 
+    // Get jenis_validasi from satuan_output table if satuan_output changed
+    let finalJenisValidasi = currentKegiatan.jenis_validasi || 'dokumen';
+    if (satuan_output !== undefined && satuan_output !== '' && satuan_output !== currentKegiatan.satuan_output) {
+      const [satuanRows] = await pool.query<RowDataPacket[]>(
+        'SELECT jenis_validasi FROM satuan_output WHERE nama = ? LIMIT 1',
+        [satuan_output]
+      );
+      if (satuanRows.length > 0 && satuanRows[0].jenis_validasi) {
+        finalJenisValidasi = satuanRows[0].jenis_validasi;
+      }
+    }
+
     await pool.query<ResultSetHeader>(
       `UPDATE kegiatan SET
         nama = ?,
@@ -479,6 +491,7 @@ export async function PUT(
         tanggal_selesai = ?,
         target_output = ?,
         satuan_output = ?,
+        jenis_validasi = ?,
         anggaran_pagu = ?,
         status = ?,
         kro_id = ?,
@@ -488,7 +501,7 @@ export async function PUT(
         status_verifikasi = ?,
         updated_at = NOW()
       WHERE id = ?`,
-      [finalNama, finalDeskripsi, finalTanggalMulai, finalTanggalSelesai, finalTargetOutput, finalSatuanOutput, finalAnggaranPagu, finalStatus, finalKroId, finalMitraId, finalOutputRealisasi, finalTanggalRealisasiSelesai, finalStatusVerifikasi, id]
+      [finalNama, finalDeskripsi, finalTanggalMulai, finalTanggalSelesai, finalTargetOutput, finalSatuanOutput, finalJenisValidasi, finalAnggaranPagu, finalStatus, finalKroId, finalMitraId, finalOutputRealisasi, finalTanggalRealisasiSelesai, finalStatusVerifikasi, id]
     );
 
     // Update kegiatan_mitra table if mitra_ids array is provided
