@@ -9,7 +9,14 @@ import {
   LuCheck, 
   LuSearch, 
   LuUser, 
-  LuEye 
+  LuEye,
+  LuClipboardList,
+  LuFilePen,
+  LuPointer,
+  LuLightbulb,
+  LuFileText,
+  LuTriangleAlert,
+  LuChevronDown
 } from 'react-icons/lu';
 
 interface Evaluasi {
@@ -59,6 +66,8 @@ export default function PimpinanEvaluasiPage() {
     jenis_evaluasi: 'catatan' as 'catatan' | 'arahan' | 'rekomendasi',
     isi: ''
   });
+  const [jenisEvaluasiFormDropdownOpen, setJenisEvaluasiFormDropdownOpen] = useState(false);
+  const [jenisFilterDropdownOpen, setJenisFilterDropdownOpen] = useState(false);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
@@ -137,12 +146,12 @@ export default function PimpinanEvaluasiPage() {
     e.tim_nama?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getJenisIcon = (jenis: string) => {
+  const getJenisIcon = (jenis: string): React.ReactNode => {
     switch (jenis) {
-      case 'catatan': return '📝';
-      case 'arahan': return '👉';
-      case 'rekomendasi': return '💡';
-      default: return '📄';
+      case 'catatan': return <LuFilePen className="w-4 h-4" />;
+      case 'arahan': return <LuPointer className="w-4 h-4" />;
+      case 'rekomendasi': return <LuLightbulb className="w-4 h-4" />;
+      default: return <LuFileText className="w-4 h-4" />;
     }
   };
 
@@ -197,7 +206,7 @@ export default function PimpinanEvaluasiPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl shadow-sm border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl">📋</div>
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><LuClipboardList className="w-5 h-5 text-blue-600" /></div>
               <div>
                 <p className="text-sm text-gray-500">Total Evaluasi</p>
                 <p className="text-2xl font-bold text-blue-600">{summary.total}</p>
@@ -206,7 +215,7 @@ export default function PimpinanEvaluasiPage() {
           </div>
           <div className="bg-white rounded-xl shadow-sm border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-xl">📝</div>
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><LuFilePen className="w-5 h-5 text-blue-600" /></div>
               <div>
                 <p className="text-sm text-gray-500">Catatan</p>
                 <p className="text-2xl font-bold text-blue-600">{summary.catatan}</p>
@@ -215,7 +224,7 @@ export default function PimpinanEvaluasiPage() {
           </div>
           <div className="bg-white rounded-xl shadow-sm border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-xl">👉</div>
+              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center"><LuPointer className="w-5 h-5 text-orange-600" /></div>
               <div>
                 <p className="text-sm text-gray-500">Arahan</p>
                 <p className="text-2xl font-bold text-orange-600">{summary.arahan}</p>
@@ -224,7 +233,7 @@ export default function PimpinanEvaluasiPage() {
           </div>
           <div className="bg-white rounded-xl shadow-sm border p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-xl">💡</div>
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><LuLightbulb className="w-5 h-5 text-green-600" /></div>
               <div>
                 <p className="text-sm text-gray-500">Rekomendasi</p>
                 <p className="text-2xl font-bold text-green-600">{summary.rekomendasi}</p>
@@ -266,16 +275,45 @@ export default function PimpinanEvaluasiPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Jenis Evaluasi <span className="text-red-500">*</span>
                 </label>
-                <select
-                  suppressHydrationWarning
-                  value={formData.jenis_evaluasi}
-                  onChange={(e) => setFormData({...formData, jenis_evaluasi: e.target.value as 'catatan' | 'arahan' | 'rekomendasi'})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="catatan">📝 Catatan</option>
-                  <option value="arahan">👉 Arahan</option>
-                  <option value="rekomendasi">💡 Rekomendasi</option>
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setJenisEvaluasiFormDropdownOpen(!jenisEvaluasiFormDropdownOpen)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      {formData.jenis_evaluasi === 'catatan' && <><LuFilePen className="w-4 h-4 text-blue-600" /> Catatan</>}
+                      {formData.jenis_evaluasi === 'arahan' && <><LuPointer className="w-4 h-4 text-orange-600" /> Arahan</>}
+                      {formData.jenis_evaluasi === 'rekomendasi' && <><LuLightbulb className="w-4 h-4 text-green-600" /> Rekomendasi</>}
+                    </span>
+                    <LuChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${jenisEvaluasiFormDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {jenisEvaluasiFormDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+                      <button
+                        type="button"
+                        onClick={() => { setFormData({...formData, jenis_evaluasi: 'catatan'}); setJenisEvaluasiFormDropdownOpen(false); }}
+                        className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-blue-50 ${formData.jenis_evaluasi === 'catatan' ? 'bg-blue-50' : ''}`}
+                      >
+                        <LuFilePen className="w-4 h-4 text-blue-600" /> Catatan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setFormData({...formData, jenis_evaluasi: 'arahan'}); setJenisEvaluasiFormDropdownOpen(false); }}
+                        className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-orange-50 ${formData.jenis_evaluasi === 'arahan' ? 'bg-orange-50' : ''}`}
+                      >
+                        <LuPointer className="w-4 h-4 text-orange-600" /> Arahan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setFormData({...formData, jenis_evaluasi: 'rekomendasi'}); setJenisEvaluasiFormDropdownOpen(false); }}
+                        className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-green-50 ${formData.jenis_evaluasi === 'rekomendasi' ? 'bg-green-50' : ''}`}
+                      >
+                        <LuLightbulb className="w-4 h-4 text-green-600" /> Rekomendasi
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div>
@@ -290,8 +328,8 @@ export default function PimpinanEvaluasiPage() {
                 placeholder="Tulis catatan, arahan, atau rekomendasi untuk kegiatan ini..."
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                ⚠️ Evaluasi tidak dapat diubah atau dihapus setelah disimpan (read-only bagi pelaksana)
+              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                <LuTriangleAlert className="w-3 h-3" /> Evaluasi tidak dapat diubah atau dihapus setelah disimpan (read-only bagi pelaksana)
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -338,17 +376,53 @@ export default function PimpinanEvaluasiPage() {
           </div>
 
           {/* Jenis Filter */}
-          <select
-            suppressHydrationWarning
-            value={selectedJenis}
-            onChange={(e) => setSelectedJenis(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Semua Jenis</option>
-            <option value="catatan">📝 Catatan</option>
-            <option value="arahan">👉 Arahan</option>
-            <option value="rekomendasi">💡 Rekomendasi</option>
-          </select>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setJenisFilterDropdownOpen(!jenisFilterDropdownOpen)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between"
+            >
+              <span className="flex items-center gap-2">
+                {selectedJenis === '' && 'Semua Jenis'}
+                {selectedJenis === 'catatan' && <><LuFilePen className="w-4 h-4 text-blue-600" /> Catatan</>}
+                {selectedJenis === 'arahan' && <><LuPointer className="w-4 h-4 text-orange-600" /> Arahan</>}
+                {selectedJenis === 'rekomendasi' && <><LuLightbulb className="w-4 h-4 text-green-600" /> Rekomendasi</>}
+              </span>
+              <LuChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${jenisFilterDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {jenisFilterDropdownOpen && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedJenis(''); setJenisFilterDropdownOpen(false); }}
+                  className={`w-full px-3 py-2 text-left hover:bg-gray-50 ${selectedJenis === '' ? 'bg-gray-50' : ''}`}
+                >
+                  Semua Jenis
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedJenis('catatan'); setJenisFilterDropdownOpen(false); }}
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-blue-50 ${selectedJenis === 'catatan' ? 'bg-blue-50' : ''}`}
+                >
+                  <LuFilePen className="w-4 h-4 text-blue-600" /> Catatan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedJenis('arahan'); setJenisFilterDropdownOpen(false); }}
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-orange-50 ${selectedJenis === 'arahan' ? 'bg-orange-50' : ''}`}
+                >
+                  <LuPointer className="w-4 h-4 text-orange-600" /> Arahan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedJenis('rekomendasi'); setJenisFilterDropdownOpen(false); }}
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-green-50 ${selectedJenis === 'rekomendasi' ? 'bg-green-50' : ''}`}
+                >
+                  <LuLightbulb className="w-4 h-4 text-green-600" /> Rekomendasi
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Tim Filter */}
           <select
@@ -402,7 +476,7 @@ export default function PimpinanEvaluasiPage() {
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className={`px-3 py-1 text-sm font-medium rounded-full ${getJenisColor(e.jenis_evaluasi)}`}>
+                    <span className={`px-3 py-1 text-sm font-medium rounded-full flex items-center gap-1 ${getJenisColor(e.jenis_evaluasi)}`}>
                       {getJenisIcon(e.jenis_evaluasi)} {e.jenis_evaluasi.charAt(0).toUpperCase() + e.jenis_evaluasi.slice(1)}
                     </span>
                     <span className="text-xs text-gray-500">{formatDate(e.created_at)}</span>

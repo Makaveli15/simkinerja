@@ -9,7 +9,8 @@ import {
   LuTimer,
   LuTriangleAlert,
   LuCircleDollarSign,
-  LuPlus
+  LuPlus,
+  LuHand
 } from 'react-icons/lu';
 import {
   BarChart,
@@ -220,7 +221,7 @@ export default function PelaksanaDashboard() {
       <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-500/20">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold mb-1">Selamat Datang, {userInfo?.nama_lengkap || userInfo?.username}! 👋</h1>
+            <h1 className="text-2xl font-bold mb-1 flex items-center gap-2">Selamat Datang, {userInfo?.nama_lengkap || userInfo?.username}! <LuHand className="w-6 h-6" /></h1>
             <p className="text-blue-100">
               Tim: <span className="font-semibold text-white">{userInfo?.tim_nama || '-'}</span>
             </p>

@@ -18,7 +18,12 @@ import {
   LuLogOut,
   LuClipboardList,
   LuClipboardCheck,
-  LuWallet
+  LuWallet,
+  LuCircleCheck,
+  LuCircleX,
+  LuFilePen,
+  LuChartBar,
+  LuPin
 } from 'react-icons/lu';
 
 interface User {
@@ -237,14 +242,14 @@ export default function PPKLayout({
     router.push(link);
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string): React.ReactNode => {
     switch (type) {
-      case 'approval_request': return '📋';
-      case 'approval': return '✅';
-      case 'rejection': return '❌';
-      case 'revision_request': return '📝';
-      case 'kegiatan': return '📊';
-      default: return '📌';
+      case 'approval_request': return <LuClipboardList className="w-4 h-4" />;
+      case 'approval': return <LuCircleCheck className="w-4 h-4" />;
+      case 'rejection': return <LuCircleX className="w-4 h-4" />;
+      case 'revision_request': return <LuFilePen className="w-4 h-4" />;
+      case 'kegiatan': return <LuChartBar className="w-4 h-4" />;
+      default: return <LuPin className="w-4 h-4" />;
     }
   };
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LuChevronLeft, LuLoader, LuPlus, LuSearch, LuX, LuUser, LuFileText, LuCheck } from 'react-icons/lu';
+import { LuChevronLeft, LuLoader, LuPlus, LuSearch, LuX, LuUser, LuFileText, LuCheck, LuLightbulb } from 'react-icons/lu';
 
 interface KRO {
   id: number;
@@ -560,8 +560,8 @@ export default function TambahKegiatanPage() {
             </label>
             
             {(!formData.tanggal_mulai || !formData.tanggal_selesai) && (
-              <p className="text-xs text-amber-600 mb-2">
-                💡 Pilih tanggal mulai dan selesai terlebih dahulu untuk melihat ketersediaan mitra
+              <p className="text-xs text-amber-600 mb-2 flex items-center gap-1">
+                <LuLightbulb className="w-4 h-4" /> Pilih tanggal mulai dan selesai terlebih dahulu untuk melihat ketersediaan mitra
               </p>
             )}
 

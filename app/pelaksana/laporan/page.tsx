@@ -9,7 +9,11 @@ import {
   LuDownload, 
   LuTrash2, 
   LuX,
-  LuCloudUpload
+  LuCloudUpload,
+  LuFileSpreadsheet,
+  LuPaperclip,
+  LuFilePen,
+  LuCheck
 } from 'react-icons/lu';
 
 interface Laporan {
@@ -298,15 +302,15 @@ export default function LaporanPage() {
     const ext = fileName.split('.').pop()?.toLowerCase();
     switch (ext) {
       case 'pdf':
-        return '📄';
+        return <LuFileText className="w-5 h-5 text-red-500" />;
       case 'doc':
       case 'docx':
-        return '📝';
+        return <LuFilePen className="w-5 h-5 text-blue-500" />;
       case 'xls':
       case 'xlsx':
-        return '📊';
+        return <LuFileSpreadsheet className="w-5 h-5 text-green-500" />;
       default:
-        return '📎';
+        return <LuPaperclip className="w-5 h-5 text-gray-500" />;
     }
   };
 
@@ -525,9 +529,10 @@ export default function LaporanPage() {
               )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  <strong>📝 Generate Laporan Otomatis</strong><br/>
-                  Sistem akan mengambil semua data kegiatan dan generate laporan dalam format Word (.docx) berdasarkan filter yang dipilih.
+                <p className="text-sm text-blue-800 flex items-start gap-2">
+                  <LuFilePen className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <span><strong>Generate Laporan Otomatis</strong><br/>
+                  Sistem akan mengambil semua data kegiatan dan generate laporan dalam format Word (.docx) berdasarkan filter yang dipilih.</span>
                 </p>
               </div>
               
@@ -720,8 +725,8 @@ export default function LaporanPage() {
                     </div>
                     <p className="text-xs text-gray-500">PDF, DOC, DOCX, XLS, XLSX (Maks. 10MB)</p>
                     {file && (
-                      <p className="text-sm text-green-600 font-medium mt-2">
-                        ✓ {file.name}
+                      <p className="text-sm text-green-600 font-medium mt-2 flex items-center gap-1">
+                        <LuCheck className="w-4 h-4" /> {file.name}
                       </p>
                     )}
                   </div>

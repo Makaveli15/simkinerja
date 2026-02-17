@@ -14,7 +14,9 @@ import {
   LuCalendar,
   LuUser,
   LuFileText,
-  LuChartBar
+  LuChartBar,
+  LuHourglass,
+  LuPaperclip
 } from 'react-icons/lu';
 
 interface Kegiatan {
@@ -533,15 +535,15 @@ export default function KoordinatorApprovalPage() {
                             Pelaksana: {item.pelaksana_nama}
                           </p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
                           item.status === 'menunggu' ? 'bg-yellow-100 text-yellow-700' :
                           item.status === 'disahkan' ? 'bg-green-100 text-green-700' :
                           item.status === 'ditolak' ? 'bg-red-100 text-red-700' :
                           'bg-gray-100 text-gray-700'
                         }`}>
-                          {item.status === 'menunggu' ? '⏳ Menunggu' :
-                           item.status === 'disahkan' ? '✅ Disahkan' :
-                           item.status === 'ditolak' ? '❌ Ditolak' : item.status}
+                          {item.status === 'menunggu' ? <><LuHourglass className="w-3 h-3" /> Menunggu</> :
+                           item.status === 'disahkan' ? <><LuCircleCheck className="w-3 h-3" /> Disahkan</> :
+                           item.status === 'ditolak' ? <><LuCircleX className="w-3 h-3" /> Ditolak</> : item.status}
                         </span>
                       </div>
 
@@ -573,7 +575,7 @@ export default function KoordinatorApprovalPage() {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
                         >
-                          📎 Lihat Bukti Dukung
+                          <LuPaperclip className="w-4 h-4" /> Lihat Bukti Dukung
                         </a>
                       )}
                     </div>

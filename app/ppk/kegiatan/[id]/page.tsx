@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { LuCircleAlert, LuChevronLeft, LuCircleCheck, LuDownload } from 'react-icons/lu';
+import { LuCircleAlert, LuChevronLeft, LuCircleCheck, LuDownload, LuClipboardList, LuPin, LuTarget, LuCalendar, LuWallet, LuRefreshCw, LuClock, LuHourglass, LuChartBar, LuTrendingUp, LuTriangleAlert, LuFilePen, LuWrench, LuPackage, LuBanknote, LuFileText } from 'react-icons/lu';
 
 interface KegiatanDetail {
   id: number;
@@ -253,7 +253,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
       <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <span>📋</span> Informasi Detail Kegiatan
+            <LuClipboardList className="w-5 h-5" /> Informasi Detail Kegiatan
           </h2>
         </div>
         <div className="p-6">
@@ -268,7 +268,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
             {/* Kolom 1: Informasi Dasar */}
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
-                <span className="text-blue-500">📌</span> Informasi Dasar
+                <LuPin className="w-4 h-4 text-blue-500" /> Informasi Dasar
               </h3>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Tim Pelaksana</p>
@@ -280,16 +280,16 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
               </div>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Status Kegiatan</p>
-                <span className={`inline-block mt-1 px-2 py-1 text-xs font-medium rounded-full ${
+                <span className={`inline-flex items-center gap-1 mt-1 px-2 py-1 text-xs font-medium rounded-full ${
                   kegiatan.status === 'selesai' ? 'bg-green-100 text-green-700' :
                   kegiatan.status === 'berjalan' ? 'bg-blue-100 text-blue-700' :
                   kegiatan.status === 'tertunda' ? 'bg-orange-100 text-orange-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
-                  {kegiatan.status === 'selesai' ? '✅ Selesai' :
-                   kegiatan.status === 'berjalan' ? '🔄 Berjalan' :
-                   kegiatan.status === 'tertunda' ? '⏸️ Tertunda' :
-                   kegiatan.status === 'belum_mulai' ? '⏳ Belum Mulai' : kegiatan.status}
+                  {kegiatan.status === 'selesai' ? <><LuCircleCheck className="w-3 h-3" /> Selesai</> :
+                   kegiatan.status === 'berjalan' ? <><LuRefreshCw className="w-3 h-3" /> Berjalan</> :
+                   kegiatan.status === 'tertunda' ? <><LuClock className="w-3 h-3" /> Tertunda</> :
+                   kegiatan.status === 'belum_mulai' ? <><LuHourglass className="w-3 h-3" /> Belum Mulai</> : kegiatan.status}
                 </span>
               </div>
             </div>
@@ -297,7 +297,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
             {/* Kolom 2: KRO */}
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
-                <span className="text-green-500">🎯</span> Klasifikasi Rincian Output
+                <LuTarget className="w-4 h-4 text-green-500" /> Klasifikasi Rincian Output
               </h3>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Kode KRO</p>
@@ -312,7 +312,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
             {/* Kolom 3: Jadwal */}
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
-                <span className="text-purple-500">📅</span> Jadwal Pelaksanaan
+                <LuCalendar className="w-4 h-4 text-purple-500" /> Jadwal Pelaksanaan
               </h3>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Tanggal Mulai</p>
@@ -333,7 +333,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
             {/* Kolom 4: Target & Anggaran */}
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-900 border-b pb-2 flex items-center gap-2">
-                <span className="text-yellow-500">💰</span> Target & Anggaran
+                <LuWallet className="w-4 h-4 text-yellow-500" /> Target & Anggaran
               </h3>
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Target Output</p>
@@ -361,13 +361,13 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
         <div className="border-b">
           <div className="flex flex-wrap lg:flex-nowrap">
             {[
-              { id: 'evaluasi-kinerja', label: 'Ringkasan Performa', icon: '📊' },
-              { id: 'progres', label: 'Progres', icon: '📈', count: progres.length },
-              { id: 'anggaran', label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
-              { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
-              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
-              { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
-              { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasi.length },
+              { id: 'evaluasi-kinerja', label: 'Ringkasan Performa', icon: <LuChartBar className="w-4 h-4" /> },
+              { id: 'progres', label: 'Progres', icon: <LuTrendingUp className="w-4 h-4" />, count: progres.length },
+              { id: 'anggaran', label: 'Realisasi Anggaran', icon: <LuWallet className="w-4 h-4" />, count: realisasiAnggaran.length },
+              { id: 'kendala', label: 'Kendala', icon: <LuTriangleAlert className="w-4 h-4" />, count: kendala.length },
+              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: <LuCircleCheck className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
+              { id: 'waktu', label: 'Waktu Penyelesaian', icon: <LuClock className="w-4 h-4" /> },
+              { id: 'evaluasi', label: 'Evaluasi', icon: <LuFilePen className="w-4 h-4" />, count: evaluasi.length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -401,7 +401,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* 1. Capaian Output */}
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 border border-blue-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">🎯</span>
+                    <LuTarget className="w-6 h-6 text-blue-600" />
                     <span className="text-sm font-medium text-blue-700">Capaian Output</span>
                   </div>
                   <p className={`text-4xl font-bold mb-2 ${summary.capaian_output_persen >= 70 ? 'text-green-600' : summary.capaian_output_persen >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
@@ -417,7 +417,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* 2. Serapan Anggaran */}
                 <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-5 border border-green-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">💰</span>
+                    <LuWallet className="w-6 h-6 text-green-600" />
                     <span className="text-sm font-medium text-green-700">Serapan Anggaran</span>
                   </div>
                   <p className={`text-4xl font-bold mb-2 ${summary.realisasi_anggaran_persen >= 70 ? 'text-green-600' : summary.realisasi_anggaran_persen >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
@@ -433,7 +433,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* 3. Ketepatan Waktu */}
                 <div className={`rounded-xl p-5 border ${summary.indikator.ketepatan_waktu >= 70 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200' : summary.indikator.ketepatan_waktu >= 40 ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200' : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">⏱️</span>
+                    <LuClock className={`w-6 h-6 ${summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-600' : summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-600' : 'text-red-600'}`} />
                     <span className={`text-sm font-medium ${summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-700' : summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-700' : 'text-red-700'}`}>Ketepatan Waktu</span>
                   </div>
                   <p className={`text-4xl font-bold mb-2 ${summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-600' : summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
@@ -444,7 +444,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* 4. Kualitas Output */}
                 <div className={`rounded-xl p-5 border ${summary.indikator.kualitas_output >= 80 ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">✅</span>
+                    <LuCircleCheck className={`w-6 h-6 ${summary.indikator.kualitas_output >= 80 ? 'text-purple-600' : 'text-gray-500'}`} />
                     <span className="text-sm font-medium text-purple-700">Kualitas Output</span>
                   </div>
                   <p className={`text-4xl font-bold mb-2 ${summary.indikator.kualitas_output >= 80 ? 'text-purple-600' : 'text-gray-500'}`}>
@@ -455,7 +455,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* 5. Penyelesaian Kendala */}
                 <div className={`rounded-xl p-5 border ${summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200' : 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200'}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">🔧</span>
+                    <LuWrench className={`w-6 h-6 ${summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala ? 'text-green-600' : 'text-orange-600'}`} />
                     <span className="text-sm font-medium">Kendala</span>
                   </div>
                   <p className={`text-4xl font-bold mb-2 ${summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala ? 'text-green-600' : 'text-orange-600'}`}>
@@ -466,7 +466,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* 6. Skor Kinerja Total */}
                 <div className={`rounded-xl p-5 border ${summary.skor_kinerja >= 80 ? 'bg-gradient-to-br from-green-100 to-emerald-200 border-green-300' : summary.skor_kinerja >= 60 ? 'bg-gradient-to-br from-yellow-100 to-amber-200 border-yellow-300' : 'bg-gradient-to-br from-red-100 to-rose-200 border-red-300'}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-2xl">📊</span>
+                    <LuChartBar className={`w-6 h-6 ${getSkorColor(summary.skor_kinerja)}`} />
                     <span className={`text-sm font-medium ${getSkorColor(summary.skor_kinerja)}`}>Skor Kinerja</span>
                   </div>
                   <p className={`text-5xl font-bold mb-2 ${getSkorColor(summary.skor_kinerja)}`}>
@@ -483,7 +483,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className={`rounded-xl p-5 border ${summary.deviasi.output >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">📦</span>
+                      <LuPackage className="w-5 h-5" />
                       <span className="font-medium text-gray-900">Deviasi Output</span>
                     </div>
                     <p className={`text-3xl font-bold ${summary.deviasi.output >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -493,7 +493,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                   
                   <div className={`rounded-xl p-5 border ${summary.deviasi.waktu >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">📅</span>
+                      <LuCalendar className="w-5 h-5" />
                       <span className="font-medium text-gray-900">Deviasi Waktu</span>
                     </div>
                     <p className={`text-3xl font-bold ${summary.deviasi.waktu >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -503,7 +503,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                   
                   <div className={`rounded-xl p-5 border ${summary.deviasi.anggaran <= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xl">💵</span>
+                      <LuBanknote className="w-5 h-5" />
                       <span className="font-medium text-gray-900">Deviasi Anggaran</span>
                     </div>
                     <p className={`text-3xl font-bold ${summary.deviasi.anggaran <= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -647,14 +647,14 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                   {dokumenOutput.map((doc) => (
                     <div key={doc.id} className="border rounded-lg p-4 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <span className="text-2xl">📄</span>
+                        <LuFileText className="w-6 h-6 text-gray-400" />
                         <div>
                           <p className="font-medium text-gray-900">{doc.nama_file}</p>
                           <p className="text-xs text-gray-500">
                             {formatFileSize(doc.ukuran_file)} • {doc.tipe_dokumen === 'final' ? 'Final' : 'Draft'} • {formatDate(doc.uploaded_at)}
                           </p>
                           {doc.status_final === 'disahkan' && (
-                            <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700">✓ Disahkan</span>
+                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700"><LuCircleCheck className="w-3 h-3" /> Disahkan</span>
                           )}
                         </div>
                       </div>
@@ -674,7 +674,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
               {/* Header */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <span>⏰</span> Analisis Waktu Penyelesaian
+                  <LuClock className="w-5 h-5 text-blue-600" /> Analisis Waktu Penyelesaian
                 </h3>
                 <p className="text-sm text-gray-600">
                   Perbandingan waktu rencana dengan realisasi penyelesaian kegiatan
@@ -686,7 +686,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* Waktu Rencana */}
                 <div className="bg-white border rounded-xl p-6">
                   <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">📅</span>
+                    <span className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600"><LuCalendar className="w-4 h-4" /></span>
                     Waktu Rencana
                   </h4>
                   <div className="space-y-3">
@@ -710,7 +710,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                 {/* Waktu Realisasi */}
                 <div className="bg-white border rounded-xl p-6">
                   <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">✅</span>
+                    <span className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600"><LuCircleCheck className="w-4 h-4" /></span>
                     Waktu Realisasi
                   </h4>
                   <div className="space-y-3">
@@ -794,7 +794,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                           status === 'tepat' || status === 'lebih_cepat' ? 'text-green-600' :
                           status === 'terlambat' ? 'text-red-600' : 'text-blue-600'
                         }`}>
-                          {status === 'tepat' && '✓'}
+                          {status === 'tepat' && <LuCircleCheck className="w-8 h-8" />}
                           {status === 'lebih_cepat' && `+${Math.abs(selisihHari)}`}
                           {status === 'terlambat' && `-${Math.abs(selisihHari)}`}
                           {status === 'berjalan' && selisihHari}

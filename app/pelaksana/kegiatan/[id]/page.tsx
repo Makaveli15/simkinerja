@@ -20,7 +20,31 @@ import {
   LuLoader,
   LuCircleAlert,
   LuUser,
-  LuSearch
+  LuSearch,
+  LuTrendingUp,
+  LuWallet,
+  LuTriangleAlert,
+  LuCircleCheck,
+  LuClock,
+  LuMessageSquare,
+  LuTarget,
+  LuWrench,
+  LuChartBar,
+  LuFileSpreadsheet,
+  LuImage,
+  LuPaperclip,
+  LuCircleX,
+  LuHourglass,
+  LuTrophy,
+  LuPackage,
+  LuPin,
+  LuLightbulb,
+  LuFilePen,
+  LuClipboardList,
+  LuBriefcase,
+  LuFolderOpen,
+  LuChartNoAxesCombined,
+  LuScrollText
 } from 'react-icons/lu';
 
 interface MitraItem {
@@ -764,14 +788,14 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     </div>
   );
 
-  const tabs = [
-    { id: 'evaluasi' as TabType, label: 'Evaluasi Kinerja', icon: '📉' },
-    { id: 'progres' as TabType, label: 'Progres', icon: '📈', count: progres.length },
-    { id: 'realisasi-anggaran' as TabType, label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
-    { id: 'kendala' as TabType, label: 'Kendala', icon: '⚠️', count: kendala.length },
-    { id: 'verifikasi' as TabType, label: 'Verifikasi Kualitas Output', icon: '✅', count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
-    { id: 'waktu' as TabType, label: 'Waktu Penyelesaian', icon: '⏰' },
-    { id: 'catatan' as TabType, label: 'Evaluasi', icon: '📝', count: evaluasiList.length },
+  const tabs: { id: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
+    { id: 'evaluasi' as TabType, label: 'Evaluasi Kinerja', icon: <LuChartBar className="w-4 h-4" /> },
+    { id: 'progres' as TabType, label: 'Progres', icon: <LuTrendingUp className="w-4 h-4" />, count: progres.length },
+    { id: 'realisasi-anggaran' as TabType, label: 'Realisasi Anggaran', icon: <LuWallet className="w-4 h-4" />, count: realisasiAnggaran.length },
+    { id: 'kendala' as TabType, label: 'Kendala', icon: <LuTriangleAlert className="w-4 h-4" />, count: kendala.length },
+    { id: 'verifikasi' as TabType, label: 'Verifikasi Kualitas Output', icon: <LuCircleCheck className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
+    { id: 'waktu' as TabType, label: 'Waktu Penyelesaian', icon: <LuClock className="w-4 h-4" /> },
+    { id: 'catatan' as TabType, label: 'Evaluasi', icon: <LuMessageSquare className="w-4 h-4" />, count: evaluasiList.length },
   ];
 
   // Helper functions for dokumen
@@ -781,12 +805,12 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
-  const getFileIcon = (tipeFile: string): string => {
-    if (tipeFile.includes('pdf')) return '📄';
-    if (tipeFile.includes('word') || tipeFile.includes('document')) return '📝';
-    if (tipeFile.includes('excel') || tipeFile.includes('spreadsheet')) return '📊';
-    if (tipeFile.includes('image')) return '🖼️';
-    return '📎';
+  const getFileIcon = (tipeFile: string): React.ReactNode => {
+    if (tipeFile.includes('pdf')) return <LuFileText className="w-5 h-5 text-red-500" />;
+    if (tipeFile.includes('word') || tipeFile.includes('document')) return <LuFileText className="w-5 h-5 text-blue-500" />;
+    if (tipeFile.includes('excel') || tipeFile.includes('spreadsheet')) return <LuFileSpreadsheet className="w-5 h-5 text-green-500" />;
+    if (tipeFile.includes('image')) return <LuImage className="w-5 h-5 text-purple-500" />;
+    return <LuPaperclip className="w-5 h-5 text-gray-500" />;
   };
 
   return (
@@ -909,11 +933,11 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     kegiatan.status_pengajuan === 'review_koordinator' ? 'bg-blue-100 text-blue-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {kegiatan.status_pengajuan === 'disetujui' ? '✅ Disetujui' :
-                     kegiatan.status_pengajuan === 'ditolak' ? '❌ Ditolak' :
-                     kegiatan.status_pengajuan === 'review_kepala' ? '⏳ Menunggu Persetujuan Pimpinan' :
-                     kegiatan.status_pengajuan === 'review_ppk' ? '⏳ Menunggu Persetujuan PPK' :
-                     kegiatan.status_pengajuan === 'review_koordinator' ? '⏳ Menunggu Persetujuan Koordinator' :
+                    {kegiatan.status_pengajuan === 'disetujui' ? <><LuCircleCheck className="w-4 h-4 mr-1 inline" /> Disetujui</> :
+                     kegiatan.status_pengajuan === 'ditolak' ? <><LuCircleX className="w-4 h-4 mr-1 inline" /> Ditolak</> :
+                     kegiatan.status_pengajuan === 'review_kepala' ? <><LuHourglass className="w-4 h-4 mr-1 inline" /> Menunggu Persetujuan Pimpinan</> :
+                     kegiatan.status_pengajuan === 'review_ppk' ? <><LuHourglass className="w-4 h-4 mr-1 inline" /> Menunggu Persetujuan PPK</> :
+                     kegiatan.status_pengajuan === 'review_koordinator' ? <><LuHourglass className="w-4 h-4 mr-1 inline" /> Menunggu Persetujuan Koordinator</> :
                      kegiatan.status_pengajuan}
                   </span>
                   {kegiatan.tanggal_pengajuan && (
@@ -930,7 +954,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-lg">👨‍💼</span>
+                          <LuUser className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -938,8 +962,8 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                             <span className="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded">Tahap 1</span>
                           </div>
                           {kegiatan.tanggal_approval_koordinator && (
-                            <p className="text-xs text-blue-600 mb-2">
-                              📅 {formatDate(kegiatan.tanggal_approval_koordinator)}
+                            <p className="text-xs text-blue-600 mb-2 flex items-center gap-1">
+                              <LuCalendar className="w-3 h-3" /> {formatDate(kegiatan.tanggal_approval_koordinator)}
                             </p>
                           )}
                           {kegiatan.catatan_koordinator ? (
@@ -959,7 +983,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-lg">📋</span>
+                          <LuClipboardList className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -967,8 +991,8 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                             <span className="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded">Tahap 2</span>
                           </div>
                           {kegiatan.tanggal_approval_ppk && (
-                            <p className="text-xs text-orange-600 mb-2">
-                              📅 {formatDate(kegiatan.tanggal_approval_ppk)}
+                            <p className="text-xs text-orange-600 mb-2 flex items-center gap-1">
+                              <LuCalendar className="w-3 h-3" /> {formatDate(kegiatan.tanggal_approval_ppk)}
                             </p>
                           )}
                           {kegiatan.catatan_ppk ? (
@@ -988,7 +1012,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-lg">👔</span>
+                          <LuBriefcase className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -996,8 +1020,8 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                             <span className="text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">Tahap 3 (Final)</span>
                           </div>
                           {kegiatan.tanggal_approval_kepala && (
-                            <p className="text-xs text-purple-600 mb-2">
-                              📅 {formatDate(kegiatan.tanggal_approval_kepala)}
+                            <p className="text-xs text-purple-600 mb-2 flex items-center gap-1">
+                              <LuCalendar className="w-3 h-3" /> {formatDate(kegiatan.tanggal_approval_kepala)}
                             </p>
                           )}
                           {kegiatan.catatan_kepala ? (
@@ -1235,10 +1259,10 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     </div>
 
                     {/* Kuantitas List */}
-                    <h3 className="font-semibold text-gray-900 mb-4">📋 Riwayat Validasi Kuantitas</h3>
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2"><LuClipboardList className="w-5 h-5" /> Riwayat Validasi Kuantitas</h3>
                     {validasiKuantitas.length === 0 ? (
                       <div className="text-center py-8 bg-gray-50 rounded-xl">
-                        <div className="text-4xl mb-2">📊</div>
+                        <div className="text-4xl mb-2"><LuChartBar className="w-10 h-10 mx-auto text-gray-400" /></div>
                         <p className="text-gray-500">Belum ada data kuantitas yang disubmit</p>
                         <p className="text-sm text-gray-400 mt-1">Gunakan halaman Update untuk menambah data output</p>
                       </div>
@@ -1253,7 +1277,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                               <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-start gap-3 flex-1">
                                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDisahkan ? 'bg-green-100' : isDitolak ? 'bg-red-100' : 'bg-blue-100'}`}>
-                                    <span className="text-xl">{isDisahkan ? '✅' : isDitolak ? '❌' : '📊'}</span>
+                                    {isDisahkan ? <LuCircleCheck className="w-5 h-5 text-green-600" /> : isDitolak ? <LuCircleX className="w-5 h-5 text-red-600" /> : <LuChartBar className="w-5 h-5 text-blue-600" />}
                                   </div>
                                   <div className="flex-1">
                                     <p className="font-medium text-gray-900 text-lg">
@@ -1263,14 +1287,14 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                       {formatDate(val.created_at)}
                                     </p>
                                     {val.keterangan && (
-                                      <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded">
-                                        💬 {val.keterangan}
+                                      <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded flex items-start gap-1">
+                                        <LuMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" /> {val.keterangan}
                                       </p>
                                     )}
                                     
                                     {/* Validation Status Flow */}
                                     <div className="mt-3 p-3 bg-white rounded-lg border">
-                                      <p className="text-xs font-semibold text-gray-600 mb-2">✅ Alur Validasi:</p>
+                                      <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1"><LuCircleCheck className="w-3 h-3" /> Alur Validasi:</p>
                                       <div className="flex flex-wrap items-center gap-2 text-xs">
                                         <div className={`px-2 py-1 rounded flex items-center gap-1 ${
                                           val.status_kesubag === 'valid' ? 'bg-green-100 text-green-700' :
@@ -1278,9 +1302,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                           'bg-yellow-100 text-yellow-700'
                                         }`}>
                                           <span>Koordinator:</span>
-                                          <span className="font-medium">
-                                            {val.status_kesubag === 'valid' ? '✅ Valid' :
-                                             val.status_kesubag === 'tidak_valid' ? '❌ Ditolak' : '⏳ Menunggu'}
+                                          <span className="font-medium flex items-center gap-0.5">
+                                            {val.status_kesubag === 'valid' ? <><LuCircleCheck className="w-3 h-3" /> Valid</> :
+                                             val.status_kesubag === 'tidak_valid' ? <><LuCircleX className="w-3 h-3" /> Ditolak</> : <><LuHourglass className="w-3 h-3" /> Menunggu</>}
                                           </span>
                                         </div>
                                         {val.status_kesubag === 'valid' && (
@@ -1292,9 +1316,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                               'bg-yellow-100 text-yellow-700'
                                             }`}>
                                               <span>Pimpinan:</span>
-                                              <span className="font-medium">
-                                                {val.status_pimpinan === 'valid' ? '✅ Valid' :
-                                                 val.status_pimpinan === 'tidak_valid' ? '❌ Ditolak' : '⏳ Menunggu'}
+                                              <span className="font-medium flex items-center gap-0.5">
+                                                {val.status_pimpinan === 'valid' ? <><LuCircleCheck className="w-3 h-3" /> Valid</> :
+                                                 val.status_pimpinan === 'tidak_valid' ? <><LuCircleX className="w-3 h-3" /> Ditolak</> : <><LuHourglass className="w-3 h-3" /> Menunggu</>}
                                               </span>
                                             </div>
                                           </>
@@ -1302,18 +1326,18 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                         {isDisahkan && (
                                           <>
                                             <span className="text-gray-400">→</span>
-                                            <span className="px-2 py-1 bg-green-600 text-white rounded font-medium">🏆 Disahkan</span>
+                                            <span className="px-2 py-1 bg-green-600 text-white rounded font-medium flex items-center gap-1"><LuTrophy className="w-3 h-3" /> Disahkan</span>
                                           </>
                                         )}
                                       </div>
                                       {val.feedback_kesubag && (
-                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
-                                          💬 <strong>Koordinator:</strong> {val.feedback_kesubag}
+                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded flex items-start gap-1">
+                                          <LuMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" /> <strong>Koordinator:</strong> {val.feedback_kesubag}
                                         </p>
                                       )}
                                       {val.feedback_pimpinan && (
-                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded">
-                                          💬 <strong>Pimpinan:</strong> {val.feedback_pimpinan}
+                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded flex items-start gap-1">
+                                          <LuMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" /> <strong>Pimpinan:</strong> {val.feedback_pimpinan}
                                         </p>
                                       )}
                                     </div>
@@ -1335,9 +1359,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                   {val.status_kesubag === 'pending' && (
                                     <button
                                       onClick={() => handleDeleteKuantitas(val.id)}
-                                      className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 transition-colors"
+                                      className="px-3 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200 transition-colors flex items-center gap-1"
                                     >
-                                      🗑️ Hapus
+                                      <LuTrash2 className="w-4 h-4" /> Hapus
                                     </button>
                                   )}
                                 </div>
@@ -1382,16 +1406,16 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   <h3 className="font-semibold text-gray-900 mb-3">Status Verifikasi</h3>
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-3">
-                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+                      <span className={`inline-flex items-center gap-1 px-4 py-2 rounded-full text-sm font-medium ${
                         statusVerifikasiDokumen.status === 'valid' ? 'bg-green-100 text-green-800' :
                         statusVerifikasiDokumen.status === 'ditolak' ? 'bg-red-100 text-red-800' :
                         statusVerifikasiDokumen.status === 'menunggu' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {statusVerifikasiDokumen.status === 'valid' && '✅ '}
-                        {statusVerifikasiDokumen.status === 'ditolak' && '❌ '}
-                        {statusVerifikasiDokumen.status === 'menunggu' && '⏳ '}
-                        {statusVerifikasiDokumen.status === 'belum_verifikasi' && '⏸️ '}
+                        {statusVerifikasiDokumen.status === 'valid' && <LuCircleCheck className="w-4 h-4" />}
+                        {statusVerifikasiDokumen.status === 'ditolak' && <LuCircleX className="w-4 h-4" />}
+                        {statusVerifikasiDokumen.status === 'menunggu' && <LuHourglass className="w-4 h-4" />}
+                        {statusVerifikasiDokumen.status === 'belum_verifikasi' && <LuClock className="w-4 h-4" />}
                         {statusVerifikasiDokumen.status === 'valid' ? 'Semua Valid' :
                          statusVerifikasiDokumen.status === 'ditolak' ? 'Ada yang Perlu Revisi' :
                          statusVerifikasiDokumen.status === 'menunggu' ? 'Menunggu Validasi' :
@@ -1424,7 +1448,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   <h3 className="font-semibold text-gray-900 mb-4">Dokumen Output</h3>
                   {dokumenOutput.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-xl">
-                      <div className="text-4xl mb-2">📁</div>
+                      <LuFolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                       <p className="text-gray-500">Belum ada dokumen yang diupload</p>
                     </div>
                   ) : (
@@ -1440,7 +1464,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex items-start gap-3 flex-1">
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isDisahkan ? 'bg-green-100' : 'bg-blue-100'}`}>
-                                  <span className="text-xl">{isDisahkan ? '✅' : '📄'}</span>
+                                  {isDisahkan ? <LuCircleCheck className="w-5 h-5 text-green-600" /> : <LuFileText className="w-5 h-5 text-blue-600" />}
                                 </div>
                                 <div className="flex-1">
                                   <p className="font-medium text-gray-900">{doc.nama_file}</p>
@@ -1453,8 +1477,8 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                       {isFinal ? 'Final' : 'Draft'}
                                     </span>
                                     {isDisahkan && (
-                                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-600 text-white">
-                                        🏆 DISAHKAN
+                                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-600 text-white flex items-center gap-1">
+                                        <LuTrophy className="w-3 h-3" /> DISAHKAN
                                       </span>
                                     )}
                                   </div>
@@ -1462,7 +1486,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                   {/* Validation Status Flow for Final Documents */}
                                   {isFinal && mintaValidasi && (
                                     <div className="mt-3 p-3 bg-white rounded-lg border">
-                                      <p className="text-xs font-semibold text-gray-600 mb-2">✅ Alur Validasi Dokumen Final:</p>
+                                      <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1"><LuCircleCheck className="w-3 h-3" /> Alur Validasi Dokumen Final:</p>
                                       <div className="flex flex-wrap items-center gap-2 text-xs">
                                         {/* Koordinator Validation Status */}
                                         <div className={`px-2 py-1 rounded flex items-center gap-1 ${
@@ -1471,9 +1495,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                           'bg-yellow-100 text-yellow-700'
                                         }`}>
                                           <span>Koordinator:</span>
-                                          <span className="font-medium">
-                                            {doc.validasi_kesubag === 'valid' ? '✅ Valid' :
-                                             doc.validasi_kesubag === 'tidak_valid' ? '❌ Revisi' : '⏳ Menunggu'}
+                                          <span className="font-medium flex items-center gap-0.5">
+                                            {doc.validasi_kesubag === 'valid' ? <><LuCircleCheck className="w-3 h-3" /> Valid</> :
+                                             doc.validasi_kesubag === 'tidak_valid' ? <><LuCircleX className="w-3 h-3" /> Revisi</> : <><LuHourglass className="w-3 h-3" /> Menunggu</>}
                                           </span>
                                         </div>
                                         {doc.validasi_kesubag === 'valid' && (
@@ -1486,9 +1510,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                               'bg-yellow-100 text-yellow-700'
                                             }`}>
                                               <span>Pimpinan:</span>
-                                              <span className="font-medium">
-                                                {doc.validasi_pimpinan === 'valid' ? '✅ Valid' :
-                                                 doc.validasi_pimpinan === 'tidak_valid' ? '❌ Revisi' : '⏳ Menunggu'}
+                                              <span className="font-medium flex items-center gap-0.5">
+                                                {doc.validasi_pimpinan === 'valid' ? <><LuCircleCheck className="w-3 h-3" /> Valid</> :
+                                                 doc.validasi_pimpinan === 'tidak_valid' ? <><LuCircleX className="w-3 h-3" /> Revisi</> : <><LuHourglass className="w-3 h-3" /> Menunggu</>}
                                               </span>
                                             </div>
                                           </>
@@ -1496,29 +1520,29 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                         {isDisahkan && (
                                           <>
                                             <span className="text-gray-400">→</span>
-                                            <span className="px-2 py-1 bg-green-600 text-white rounded font-medium">🏆 Disahkan</span>
+                                            <span className="px-2 py-1 bg-green-600 text-white rounded font-medium flex items-center gap-1"><LuTrophy className="w-3 h-3" /> Disahkan</span>
                                           </>
                                         )}
                                       </div>
-                                      <p className="text-xs text-gray-500 mt-2 italic">
+                                      <p className="text-xs text-gray-500 mt-2 italic flex items-center gap-1">
                                         {doc.validasi_kesubag === 'tidak_valid'
-                                          ? '⚠️ Dokumen ditolak koordinator, silakan upload ulang dokumen perbaikan'
+                                          ? <><LuTriangleAlert className="w-3 h-3 text-yellow-500" /> Dokumen ditolak koordinator, silakan upload ulang dokumen perbaikan</>
                                           : doc.validasi_kesubag === 'valid' && doc.validasi_pimpinan === 'tidak_valid'
-                                          ? '⚠️ Dokumen ditolak pimpinan, silakan upload ulang dokumen perbaikan'
+                                          ? <><LuTriangleAlert className="w-3 h-3 text-yellow-500" /> Dokumen ditolak pimpinan, silakan upload ulang dokumen perbaikan</>
                                           : doc.validasi_kesubag === 'valid' && doc.validasi_pimpinan === 'valid'
-                                          ? '🏆 Dokumen telah disahkan!'
+                                          ? <><LuTrophy className="w-3 h-3 text-green-600" /> Dokumen telah disahkan!</>
                                           : doc.validasi_kesubag === 'valid'
-                                          ? '⏳ Menunggu validasi dari pimpinan'
-                                          : '⏳ Menunggu validasi dari koordinator'}
+                                          ? <><LuHourglass className="w-3 h-3 text-gray-500" /> Menunggu validasi dari pimpinan</>
+                                          : <><LuHourglass className="w-3 h-3 text-gray-500" /> Menunggu validasi dari koordinator</>}
                                       </p>
                                       {doc.validasi_feedback_kesubag && (
-                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
-                                          💬 <strong>Koordinator:</strong> {doc.validasi_feedback_kesubag}
+                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded flex items-start gap-1">
+                                          <LuMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" /> <strong>Koordinator:</strong> {doc.validasi_feedback_kesubag}
                                         </p>
                                       )}
                                       {doc.validasi_feedback_pimpinan && (
-                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded">
-                                          💬 <strong>Pimpinan:</strong> {doc.validasi_feedback_pimpinan}
+                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded flex items-start gap-1">
+                                          <LuMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" /> <strong>Pimpinan:</strong> {doc.validasi_feedback_pimpinan}
                                         </p>
                                       )}
                                     </div>
@@ -1527,7 +1551,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                   {/* Final document not yet requested validation */}
                                   {isFinal && !mintaValidasi && (
                                     <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                      <p className="text-xs font-semibold text-blue-700 mb-1">📤 Belum Diminta Validasi</p>
+                                      <p className="text-xs font-semibold text-blue-700 mb-1 flex items-center gap-1"><LuUpload className="w-3 h-3" /> Belum Diminta Validasi</p>
                                       <p className="text-xs text-blue-600">
                                         Klik tombol "Minta Validasi" untuk mengajukan dokumen ini ke koordinator dan pimpinan untuk divalidasi.
                                       </p>
@@ -1537,7 +1561,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                   {/* Draft Review Status */}
                                   {isDraft && (
                                     <div className="mt-3 p-3 bg-white rounded-lg border">
-                                      <p className="text-xs font-semibold text-gray-600 mb-2">📝 Alur Review Draft:</p>
+                                      <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1"><LuFilePen className="w-3 h-3" /> Alur Review Draft:</p>
                                       <div className="flex flex-wrap items-center gap-2 text-xs">
                                         <div className={`px-2 py-1 rounded flex items-center gap-1 ${
                                           doc.draft_status_kesubag === 'diterima' ? 'bg-green-100 text-green-700' :
@@ -1545,9 +1569,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                           'bg-yellow-100 text-yellow-700'
                                         }`}>
                                           <span>Koordinator:</span>
-                                          <span className="font-medium">
-                                            {doc.draft_status_kesubag === 'diterima' ? '✅ Diterima' :
-                                             doc.draft_status_kesubag === 'ditolak' ? '❌ Revisi' : '⏳ Menunggu'}
+                                          <span className="font-medium flex items-center gap-0.5">
+                                            {doc.draft_status_kesubag === 'diterima' ? <><LuCircleCheck className="w-3 h-3" /> Diterima</> :
+                                             doc.draft_status_kesubag === 'ditolak' ? <><LuCircleX className="w-3 h-3" /> Revisi</> : <><LuHourglass className="w-3 h-3" /> Menunggu</>}
                                           </span>
                                         </div>
                                         {doc.draft_status_kesubag === 'diterima' && (
@@ -1557,28 +1581,28 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                               doc.draft_feedback_pimpinan ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                                             }`}>
                                               <span>Pimpinan:</span>
-                                              <span className="font-medium">
-                                                {doc.draft_feedback_pimpinan ? '✅ Reviewed' : '⏳ Menunggu'}
+                                              <span className="font-medium flex items-center gap-0.5">
+                                                {doc.draft_feedback_pimpinan ? <><LuCircleCheck className="w-3 h-3" /> Reviewed</> : <><LuHourglass className="w-3 h-3" /> Menunggu</>}
                                               </span>
                                             </div>
                                           </>
                                         )}
                                       </div>
-                                      <p className="text-xs text-gray-500 mt-2 italic">
+                                      <p className="text-xs text-gray-500 mt-2 italic flex items-center gap-1">
                                         {doc.draft_status_kesubag === 'ditolak' 
-                                          ? '⚠️ Draft ditolak, silakan upload ulang dokumen perbaikan'
+                                          ? <><LuTriangleAlert className="w-3 h-3 text-yellow-500" /> Draft ditolak, silakan upload ulang dokumen perbaikan</>
                                           : doc.draft_status_kesubag === 'diterima'
-                                          ? '✓ Draft diterima koordinator, menunggu review pimpinan'
-                                          : '⏳ Draft sedang direview oleh koordinator'}
+                                          ? <><LuCircleCheck className="w-3 h-3 text-green-500" /> Draft diterima koordinator, menunggu review pimpinan</>
+                                          : <><LuHourglass className="w-3 h-3 text-gray-500" /> Draft sedang direview oleh koordinator</>}
                                       </p>
                                       {doc.draft_feedback_kesubag && (
-                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded">
-                                          💬 <strong>Koordinator:</strong> {doc.draft_feedback_kesubag}
+                                        <p className="mt-2 text-sm text-teal-700 bg-teal-50 p-2 rounded flex items-start gap-1">
+                                          <LuMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" /> <strong>Koordinator:</strong> {doc.draft_feedback_kesubag}
                                         </p>
                                       )}
                                       {doc.draft_feedback_pimpinan && (
-                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded">
-                                          💬 <strong>Pimpinan:</strong> {doc.draft_feedback_pimpinan}
+                                        <p className="mt-2 text-sm text-purple-700 bg-purple-50 p-2 rounded flex items-start gap-1">
+                                          <LuMessageSquare className="w-4 h-4 mt-0.5 flex-shrink-0" /> <strong>Pimpinan:</strong> {doc.draft_feedback_pimpinan}
                                         </p>
                                       )}
                                     </div>
@@ -1720,7 +1744,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 {/* Info Waktu Kegiatan */}
                 <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span>⏰</span> Informasi Waktu Kegiatan
+                    <LuClock className="w-5 h-5 text-purple-600" /> Informasi Waktu Kegiatan
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-100">
@@ -1765,16 +1789,16 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         style={{ width: `${Math.min(summary?.indikator?.ketepatan_waktu || 0, 100)}%` }}
                       ></div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                       {!kegiatan.tanggal_selesai 
                         ? 'Target tanggal selesai belum ditentukan'
                         : !kegiatan.tanggal_realisasi_selesai && new Date() > new Date(kegiatan.tanggal_selesai)
-                          ? '⚠️ Deadline sudah lewat dan kegiatan belum selesai'
+                          ? <><LuTriangleAlert className="w-3 h-3 text-yellow-500" /> Deadline sudah lewat dan kegiatan belum selesai</>
                           : !kegiatan.tanggal_realisasi_selesai
-                            ? '📋 Kegiatan masih dalam proses'
-                            : kegiatan.tanggal_realisasi_selesai <= kegiatan.tanggal_selesai
-                              ? '✅ Selesai tepat waktu'
-                              : '⚠️ Selesai melewati target waktu'}
+                            ? <><LuClipboardList className="w-3 h-3 text-blue-500" /> Kegiatan masih dalam proses</>
+                            : new Date(kegiatan.tanggal_realisasi_selesai) <= new Date(kegiatan.tanggal_selesai)
+                              ? <><LuCircleCheck className="w-3 h-3 text-green-500" /> Selesai tepat waktu</>
+                              : <><LuTriangleAlert className="w-3 h-3 text-yellow-500" /> Selesai melewati target waktu</>}
                     </p>
                   </div>
                 </div>
@@ -1782,7 +1806,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                 {/* Info Output */}
                 <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span>📦</span> Informasi Output
+                    <LuPackage className="w-5 h-5 text-blue-600" /> Informasi Output
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg p-4 shadow-sm border border-blue-100">
@@ -1829,235 +1853,185 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
             {/* Tab: Evaluasi Kinerja */}
             {activeTab === 'evaluasi' && summary && (
               <div className="space-y-6">
-                {/* Skor Kinerja Utama */}
-                <div className={`rounded-xl p-6 ${
-                  summary?.status_kinerja === 'Sukses' ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200' :
-                  summary?.status_kinerja === 'Perlu Perhatian' ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200' :
-                  summary?.status_kinerja === 'Bermasalah' ? 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-200' : 
+                {/* Skor Kinerja Utama - Compact */}
+                <div className={`rounded-lg p-5 ${
+                  summary?.status_kinerja === 'Sukses' ? 'bg-green-50 border border-green-200' :
+                  summary?.status_kinerja === 'Perlu Perhatian' ? 'bg-yellow-50 border border-yellow-200' :
+                  summary?.status_kinerja === 'Bermasalah' ? 'bg-red-50 border border-red-200' : 
                   'bg-gray-50 border border-gray-200'
                 }`}>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">Skor Kinerja Keseluruhan</h3>
-                      <p className="text-sm text-gray-600">Dihitung otomatis berdasarkan 5 indikator berbobot</p>
-                    </div>
-                    <div className="text-center">
-                      <p className={`text-5xl font-bold ${
-                        (summary?.skor_kinerja || 0) >= 80 ? 'text-green-600' :
-                        (summary?.skor_kinerja || 0) >= 60 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>{summary?.skor_kinerja || 0}</p>
-                      <span className={`inline-block mt-2 px-4 py-1.5 rounded-full text-sm font-medium ${
-                        summary?.status_kinerja === 'Sukses' ? 'bg-green-100 text-green-700' :
-                        summary?.status_kinerja === 'Perlu Perhatian' ? 'bg-yellow-100 text-yellow-700' :
-                        summary?.status_kinerja === 'Bermasalah' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        summary?.status_kinerja === 'Sukses' ? 'bg-green-100' :
+                        summary?.status_kinerja === 'Perlu Perhatian' ? 'bg-yellow-100' :
+                        summary?.status_kinerja === 'Bermasalah' ? 'bg-red-100' : 'bg-gray-100'
                       }`}>
-                        {summary?.status_kinerja || 'Belum Dinilai'}
-                      </span>
+                        <LuTrophy className={`w-6 h-6 ${
+                          summary?.status_kinerja === 'Sukses' ? 'text-green-600' :
+                          summary?.status_kinerja === 'Perlu Perhatian' ? 'text-yellow-600' :
+                          summary?.status_kinerja === 'Bermasalah' ? 'text-red-600' : 'text-gray-600'
+                        }`} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">Skor Kinerja</h3>
+                        <span className={`text-sm ${
+                          summary?.status_kinerja === 'Sukses' ? 'text-green-700' :
+                          summary?.status_kinerja === 'Perlu Perhatian' ? 'text-yellow-700' :
+                          summary?.status_kinerja === 'Bermasalah' ? 'text-red-700' : 'text-gray-600'
+                        }`}>{summary?.status_kinerja || 'Belum Dinilai'}</span>
+                      </div>
                     </div>
+                    <p className={`text-4xl font-bold ${
+                      (summary?.skor_kinerja || 0) >= 80 ? 'text-green-600' :
+                      (summary?.skor_kinerja || 0) >= 60 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>{summary?.skor_kinerja || 0}</p>
                   </div>
                 </div>
 
-                {/* Breakdown Indikator */}
-                <div className="bg-white border rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span>📊</span> Breakdown Indikator Kinerja
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Skor kinerja dihitung berdasarkan {indikatorConfig.length || 5} indikator dengan bobot berbeda. Nilai dihitung secara otomatis berdasarkan data monitoring yang diinput.
-                  </p>
-
-                  <div className="space-y-5">
+                {/* Breakdown Indikator - Compact Table */}
+                <div className="bg-white border rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 bg-gray-50 border-b">
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                      <LuChartBar className="w-4 h-4 text-indigo-600" /> Indikator Kinerja
+                    </h3>
+                  </div>
+                  <div className="divide-y">
                     {(() => {
-                      // Helper function to get bobot from config
                       const getBobot = (kode: string) => {
                         const config = indikatorConfig.find(i => i.kode.toLowerCase() === kode.toLowerCase());
                         return config ? config.bobot : 0;
                       };
-                      
-                      const getDesc = (kode: string, defaultDesc: string) => {
-                        const config = indikatorConfig.find(i => i.kode.toLowerCase() === kode.toLowerCase());
-                        return config?.deskripsi || defaultDesc;
-                      };
 
                       const items = [
-                        { kode: 'capaian_output', label: 'Capaian Output', value: summary.indikator.capaian_output, color: 'blue', icon: '🎯', defaultDesc: 'Perbandingan output realisasi dengan target output' },
-                        { kode: 'ketepatan_waktu', label: 'Ketepatan Waktu', value: summary.indikator.ketepatan_waktu, color: 'green', icon: '⏱️', defaultDesc: 'Penyelesaian tepat waktu atau lebih cepat dari jadwal' },
-                        { kode: 'serapan_anggaran', label: 'Serapan Anggaran', value: summary.indikator.serapan_anggaran, color: 'yellow', icon: '💰', defaultDesc: 'Efisiensi penggunaan anggaran sesuai target' },
-                        { kode: 'kualitas_output', label: 'Kualitas Output', value: summary.indikator.kualitas_output, color: 'purple', icon: '✅', defaultDesc: 'Status verifikasi kualitas hasil pekerjaan' },
-                        { kode: 'penyelesaian_kendala', label: 'Penyelesaian Kendala', value: summary.indikator.penyelesaian_kendala, color: 'orange', icon: '🔧', defaultDesc: 'Rasio kendala yang berhasil diselesaikan' },
-                      ].map(item => ({
-                        ...item,
-                        bobot: getBobot(item.kode),
-                        desc: getDesc(item.kode, item.defaultDesc)
-                      }));
+                        { kode: 'capaian_output', label: 'Capaian Output', value: summary.indikator.capaian_output, color: 'blue', icon: <LuTarget className="w-4 h-4" /> },
+                        { kode: 'ketepatan_waktu', label: 'Ketepatan Waktu', value: summary.indikator.ketepatan_waktu, color: 'green', icon: <LuClock className="w-4 h-4" /> },
+                        { kode: 'serapan_anggaran', label: 'Serapan Anggaran', value: summary.indikator.serapan_anggaran, color: 'yellow', icon: <LuWallet className="w-4 h-4" /> },
+                        { kode: 'kualitas_output', label: 'Kualitas Output', value: summary.indikator.kualitas_output, color: 'purple', icon: <LuCircleCheck className="w-4 h-4" /> },
+                        { kode: 'penyelesaian_kendala', label: 'Penyelesaian Kendala', value: summary.indikator.penyelesaian_kendala, color: 'orange', icon: <LuWrench className="w-4 h-4" /> },
+                      ].map(item => ({ ...item, bobot: getBobot(item.kode) }));
 
                       return items.map((item, i) => (
-                        <div key={i} className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{item.icon}</span>
-                              <div>
-                                <span className="font-medium text-gray-900">{item.label}</span>
-                                <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Bobot {item.bobot}%</span>
-                              </div>
+                        <div key={i} className="px-4 py-3 flex items-center gap-4">
+                          <div className={`p-1.5 rounded ${
+                            item.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                            item.color === 'green' ? 'bg-green-100 text-green-600' :
+                            item.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
+                            item.color === 'purple' ? 'bg-purple-100 text-purple-600' : 'bg-orange-100 text-orange-600'
+                          }`}>{item.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-900">{item.label}</span>
+                              <span className="text-sm font-bold text-gray-700">{item.value.toFixed(0)}</span>
                             </div>
-                            <div className="text-right">
-                              <span className={`text-2xl font-bold ${
-                                item.color === 'blue' ? 'text-blue-600' :
-                                item.color === 'green' ? 'text-green-600' :
-                                item.color === 'yellow' ? 'text-yellow-600' :
-                                item.color === 'purple' ? 'text-purple-600' : 'text-orange-600'
-                              }`}>{item.value.toFixed(1)}</span>
-                              <span className="text-gray-500 text-sm"> / 100</span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-500 mb-2">{item.desc}</p>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className={`h-3 rounded-full transition-all ${
+                            <div className="w-full bg-gray-100 rounded-full h-1.5">
+                              <div className={`h-1.5 rounded-full ${
                                 item.color === 'blue' ? 'bg-blue-500' :
                                 item.color === 'green' ? 'bg-green-500' :
                                 item.color === 'yellow' ? 'bg-yellow-500' :
                                 item.color === 'purple' ? 'bg-purple-500' : 'bg-orange-500'
-                              }`} 
-                              style={{ width: `${Math.min(item.value, 100)}%` }}
-                            />
+                              }`} style={{ width: `${Math.min(item.value, 100)}%` }} />
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-500 mt-1 text-right">
-                            Kontribusi: <strong>{(item.value * item.bobot / 100).toFixed(1)} poin</strong>
-                          </p>
+                          <span className="text-xs text-gray-400 w-12 text-right">{item.bobot}%</span>
                         </div>
                       ));
                     })()}
                   </div>
-
-                  {/* Total */}
-                  <div className="border-t mt-6 pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-gray-900">Total Skor Kinerja</span>
-                      <span className={`text-3xl font-bold ${
-                        summary.skor_kinerja >= 80 ? 'text-green-600' :
-                        summary.skor_kinerja >= 60 ? 'text-yellow-600' : 'text-red-600'
-                      }`}>{summary.skor_kinerja}</span>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Deviasi & Ringkasan */}
+                {/* Deviasi - Compact */}
                 {summary.deviasi && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Deviasi */}
-                    <div className="bg-white border rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <span>📉</span> Analisis Deviasi
+                  <div className="bg-white border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 border-b">
+                      <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                        <LuChartNoAxesCombined className="w-4 h-4 text-blue-600" /> Analisis Deviasi
                       </h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">Deviasi Output</p>
-                            <p className="text-xs text-gray-500">Selisih output realisasi vs target</p>
-                          </div>
-                          <span className={`text-lg font-bold ${
-                            summary.deviasi.output >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {summary.deviasi.output >= 0 ? '+' : ''}{summary.deviasi.output} {kegiatan.satuan_output}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">Deviasi Waktu</p>
-                            <p className="text-xs text-gray-500">Selisih waktu penyelesaian</p>
-                          </div>
-                          <span className={`text-lg font-bold ${
-                            summary.deviasi.waktu >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {summary.deviasi.waktu >= 0 
-                              ? `${summary.deviasi.waktu} hari tersisa` 
-                              : `Terlambat ${Math.abs(summary.deviasi.waktu)} hari`}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-900">Deviasi Anggaran</p>
-                            <p className="text-xs text-gray-500">Selisih realisasi vs target anggaran</p>
-                          </div>
-                          <span className={`text-lg font-bold ${
-                            summary.deviasi.anggaran <= 0 ? 'text-green-600' : 
-                            summary.deviasi.anggaran <= 10 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
-                            {summary.deviasi.anggaran >= 0 ? '+' : ''}{summary.deviasi.anggaran.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
                     </div>
-
-                    {/* Ringkasan Kendala */}
-                    <div className="bg-white border rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <span>⚠️</span> Status Kendala
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <p className="font-medium text-gray-900">Total Kendala</p>
-                          <span className="text-lg font-bold text-gray-700">{summary.total_kendala}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                          <p className="font-medium text-green-700">Terselesaikan</p>
-                          <span className="text-lg font-bold text-green-600">{summary.kendala_resolved}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                          <p className="font-medium text-orange-700">Menunggu</p>
-                          <span className="text-lg font-bold text-orange-600">{summary.kendala_pending}</span>
-                        </div>
+                    <div className="grid grid-cols-3 divide-x">
+                      <div className="p-4 text-center">
+                        <p className="text-xs text-gray-500 mb-1">Output</p>
+                        <p className={`text-lg font-bold ${summary.deviasi.output >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {summary.deviasi.output >= 0 ? '+' : ''}{summary.deviasi.output}
+                        </p>
+                        <p className="text-xs text-gray-400">{kegiatan.satuan_output}</p>
                       </div>
-                      {summary.total_kendala > 0 && (
-                        <div className="mt-4">
-                          <p className="text-sm text-gray-600 mb-2">Tingkat Penyelesaian:</p>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div 
-                              className="bg-green-500 h-3 rounded-full" 
-                              style={{ width: `${summary.total_kendala > 0 ? (summary.kendala_resolved / summary.total_kendala * 100) : 0}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1 text-right">
-                            {summary.total_kendala > 0 ? (summary.kendala_resolved / summary.total_kendala * 100).toFixed(0) : 0}% kendala terselesaikan
-                          </p>
-                        </div>
-                      )}
+                      <div className="p-4 text-center">
+                        <p className="text-xs text-gray-500 mb-1">Waktu</p>
+                        <p className={`text-lg font-bold ${summary.deviasi.waktu >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {summary.deviasi.waktu >= 0 ? summary.deviasi.waktu : Math.abs(summary.deviasi.waktu)}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {kegiatan.tanggal_realisasi_selesai 
+                            ? (summary.deviasi.waktu >= 0 ? 'hari lebih awal' : 'hari terlambat')
+                            : (summary.deviasi.waktu >= 0 ? 'hari tersisa' : 'hari terlambat')}
+                        </p>
+                      </div>
+                      <div className="p-4 text-center">
+                        <p className="text-xs text-gray-500 mb-1">Anggaran</p>
+                        <p className={`text-lg font-bold ${
+                          summary.deviasi.anggaran <= 0 ? 'text-green-600' : 
+                          summary.deviasi.anggaran <= 10 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {summary.deviasi.anggaran >= 0 ? '+' : ''}{summary.deviasi.anggaran.toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-gray-400">dari pagu</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Threshold Info */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-2">📋 Panduan Penilaian Kinerja</h4>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="bg-white rounded-lg p-3 text-center border border-green-200">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <span className="text-green-600 font-bold">✓</span>
+                {/* Status Kendala - Compact */}
+                <div className="bg-white border rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 bg-gray-50 border-b">
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                      <LuTriangleAlert className="w-4 h-4 text-orange-500" /> Status Kendala
+                    </h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <span className="text-gray-600">Penyelesaian</span>
+                          <span className="font-medium">
+                            {summary.kendala_resolved}/{summary.total_kendala} kendala
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div 
+                            className="bg-green-500 h-2 rounded-full" 
+                            style={{ width: `${summary.total_kendala > 0 ? (summary.kendala_resolved / summary.total_kendala * 100) : 100}%` }}
+                          />
+                        </div>
                       </div>
-                      <p className="font-bold text-green-600">≥ 80</p>
-                      <p className="text-xs text-gray-600">Sukses</p>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-gray-700">
+                          {summary.total_kendala > 0 ? Math.round(summary.kendala_resolved / summary.total_kendala * 100) : 100}%
+                        </p>
+                      </div>
                     </div>
-                    <div className="bg-white rounded-lg p-3 text-center border border-yellow-200">
-                      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <span className="text-yellow-600 font-bold">!</span>
-                      </div>
-                      <p className="font-bold text-yellow-600">60 - 79</p>
-                      <p className="text-xs text-gray-600">Perlu Perhatian</p>
+                  </div>
+                </div>
+
+                {/* Threshold Info - Inline */}
+                <div className="bg-gray-50 border rounded-lg p-3">
+                  <div className="flex items-center justify-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                      <span className="text-gray-600">≥80 Sukses</span>
                     </div>
-                    <div className="bg-white rounded-lg p-3 text-center border border-red-200">
-                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <span className="text-red-600 font-bold">✗</span>
-                      </div>
-                      <p className="font-bold text-red-600">&lt; 60</p>
-                      <p className="text-xs text-gray-600">Bermasalah</p>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                      <span className="text-gray-600">60-79 Perlu Perhatian</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+                      <span className="text-gray-600">&lt;60 Bermasalah</span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
-
             {/* Tab: Evaluasi */}
             {activeTab === 'catatan' && (
               <div>
@@ -2068,7 +2042,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
 
                 {evaluasiList.length === 0 ? (
                   <div className="text-center py-12 bg-gray-50 rounded-xl">
-                    <div className="text-5xl mb-4">📝</div>
+                    <LuScrollText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 mb-2">Belum ada evaluasi</p>
                     <p className="text-sm text-gray-400">Evaluasi akan muncul di sini ketika pimpinan atau koordinator memberikan evaluasi</p>
                   </div>
@@ -2091,9 +2065,9 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                 ? 'bg-green-100 text-green-700'
                                 : 'bg-gray-100 text-gray-700'
                             }`}>
-                              {ev.jenis_evaluasi === 'arahan' ? '📌 Arahan' :
-                               ev.jenis_evaluasi === 'rekomendasi' ? '💡 Rekomendasi' :
-                               '📝 Catatan'}
+                              {ev.jenis_evaluasi === 'arahan' ? <><LuPin className="w-3 h-3 mr-0.5 inline" /> Arahan</> :
+                               ev.jenis_evaluasi === 'rekomendasi' ? <><LuLightbulb className="w-3 h-3 mr-0.5 inline" /> Rekomendasi</> :
+                               <><LuFilePen className="w-3 h-3 mr-0.5 inline" /> Catatan</>}
                             </span>
                             <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                               ev.role_pemberi === 'pimpinan' 
@@ -2543,3 +2517,4 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     </div>
   );
 }
+

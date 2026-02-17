@@ -51,7 +51,7 @@ interface TopKegiatan {
   nama: string;
   target_anggaran: number;
   realisasi_anggaran: number;
-  status_approval: string;
+  status_pengajuan: string;
   tim_nama: string;
 }
 
@@ -113,13 +113,16 @@ export default function StatistikAnggaranPage() {
       case 'approved':
       case 'approved_ppk':
       case 'approved_pimpinan':
+      case 'disetujui':
         return 'bg-green-100 text-green-700';
       case 'review_ppk':
       case 'review_pimpinan':
+      case 'approved_koordinator':
         return 'bg-yellow-100 text-yellow-700';
       case 'rejected':
       case 'rejected_ppk':
       case 'revisi':
+      case 'ditolak':
         return 'bg-red-100 text-red-700';
       default:
         return 'bg-gray-100 text-gray-700';
@@ -131,13 +134,17 @@ export default function StatistikAnggaranPage() {
       case 'approved':
       case 'approved_ppk':
       case 'approved_pimpinan':
+      case 'disetujui':
         return 'Disetujui';
       case 'review_ppk':
         return 'Menunggu PPK';
       case 'review_pimpinan':
         return 'Menunggu Pimpinan';
+      case 'approved_koordinator':
+        return 'Disetujui Koordinator';
       case 'rejected':
       case 'rejected_ppk':
+      case 'ditolak':
         return 'Ditolak';
       case 'revisi':
         return 'Revisi';
@@ -150,7 +157,7 @@ export default function StatistikAnggaranPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500">Memuat statistik anggaran...</p>
         </div>
       </div>
@@ -162,7 +169,7 @@ export default function StatistikAnggaranPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-6 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">
@@ -171,7 +178,7 @@ export default function StatistikAnggaranPage() {
               </div>
               Statistik Anggaran
             </h1>
-            <p className="text-emerald-100 mt-2">Monitoring dan analisis pengelolaan anggaran kegiatan</p>
+            <p className="text-blue-100 mt-2">Monitoring dan analisis pengelolaan anggaran kegiatan</p>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
             <LuCalendar className="w-4 h-4" />
@@ -183,66 +190,66 @@ export default function StatistikAnggaranPage() {
       {/* Main Anggaran Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Target Anggaran */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-blue-100 font-medium">Total Target Anggaran</p>
-              <p className="text-2xl font-bold mt-2">{formatCurrency(statistik?.total_anggaran || 0)}</p>
-              <p className="text-xs text-blue-200 mt-1">dari {statistik?.total_kegiatan || 0} kegiatan</p>
+              <p className="text-sm text-gray-500 font-medium">Total Target Anggaran</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900">{formatCurrency(statistik?.total_anggaran || 0)}</p>
+              <p className="text-xs text-gray-400 mt-1">dari {statistik?.total_kegiatan || 0} kegiatan</p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <LuBanknote className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+              <LuBanknote className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
 
         {/* Total Realisasi */}
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-emerald-100 font-medium">Total Realisasi</p>
-              <p className="text-2xl font-bold mt-2">{formatCurrency(statistik?.total_realisasi || 0)}</p>
+              <p className="text-sm text-gray-500 font-medium">Total Realisasi</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900">{formatCurrency(statistik?.total_realisasi || 0)}</p>
               <div className="flex items-center gap-1 mt-1">
                 {serapanPersen >= 50 ? (
-                  <LuArrowUpRight className="w-4 h-4 text-emerald-200" />
+                  <LuArrowUpRight className="w-4 h-4 text-green-500" />
                 ) : (
-                  <LuArrowDownRight className="w-4 h-4 text-emerald-200" />
+                  <LuArrowDownRight className="w-4 h-4 text-red-500" />
                 )}
-                <span className="text-xs text-emerald-200">{serapanPersen.toFixed(1)}% serapan</span>
+                <span className="text-xs text-gray-400">{serapanPersen.toFixed(1)}% serapan</span>
               </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <LuReceipt className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+              <LuReceipt className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
 
         {/* Sisa Anggaran */}
-        <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl p-5 text-white shadow-lg">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-amber-100 font-medium">Sisa Anggaran</p>
-              <p className="text-2xl font-bold mt-2">{formatCurrency(statistik?.sisa_anggaran || 0)}</p>
-              <p className="text-xs text-amber-200 mt-1">{(100 - serapanPersen).toFixed(1)}% tersisa</p>
+              <p className="text-sm text-gray-500 font-medium">Sisa Anggaran</p>
+              <p className="text-2xl font-bold mt-2 text-gray-900">{formatCurrency(statistik?.sisa_anggaran || 0)}</p>
+              <p className="text-xs text-gray-400 mt-1">{(100 - serapanPersen).toFixed(1)}% tersisa</p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <LuWallet className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
+              <LuWallet className="w-6 h-6 text-amber-600" />
             </div>
           </div>
         </div>
 
         {/* Persentase Serapan */}
-        <div className={`bg-gradient-to-br ${serapanPersen >= 80 ? 'from-green-500 to-green-600' : serapanPersen >= 50 ? 'from-yellow-500 to-yellow-600' : 'from-red-500 to-red-600'} rounded-2xl p-5 text-white shadow-lg`}>
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-white/80 font-medium">Persentase Serapan</p>
-              <p className="text-3xl font-bold mt-2">{serapanPersen.toFixed(1)}%</p>
-              <p className="text-xs text-white/70 mt-1">
+              <p className="text-sm text-gray-500 font-medium">Persentase Serapan</p>
+              <p className={`text-3xl font-bold mt-2 ${serapanPersen >= 80 ? 'text-green-600' : serapanPersen >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{serapanPersen.toFixed(1)}%</p>
+              <p className={`text-xs mt-1 ${serapanPersen >= 80 ? 'text-green-500' : serapanPersen >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
                 {serapanPersen >= 80 ? 'Sangat Baik' : serapanPersen >= 50 ? 'Cukup' : 'Perlu Perhatian'}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <LuCircle className="w-6 h-6" />
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${serapanPersen >= 80 ? 'bg-green-50' : serapanPersen >= 50 ? 'bg-amber-50' : 'bg-red-50'}`}>
+              <LuActivity className={`w-6 h-6 ${serapanPersen >= 80 ? 'text-green-600' : serapanPersen >= 50 ? 'text-amber-600' : 'text-red-600'}`} />
             </div>
           </div>
         </div>
@@ -251,7 +258,7 @@ export default function StatistikAnggaranPage() {
       {/* Anggaran by Status */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <LuActivity className="w-5 h-5 text-emerald-600" />
+          <LuActivity className="w-5 h-5 text-blue-600" />
           Anggaran Berdasarkan Status Approval
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -331,7 +338,7 @@ export default function StatistikAnggaranPage() {
         {/* Anggaran Per Tim */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <LuBuilding2 className="w-5 h-5 text-emerald-600" />
+            <LuBuilding2 className="w-5 h-5 text-blue-600" />
             Anggaran Per Tim
           </h2>
           <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -357,7 +364,7 @@ export default function StatistikAnggaranPage() {
                       </div>
                       <div>
                         <span className="text-gray-500">Realisasi:</span>
-                        <span className="font-semibold text-emerald-600 ml-1">{formatCurrencyShort(item.realisasi_anggaran)}</span>
+                        <span className="font-semibold text-green-600 ml-1">{formatCurrencyShort(item.realisasi_anggaran)}</span>
                       </div>
                     </div>
                     <div className="mt-2 h-1.5 bg-gray-200 rounded-full">
@@ -382,7 +389,7 @@ export default function StatistikAnggaranPage() {
         {/* Realisasi Per Bulan */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <LuTrendingUp className="w-5 h-5 text-emerald-600" />
+            <LuTrendingUp className="w-5 h-5 text-blue-600" />
             Tren Anggaran 6 Bulan Terakhir
           </h2>
           <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -411,9 +418,9 @@ export default function StatistikAnggaranPage() {
                         <span className="text-blue-600 block">Target</span>
                         <span className="font-semibold text-blue-800">{formatCurrencyShort(item.target_anggaran)}</span>
                       </div>
-                      <div className="p-2 bg-emerald-50 rounded-lg">
-                        <span className="text-emerald-600 block">Realisasi</span>
-                        <span className="font-semibold text-emerald-800">{formatCurrencyShort(item.realisasi_anggaran)}</span>
+                      <div className="p-2 bg-green-50 rounded-lg">
+                        <span className="text-green-600 block">Realisasi</span>
+                        <span className="font-semibold text-green-800">{formatCurrencyShort(item.realisasi_anggaran)}</span>
                       </div>
                     </div>
                   </div>
@@ -429,7 +436,7 @@ export default function StatistikAnggaranPage() {
       {/* Top 5 Kegiatan dengan Anggaran Terbesar */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <LuActivity className="w-5 h-5 text-emerald-600" />
+          <LuActivity className="w-5 h-5 text-blue-600" />
           Top 5 Kegiatan dengan Anggaran Terbesar
         </h2>
         {topKegiatan.length > 0 ? (
@@ -471,7 +478,7 @@ export default function StatistikAnggaranPage() {
                         <p className="font-semibold text-blue-600 text-sm">{formatCurrency(item.target_anggaran)}</p>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <p className="font-semibold text-emerald-600 text-sm">{formatCurrency(item.realisasi_anggaran)}</p>
+                        <p className="font-semibold text-green-600 text-sm">{formatCurrency(item.realisasi_anggaran)}</p>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -489,8 +496,8 @@ export default function StatistikAnggaranPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status_approval)}`}>
-                          {getStatusLabel(item.status_approval)}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status_pengajuan)}`}>
+                          {getStatusLabel(item.status_pengajuan)}
                         </span>
                       </td>
                     </tr>
@@ -530,14 +537,14 @@ export default function StatistikAnggaranPage() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-5 border border-emerald-200">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-5 border border-green-200">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white">
+            <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center text-white">
               <LuCircleCheck className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-emerald-700 font-medium">Tingkat Persetujuan</p>
-              <p className="text-2xl font-bold text-emerald-800">
+              <p className="text-sm text-green-700 font-medium">Tingkat Persetujuan</p>
+              <p className="text-2xl font-bold text-green-800">
                 {statistik?.total_kegiatan ? Math.round(statistik.kegiatan_approved / statistik.total_kegiatan * 100) : 0}%
               </p>
             </div>

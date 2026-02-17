@@ -15,7 +15,8 @@ import {
   LuActivity,
   LuArrowUp,
   LuArrowDown,
-  LuTimer
+  LuTimer,
+  LuPartyPopper
 } from 'react-icons/lu';
 
 interface TimInfo {
@@ -677,7 +678,7 @@ export default function StatistikKinerjaPage() {
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-4">Tidak ada kegiatan terlambat 🎉</p>
+            <p className="text-gray-500 text-center py-4 flex items-center justify-center gap-2">Tidak ada kegiatan terlambat <LuPartyPopper className="w-5 h-5 text-emerald-500" /></p>
           )}
         </div>
       </div>

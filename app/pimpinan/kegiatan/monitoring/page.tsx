@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { LuSearch, LuClipboard, LuEye, LuActivity } from 'react-icons/lu';
+import { LuSearch, LuClipboard, LuEye, LuActivity, LuCircleCheck, LuTriangleAlert } from 'react-icons/lu';
 
 interface Kegiatan {
   id: number;
@@ -132,21 +132,21 @@ export default function MonitoringKegiatanPage() {
       const isAllValid = disahkan >= target;
       const hasProgress = disahkan > 0;
       return (
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+        <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 justify-center ${
           isAllValid ? 'bg-green-100 text-green-700' :
           hasProgress ? 'bg-blue-100 text-blue-700' :
           'bg-gray-100 text-gray-600'
         }`}>
-          {isAllValid ? '✓ ' : ''}{disahkan}/{target} Valid
+          {isAllValid && <LuCircleCheck className="w-3 h-3" />}{disahkan}/{target} Valid
         </span>
       );
     }
     
     switch (kg.status_verifikasi) {
       case 'valid':
-        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">✓ Valid</span>;
+        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 flex items-center gap-1 justify-center"><LuCircleCheck className="w-3 h-3" /> Valid</span>;
       case 'revisi':
-        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">⚠ Revisi</span>;
+        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700 flex items-center gap-1 justify-center"><LuTriangleAlert className="w-3 h-3" /> Revisi</span>;
       default:
         return <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Menunggu</span>;
     }

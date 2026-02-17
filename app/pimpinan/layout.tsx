@@ -18,7 +18,14 @@ import {
   LuUser,
   LuLogOut,
   LuActivity,
-  LuClipboardCheck
+  LuClipboardCheck,
+  LuScrollText,
+  LuCircleCheck,
+  LuFileText,
+  LuChartBar,
+  LuClock,
+  LuTriangleAlert,
+  LuPin
 } from 'react-icons/lu';
 
 interface User {
@@ -254,17 +261,17 @@ export default function PimpinanLayout({
     router.push(link);
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string): React.ReactNode => {
     switch (type) {
-      case 'kegiatan': return '📋';
-      case 'evaluasi': return '📝';
-      case 'verifikasi': return '✅';
-      case 'validasi': return '✅';
-      case 'permintaan_validasi': return '📄';
-      case 'laporan': return '📊';
-      case 'deadline': return '⏰';
-      case 'kendala': return '⚠️';
-      default: return '📌';
+      case 'kegiatan': return <LuClipboardList className="w-4 h-4" />;
+      case 'evaluasi': return <LuScrollText className="w-4 h-4" />;
+      case 'verifikasi': return <LuCircleCheck className="w-4 h-4" />;
+      case 'validasi': return <LuCircleCheck className="w-4 h-4" />;
+      case 'permintaan_validasi': return <LuFileText className="w-4 h-4" />;
+      case 'laporan': return <LuChartBar className="w-4 h-4" />;
+      case 'deadline': return <LuClock className="w-4 h-4" />;
+      case 'kendala': return <LuTriangleAlert className="w-4 h-4" />;
+      default: return <LuPin className="w-4 h-4" />;
     }
   };
 

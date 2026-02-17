@@ -216,6 +216,18 @@ export async function GET(
       console.log('Could not get dokumen stats:', e);
     }
 
+    // Get validasi_kuantitas untuk perhitungan output tervalidasi
+    let validasiKuantitasList: RowDataPacket[] = [];
+    try {
+      const [validasiResult] = await pool.query<RowDataPacket[]>(
+        `SELECT * FROM validasi_kuantitas WHERE kegiatan_id = ? ORDER BY created_at DESC`,
+        [id]
+      );
+      validasiKuantitasList = validasiResult;
+    } catch (e) {
+      console.log('Could not get validasi_kuantitas:', e);
+    }
+
     // Prepare data for automatic kinerja calculation
     const kegiatanDetail = kegiatan[0];
     const totalAnggaran = realisasiAnggaran.reduce((sum, r) => sum + parseFloat(r.jumlah), 0);
@@ -226,6 +238,19 @@ export async function GET(
     const targetOutputNum = parseFloat(kegiatanDetail.target_output) || 0;
     const outputRealisasiNum = parseFloat(kegiatanDetail.output_realisasi) || 0;
 
+    // Calculate output tervalidasi berdasarkan jenis_validasi
+    let outputTervalidasi = 0;
+    const jenisValidasi = kegiatanDetail.jenis_validasi || 'dokumen';
+    if (jenisValidasi === 'kuantitas') {
+      // Untuk kuantitas: SUM jumlah_output dari validasi_kuantitas yang status = 'disahkan'
+      outputTervalidasi = validasiKuantitasList
+        .filter((v: RowDataPacket) => v.status === 'disahkan')
+        .reduce((sum: number, v: RowDataPacket) => sum + (parseFloat(v.jumlah_output) || 0), 0);
+    } else {
+      // Untuk dokumen: COUNT dokumen yang status_final = 'disahkan'
+      outputTervalidasi = dokumenStats.final_disahkan;
+    }
+
     // Prepare data for kinerja calculator (rule-based evaluation)
     const kinerjaData: KegiatanData = {
       target_output: targetOutputNum,
@@ -233,6 +258,7 @@ export async function GET(
       tanggal_selesai: kegiatanDetail.tanggal_selesai,
       anggaran_pagu: parseFloat(kegiatanDetail.anggaran_pagu) || 0,
       output_realisasi: outputRealisasiNum,
+      output_tervalidasi: outputTervalidasi, // Output yang sudah disahkan untuk deviasi yang akurat
       tanggal_realisasi_selesai: kegiatanDetail.tanggal_realisasi_selesai,
       status_verifikasi: kegiatanDetail.status_verifikasi || 'belum_verifikasi',
       total_realisasi_anggaran: totalAnggaran,
@@ -320,6 +346,7 @@ export async function GET(
         realisasi_anggaran_nominal: totalAnggaran,
         realisasi_anggaran_persen: Math.min(realisasiAnggaranPersen, 100).toFixed(1),
         output_realisasi: outputRealisasiNum,
+        output_tervalidasi: outputTervalidasi,
         target_output: targetOutputNum,
         
         // Kendala summary

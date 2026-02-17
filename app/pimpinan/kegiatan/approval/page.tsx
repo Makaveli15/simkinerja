@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LuSearch, LuClipboard, LuEye, LuCheck, LuX, LuClock, LuBadgeCheck, LuBan, LuClipboardCheck, LuUser } from 'react-icons/lu';
+import { LuSearch, LuClipboard, LuEye, LuCheck, LuX, LuClock, LuBadgeCheck, LuBan, LuClipboardCheck, LuUser, LuMapPin, LuPhone } from 'react-icons/lu';
 
 interface MitraItem {
   id: number;
@@ -487,8 +487,8 @@ export default function ApprovalKegiatanPage() {
                               )}
                             </div>
                             <div className="text-sm text-gray-500 mt-1 space-y-0.5">
-                              {mitra.alamat && <p>📍 {mitra.alamat}</p>}
-                              {mitra.no_telp && <p>📞 {mitra.no_telp}</p>}
+                              {mitra.alamat && <p className="flex items-center gap-1"><LuMapPin className="w-3 h-3" /> {mitra.alamat}</p>}
+                              {mitra.no_telp && <p className="flex items-center gap-1"><LuPhone className="w-3 h-3" /> {mitra.no_telp}</p>}
                               {mitra.sobat_id && <p className="font-mono text-xs">SOBAT: {mitra.sobat_id}</p>}
                             </div>
                           </div>
@@ -511,8 +511,8 @@ export default function ApprovalKegiatanPage() {
                           )}
                         </div>
                         <div className="text-sm text-gray-500 mt-1 space-y-0.5">
-                          {selectedKegiatan.mitra_alamat && <p>📍 {selectedKegiatan.mitra_alamat}</p>}
-                          {selectedKegiatan.mitra_no_telp && <p>📞 {selectedKegiatan.mitra_no_telp}</p>}
+                          {selectedKegiatan.mitra_alamat && <p className="flex items-center gap-1"><LuMapPin className="w-3 h-3" /> {selectedKegiatan.mitra_alamat}</p>}
+                          {selectedKegiatan.mitra_no_telp && <p className="flex items-center gap-1"><LuPhone className="w-3 h-3" /> {selectedKegiatan.mitra_no_telp}</p>}
                           {selectedKegiatan.mitra_sobat_id && <p className="font-mono text-xs">SOBAT: {selectedKegiatan.mitra_sobat_id}</p>}
                         </div>
                       </div>

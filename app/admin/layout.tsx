@@ -21,7 +21,11 @@ import {
   LuX,
   LuGauge,
   LuRuler,
-  LuDatabase
+  LuDatabase,
+  LuClipboardList,
+  LuHandshake,
+  LuChartBar,
+  LuPin
 } from 'react-icons/lu';
 
 interface User {
@@ -308,20 +312,20 @@ export default function AdminLayout({
     router.push(link);
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string): React.ReactNode => {
     switch (type) {
       case 'user':
-        return '👤';
+        return <LuUser className="w-4 h-4" />;
       case 'kegiatan':
-        return '📋';
+        return <LuClipboardList className="w-4 h-4" />;
       case 'mitra':
-        return '🤝';
+        return <LuHandshake className="w-4 h-4" />;
       case 'tim':
-        return '👥';
+        return <LuUsers className="w-4 h-4" />;
       case 'kro':
-        return '📊';
+        return <LuChartBar className="w-4 h-4" />;
       default:
-        return '📌';
+        return <LuPin className="w-4 h-4" />;
     }
   };
 

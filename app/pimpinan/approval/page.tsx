@@ -10,7 +10,9 @@ import {
   LuCircleX,
   LuUser,
   LuChartBar,
-  LuUsers
+  LuUsers,
+  LuHourglass,
+  LuPaperclip
 } from 'react-icons/lu';
 
 interface ValidasiKuantitas {
@@ -275,7 +277,7 @@ export default function PimpinanApprovalPage() {
                         </span>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
                       item.status_kesubag === 'valid' && item.status_pimpinan === 'pending'
                         ? 'bg-yellow-100 text-yellow-700' 
                         : item.status === 'disahkan' 
@@ -285,11 +287,11 @@ export default function PimpinanApprovalPage() {
                             : 'bg-gray-100 text-gray-700'
                     }`}>
                       {item.status_kesubag === 'valid' && item.status_pimpinan === 'pending'
-                        ? '⏳ Menunggu Validasi Anda' 
+                        ? <><LuHourglass className="w-3 h-3" /> Menunggu Validasi Anda</> 
                         : item.status === 'disahkan' 
-                          ? '✅ Disahkan' 
+                          ? <><LuCircleCheck className="w-3 h-3" /> Disahkan</> 
                           : item.status === 'ditolak' 
-                            ? '❌ Ditolak' 
+                            ? <><LuCircleX className="w-3 h-3" /> Ditolak</> 
                             : item.status}
                     </span>
                   </div>
@@ -332,7 +334,7 @@ export default function PimpinanApprovalPage() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
                     >
-                      📎 Lihat Bukti Dukung
+                      <LuPaperclip className="w-4 h-4" /> Lihat Bukti Dukung
                     </a>
                   )}
                 </div>
