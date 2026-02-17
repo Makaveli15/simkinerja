@@ -769,7 +769,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     { id: 'progres' as TabType, label: 'Progres', icon: '📈', count: progres.length },
     { id: 'realisasi-anggaran' as TabType, label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
     { id: 'kendala' as TabType, label: 'Kendala', icon: '⚠️', count: kendala.length },
-    { id: 'verifikasi' as TabType, label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+    { id: 'verifikasi' as TabType, label: 'Verifikasi Kualitas Output', icon: '✅', count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
     { id: 'waktu' as TabType, label: 'Waktu Penyelesaian', icon: '⏰' },
     { id: 'catatan' as TabType, label: 'Evaluasi', icon: '📝', count: evaluasiList.length },
   ];
@@ -1089,8 +1089,8 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                     <p className="text-2xl font-bold text-purple-600">
                       {kegiatan?.target_output && kegiatan.target_output > 0
                         ? kegiatan?.jenis_validasi === 'kuantitas'
-                          ? Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
-                          : Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100)
+                          ? (Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
+                          : (Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
                         : 0}%
                     </p>
                     <p className="text-sm text-gray-500">dari target</p>
@@ -1107,18 +1107,21 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         : `${dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length} / ${Math.round(kegiatan?.target_output || 0)} tervalidasi`}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4">
-                    <div 
-                      className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${kegiatan?.target_output && kegiatan.target_output > 0 
-                          ? kegiatan?.jenis_validasi === 'kuantitas'
-                            ? Math.min((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
-                            : Math.min((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100, 100)
-                          : 0}%` 
-                      }}
-                    ></div>
-                  </div>
+                  {(() => {
+                    const progres = kegiatan?.target_output && kegiatan.target_output > 0 
+                      ? kegiatan?.jenis_validasi === 'kuantitas'
+                        ? Math.min((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
+                        : Math.min((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100, 100)
+                      : 0;
+                    return (
+                      <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div 
+                          className={`h-4 rounded-full transition-all duration-500 ${progres >= 70 ? 'bg-green-500' : progres >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                          style={{ width: `${progres}%` }}
+                        ></div>
+                      </div>
+                    );
+                  })()}
                   <div className="flex justify-between mt-2 text-xs text-gray-500">
                     <span>0%</span>
                     <span>50%</span>
@@ -1201,7 +1204,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         <p className="text-sm text-gray-600">Progres</p>
                         <p className="text-2xl font-bold text-purple-600">
                           {kegiatan?.target_output && kegiatan.target_output > 0
-                            ? Math.round((validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                            ? (Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
                             : 0}%
                         </p>
                         <p className="text-sm text-gray-500">dari target</p>
@@ -1213,19 +1216,22 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium text-gray-700">Progres Validasi Output</span>
                         <span className="text-sm font-bold text-blue-600">
-                          {Math.round(validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0))} / {Math.round(kegiatan?.target_output || 0)} {kegiatan?.satuan_output}
+                          {Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))} / {Math.round(kegiatan?.target_output || 0)} {kegiatan?.satuan_output}
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-4">
-                        <div 
-                          className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500"
-                          style={{ 
-                            width: `${kegiatan?.target_output && kegiatan.target_output > 0 
-                              ? Math.min((validasiKuantitas.filter(v => v.status_pimpinan === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
-                              : 0}%` 
-                          }}
-                        ></div>
-                      </div>
+                      {(() => {
+                        const progres = kegiatan?.target_output && kegiatan.target_output > 0 
+                          ? Math.min((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
+                          : 0;
+                        return (
+                          <div className="w-full bg-gray-200 rounded-full h-4">
+                            <div 
+                              className={`h-4 rounded-full transition-all duration-500 ${progres >= 70 ? 'bg-green-500' : progres >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${progres}%` }}
+                            ></div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Kuantitas List */}
@@ -1274,7 +1280,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                           <span>Koordinator:</span>
                                           <span className="font-medium">
                                             {val.status_kesubag === 'valid' ? '✅ Valid' :
-                                             val.status_kesubag === 'tidak_valid' ? '❌ Ditolak' : '⏳ Pending'}
+                                             val.status_kesubag === 'tidak_valid' ? '❌ Ditolak' : '⏳ Menunggu'}
                                           </span>
                                         </div>
                                         {val.status_kesubag === 'valid' && (
@@ -1288,7 +1294,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                               <span>Pimpinan:</span>
                                               <span className="font-medium">
                                                 {val.status_pimpinan === 'valid' ? '✅ Valid' :
-                                                 val.status_pimpinan === 'tidak_valid' ? '❌ Ditolak' : '⏳ Pending'}
+                                                 val.status_pimpinan === 'tidak_valid' ? '❌ Ditolak' : '⏳ Menunggu'}
                                               </span>
                                             </div>
                                           </>
@@ -1352,7 +1358,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                         <div className="text-2xl font-bold text-yellow-600">
                           {validasiKuantitas.filter(v => v.status_kesubag === 'pending').length}
                         </div>
-                        <div className="text-sm text-gray-600">Pending</div>
+                        <div className="text-sm text-gray-600">Menunggu</div>
                       </div>
                       <div className="bg-green-50 p-4 rounded-xl text-center">
                         <div className="text-2xl font-bold text-green-600">
@@ -1467,7 +1473,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                           <span>Koordinator:</span>
                                           <span className="font-medium">
                                             {doc.validasi_kesubag === 'valid' ? '✅ Valid' :
-                                             doc.validasi_kesubag === 'tidak_valid' ? '❌ Revisi' : '⏳ Pending'}
+                                             doc.validasi_kesubag === 'tidak_valid' ? '❌ Revisi' : '⏳ Menunggu'}
                                           </span>
                                         </div>
                                         {doc.validasi_kesubag === 'valid' && (
@@ -1482,7 +1488,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                               <span>Pimpinan:</span>
                                               <span className="font-medium">
                                                 {doc.validasi_pimpinan === 'valid' ? '✅ Valid' :
-                                                 doc.validasi_pimpinan === 'tidak_valid' ? '❌ Revisi' : '⏳ Pending'}
+                                                 doc.validasi_pimpinan === 'tidak_valid' ? '❌ Revisi' : '⏳ Menunggu'}
                                               </span>
                                             </div>
                                           </>
@@ -1541,7 +1547,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                           <span>Koordinator:</span>
                                           <span className="font-medium">
                                             {doc.draft_status_kesubag === 'diterima' ? '✅ Diterima' :
-                                             doc.draft_status_kesubag === 'ditolak' ? '❌ Revisi' : '⏳ Pending'}
+                                             doc.draft_status_kesubag === 'ditolak' ? '❌ Revisi' : '⏳ Menunggu'}
                                           </span>
                                         </div>
                                         {doc.draft_status_kesubag === 'diterima' && (
@@ -1552,7 +1558,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                             }`}>
                                               <span>Pimpinan:</span>
                                               <span className="font-medium">
-                                                {doc.draft_feedback_pimpinan ? '✅ Reviewed' : '⏳ Pending'}
+                                                {doc.draft_feedback_pimpinan ? '✅ Reviewed' : '⏳ Menunggu'}
                                               </span>
                                             </div>
                                           </>
@@ -1693,7 +1699,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                                       <p className="text-gray-800">{tl.deskripsi}</p>
                                     </div>
                                     <span className={`px-2 py-0.5 rounded text-xs ${tl.status === 'done' ? 'bg-green-100 text-green-800' : tl.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                                      {tl.status === 'done' ? 'Selesai' : tl.status === 'in_progress' ? 'Proses' : 'Pending'}
+                                      {tl.status === 'done' ? 'Selesai' : tl.status === 'in_progress' ? 'Proses' : 'Menunggu'}
                                     </span>
                                   </div>
                                 </div>
@@ -2000,7 +2006,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                           <span className="text-lg font-bold text-green-600">{summary.kendala_resolved}</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                          <p className="font-medium text-orange-700">Pending</p>
+                          <p className="font-medium text-orange-700">Menunggu</p>
                           <span className="text-lg font-bold text-orange-600">{summary.kendala_pending}</span>
                         </div>
                       </div>

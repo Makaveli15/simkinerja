@@ -281,6 +281,22 @@ export async function GET(
       return null;
     };
 
+    // Get evaluasi from evaluasi_pimpinan table
+    let evaluasiList: RowDataPacket[] = [];
+    try {
+      const [evaluasiResult] = await pool.query<RowDataPacket[]>(
+        `SELECT ep.*, u.username as evaluator_nama, u.role as evaluator_role
+         FROM evaluasi_pimpinan ep
+         LEFT JOIN users u ON ep.user_id = u.id
+         WHERE ep.kegiatan_id = ?
+         ORDER BY ep.created_at DESC`,
+        [id]
+      );
+      evaluasiList = evaluasiResult;
+    } catch (e) {
+      console.log('Could not get evaluasi:', e);
+    }
+
     // Format kegiatan dates properly to avoid timezone issues
     const kegiatanFormatted = {
       ...kegiatan[0],
@@ -297,6 +313,7 @@ export async function GET(
       realisasi_fisik: realisasiFisik,
       realisasi_anggaran: realisasiAnggaran,
       kendala: kendalaWithTindakLanjut,
+      evaluasi: evaluasiList,
       summary: {
         // Data realisasi
         realisasi_fisik_persen: Math.min(finalRealisasiFisikPersen, 100),

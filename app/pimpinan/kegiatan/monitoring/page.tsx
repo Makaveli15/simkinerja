@@ -148,7 +148,7 @@ export default function MonitoringKegiatanPage() {
       case 'revisi':
         return <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">⚠ Revisi</span>;
       default:
-        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Pending</span>;
+        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Menunggu</span>;
     }
   };
 
@@ -160,7 +160,7 @@ export default function MonitoringKegiatanPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" suppressHydrationWarning>
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -295,7 +295,7 @@ export default function MonitoringKegiatanPage() {
                         <span className="text-sm font-medium text-gray-900">{kg.capaian_output_persen}%</span>
                         <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
                           <div 
-                            className="h-full bg-blue-500 rounded-full"
+                            className={`h-full rounded-full ${kg.capaian_output_persen >= 70 ? 'bg-green-500' : kg.capaian_output_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                             style={{ width: `${Math.min(kg.capaian_output_persen, 100)}%` }}
                           ></div>
                         </div>
@@ -316,6 +316,7 @@ export default function MonitoringKegiatanPage() {
                       <Link
                         href={`/pimpinan/kegiatan/${kg.id}`}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                        suppressHydrationWarning
                       >
                         <LuEye className="w-4 h-4" />
                         Detail

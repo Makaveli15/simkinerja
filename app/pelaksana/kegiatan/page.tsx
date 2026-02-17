@@ -386,7 +386,7 @@ export default function KegiatanPage() {
           'Target Output': k.target_output || 0,
           'Output Realisasi': k.jenis_validasi === 'dokumen' ? (k.dokumen_disahkan || 0) : (k.output_tervalidasi || 0),
           'Satuan Output': k.satuan_output || '-',
-          'Progres Output (%)': k.target_output > 0 ? Math.round(Math.min(((k.jenis_validasi === 'dokumen' ? (k.dokumen_disahkan || 0) : (k.output_tervalidasi || 0)) / k.target_output) * 100, 100)) : 0,
+          'Progres Output (%)': k.target_output > 0 ? (Math.round(Math.min(((k.jenis_validasi === 'dokumen' ? (k.dokumen_disahkan || 0) : (k.output_tervalidasi || 0)) / k.target_output) * 100, 100) * 100) / 100).toFixed(2) : '0.00',
           'Kendala Total': k.kendala_total || 0,
           'Kendala Selesai': k.kendala_resolved || 0,
           'Kendala Belum Selesai': k.kendala_open || 0,
@@ -651,7 +651,7 @@ export default function KegiatanPage() {
                 const hasKendala = (k.kendala_open || 0) > 0;
                 const isDokumen = k.jenis_validasi === 'dokumen';
                 const outputRealisasi = isDokumen ? (k.dokumen_disahkan || 0) : (k.output_tervalidasi || 0);
-                const progresOutput = k.target_output > 0 ? Math.round(Math.min(outputRealisasi / k.target_output * 100, 100)) : 0;
+                const progresOutput = k.target_output > 0 ? (Math.round(Math.min(outputRealisasi / k.target_output * 100, 100) * 100) / 100).toFixed(2) : '0.00';
                 return `
                 <tr>
                   <td class="text-center">${index + 1}</td>
@@ -1155,15 +1155,13 @@ export default function KegiatanPage() {
                                 <>
                                   <div className="flex items-center justify-between text-xs mb-1">
                                     <span className="text-gray-500">Output</span>
-                                    <span className="font-medium">{Math.round(progres)}%</span>
+                                    <span className="font-medium">{(Math.round(progres * 100) / 100).toFixed(2)}%</span>
                                   </div>
                                   <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                     <div 
                                       className={`h-full rounded-full transition-all duration-300 ${
-                                        progres >= 100 ? 'bg-green-500' : 
-                                        progres >= 75 ? 'bg-blue-500' : 
-                                        progres >= 50 ? 'bg-yellow-500' : 
-                                        progres >= 25 ? 'bg-orange-500' : 'bg-red-400'
+                                        progres >= 70 ? 'bg-green-500' : 
+                                        progres >= 40 ? 'bg-yellow-500' : 'bg-red-500'
                                       }`}
                                       style={{ width: `${progres}%` }}
                                     />

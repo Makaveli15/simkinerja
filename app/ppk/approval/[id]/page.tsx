@@ -294,12 +294,12 @@ export default function PPKApprovalDetailPage() {
                   <LuTarget className="w-5 h-5 text-blue-600" />
                   Progress Output
                 </h3>
-                <span className="text-2xl font-bold text-blue-600">{progressOutput}%</span>
+                <span className={`text-2xl font-bold ${progressOutput >= 70 ? 'text-green-600' : progressOutput >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{progressOutput}%</span>
               </div>
               <div className="space-y-2">
                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-blue-500 rounded-full transition-all"
+                    className={`h-full rounded-full transition-all ${progressOutput >= 70 ? 'bg-green-500' : progressOutput >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                     style={{ width: `${progressOutput}%` }}
                   ></div>
                 </div>

@@ -34,19 +34,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'kegiatan_id diperlukan' }, { status: 400 });
     }
 
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT vk.*, 
-              u_koordinator.nama_lengkap as nama_koordinator,
-              u_pimpinan.nama_lengkap as nama_pimpinan
-       FROM validasi_kuantitas vk
-       LEFT JOIN users u_koordinator ON vk.koordinator_id = u_koordinator.id
-       LEFT JOIN users u_pimpinan ON vk.pimpinan_id = u_pimpinan.id
-       WHERE vk.kegiatan_id = ?
-       ORDER BY vk.created_at DESC`,
-      [kegiatanId]
-    );
+    // Check if table exists first
+    try {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT vk.*, 
+                u_koordinator.nama_lengkap as nama_koordinator,
+                u_pimpinan.nama_lengkap as nama_pimpinan
+         FROM validasi_kuantitas vk
+         LEFT JOIN users u_koordinator ON vk.koordinator_id = u_koordinator.id
+         LEFT JOIN users u_pimpinan ON vk.pimpinan_id = u_pimpinan.id
+         WHERE vk.kegiatan_id = ?
+         ORDER BY vk.created_at DESC`,
+        [kegiatanId]
+      );
 
-    return NextResponse.json({ validasi: rows });
+      return NextResponse.json({ validasi: rows });
+    } catch (dbError: unknown) {
+      // Table might not exist - return empty array
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      if (errorMessage.includes("doesn't exist") || errorMessage.includes('ER_NO_SUCH_TABLE')) {
+        console.log('Table validasi_kuantitas does not exist, returning empty array');
+        return NextResponse.json({ validasi: [] });
+      }
+      throw dbError;
+    }
   } catch (error) {
     console.error('Error fetching validasi kuantitas:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });

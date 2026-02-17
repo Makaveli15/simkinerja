@@ -215,6 +215,20 @@ export async function GET(
       console.error('Error fetching junction mitra (table may not exist):', err);
     }
 
+    // Get validasi kuantitas untuk menghitung capaian yang akurat
+    let validasiKuantitas: RowDataPacket[] = [];
+    try {
+      const [validasiRows] = await pool.query<RowDataPacket[]>(`
+        SELECT * FROM validasi_kuantitas 
+        WHERE kegiatan_id = ?
+        ORDER BY created_at DESC
+      `, [kegiatanId]);
+      validasiKuantitas = validasiRows;
+    } catch (err) {
+      console.error('Error fetching validasi kuantitas:', err);
+      validasiKuantitas = [];
+    }
+
     // Calculate summary
     const totalRealisasiAnggaran = realisasiAnggaran.reduce(
       (sum: number, r: RowDataPacket) => sum + (parseFloat(r.jumlah) || 0), 
@@ -228,9 +242,10 @@ export async function GET(
     const dokumenFinalWithValidation = dokumenOutput.filter(
       (d: RowDataPacket) => d.tipe_dokumen === 'final' && d.minta_validasi === 1
     );
+    const dokumenDisahkan = dokumenFinalWithValidation.filter((d: RowDataPacket) => d.status_final === 'disahkan').length;
     const dokumenStats = dokumenFinalWithValidation.length > 0 ? {
       total_final: dokumenFinalWithValidation.length,
-      final_disahkan: dokumenFinalWithValidation.filter((d: RowDataPacket) => d.status_final === 'disahkan').length,
+      final_disahkan: dokumenDisahkan,
       final_menunggu: dokumenFinalWithValidation.filter((d: RowDataPacket) => 
         d.status_final === 'menunggu_kesubag' || d.status_final === 'menunggu_pimpinan'
       ).length,
@@ -239,6 +254,24 @@ export async function GET(
       ).length,
     } : undefined;
 
+    // Calculate output tervalidasi berdasarkan jenis_validasi
+    let outputTervalidasi = 0;
+    if (jenis_validasi === 'kuantitas') {
+      // Untuk kuantitas: SUM jumlah_output dari validasi_kuantitas yang status = 'disahkan'
+      outputTervalidasi = validasiKuantitas
+        .filter((v: RowDataPacket) => v.status === 'disahkan')
+        .reduce((sum: number, v: RowDataPacket) => sum + (parseFloat(v.jumlah_output) || 0), 0);
+    } else {
+      // Untuk dokumen: COUNT dokumen yang status_final = 'disahkan'
+      outputTervalidasi = dokumenDisahkan;
+    }
+
+    // Calculate capaian output persen yang akurat
+    const targetOutput = parseFloat(kegiatan.target_output) || 0;
+    const capaianOutputPersen = targetOutput > 0 
+      ? Math.round((outputTervalidasi / targetOutput) * 100 * 100) / 100 
+      : 0;
+
     // Calculate kinerja
     const kegiatanData: KegiatanData = {
       target_output: parseFloat(kegiatan.target_output) || 0,
@@ -246,6 +279,7 @@ export async function GET(
       tanggal_selesai: kegiatan.tanggal_selesai,
       anggaran_pagu: parseFloat(kegiatan.anggaran_pagu) || 0,
       output_realisasi: parseFloat(kegiatan.output_realisasi) || 0,
+      output_tervalidasi: outputTervalidasi, // Output yang sudah disahkan untuk deviasi yang akurat
       tanggal_realisasi_selesai: kegiatan.tanggal_realisasi_selesai,
       status_verifikasi: kegiatan.status_verifikasi || 'belum_verifikasi',
       total_realisasi_anggaran: totalRealisasiAnggaran,
@@ -272,16 +306,17 @@ export async function GET(
       dokumen_output: dokumenOutput,
       evaluasi,
       mitra: mitraList,
+      validasi_kuantitas: validasiKuantitas,
       summary: {
         total_realisasi_anggaran: totalRealisasiAnggaran,
         realisasi_anggaran_persen: kegiatan.anggaran_pagu > 0 
           ? Math.round((totalRealisasiAnggaran / parseFloat(kegiatan.anggaran_pagu)) * 100 * 100) / 100 
           : 0,
-        capaian_output_persen: kegiatan.target_output > 0 
-          ? Math.round((parseFloat(kegiatan.output_realisasi) / parseFloat(kegiatan.target_output)) * 100 * 100) / 100 
-          : 0,
+        output_tervalidasi: outputTervalidasi,
+        capaian_output_persen: capaianOutputPersen,
         total_kendala: totalKendala,
         kendala_resolved: kendalaResolved,
+        kendala_pending: totalKendala - kendalaResolved,
         skor_kinerja: kinerjaResult.skor_kinerja,
         status_kinerja: kinerjaResult.status_kinerja,
         indikator: kinerjaResult.indikator,

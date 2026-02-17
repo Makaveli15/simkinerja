@@ -143,6 +143,20 @@ export async function GET(
       approvalHistory = [];
     }
 
+    // Get validasi kuantitas
+    let validasiKuantitas: RowDataPacket[] = [];
+    try {
+      const [validasiRows] = await pool.query<RowDataPacket[]>(`
+        SELECT * FROM validasi_kuantitas 
+        WHERE kegiatan_id = ?
+        ORDER BY created_at DESC
+      `, [kegiatanId]);
+      validasiKuantitas = validasiRows;
+    } catch (err) {
+      console.error('Error fetching validasi kuantitas:', err);
+      validasiKuantitas = [];
+    }
+
     // Calculate summary
     const totalRealisasiAnggaran = realisasiAnggaran.reduce(
       (sum: number, r: RowDataPacket) => sum + (parseFloat(r.jumlah) || 0), 
@@ -200,6 +214,7 @@ export async function GET(
       dokumen_output: dokumenOutput,
       evaluasi,
       approval_history: approvalHistory,
+      validasi_kuantitas: validasiKuantitas,
       summary: {
         total_realisasi_anggaran: totalRealisasiAnggaran,
         realisasi_anggaran_persen: kegiatan.anggaran_pagu > 0 

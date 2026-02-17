@@ -28,9 +28,11 @@ interface KegiatanDetail {
 interface Summary {
   total_realisasi_anggaran: number;
   realisasi_anggaran_persen: number;
+  output_tervalidasi: number;
   capaian_output_persen: number;
   total_kendala: number;
   kendala_resolved: number;
+  kendala_pending: number;
   skor_kinerja: number;
   status_kinerja: string;
   indikator: {
@@ -727,12 +729,12 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
                     statusVerifikasiDokumen.status === 'valid' ? 'bg-green-100 text-green-700' :
                     statusVerifikasiDokumen.status === 'menunggu' ? 'bg-blue-100 text-blue-700' :
-                    statusVerifikasiDokumen.status === 'revisi' ? 'bg-orange-100 text-orange-700' :
+                    statusVerifikasiDokumen.status === 'revisi' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
                     {statusVerifikasiDokumen.status === 'valid' ? '✅ Valid' :
                      statusVerifikasiDokumen.status === 'menunggu' ? '⏳ Menunggu' :
-                     statusVerifikasiDokumen.status === 'revisi' ? '📝 Revisi' :
+                     statusVerifikasiDokumen.status === 'revisi' ? '⏳ Menunggu' :
                      'Belum Ada'}
                   </span>
                   {statusVerifikasiDokumen.target > 0 && (
@@ -836,7 +838,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
               { id: 'progres', label: 'Progres', icon: '📈', count: progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
-              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
               { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
               { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasi.filter(e => e.role_pemberi === 'pimpinan').length },
             ].map((tab) => (
@@ -875,21 +877,19 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     <span className="text-2xl">🎯</span>
                     <span className="text-sm font-medium text-blue-700">Capaian Output</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${
-                    (kegiatan.target_output > 0 ? (kegiatan.output_realisasi || 0) / kegiatan.target_output * 100 : 0) >= 80 
+                  <p className={`text-4xl font-bold mb-1 ${
+                    summary.capaian_output_persen >= 70 
                       ? 'text-green-600' 
-                      : (kegiatan.target_output > 0 ? (kegiatan.output_realisasi || 0) / kegiatan.target_output * 100 : 0) >= 60 
+                      : summary.capaian_output_persen >= 40 
                       ? 'text-yellow-600' 
                       : 'text-red-600'
                   }`}>
-                    {kegiatan.target_output > 0 
-                      ? Math.round((kegiatan.output_realisasi || 0) / kegiatan.target_output * 100)
-                      : 0}%
+                    {(Math.round(summary.capaian_output_persen * 100) / 100).toFixed(2)}%
                   </p>
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Realisasi</span>
-                      <span className="font-medium text-blue-700">{Math.round(kegiatan.output_realisasi || 0)} {kegiatan.satuan_output}</span>
+                      <span className="text-gray-600">Tervalidasi</span>
+                      <span className="font-medium text-blue-700">{Math.round(summary.output_tervalidasi || 0)} {kegiatan.satuan_output}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-600">Target</span>
@@ -897,16 +897,16 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-600">Selisih</span>
-                      <span className={`font-medium ${summary.deviasi.output >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {summary.deviasi.output >= 0 ? '+' : ''}{summary.deviasi.output} {kegiatan.satuan_output}
+                      <span className={`font-medium ${(summary.output_tervalidasi - kegiatan.target_output) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {(summary.output_tervalidasi - kegiatan.target_output) >= 0 ? '+' : ''}{Math.round(summary.output_tervalidasi - kegiatan.target_output)} {kegiatan.satuan_output}
                       </span>
                     </div>
                   </div>
                   <div className="mt-3">
-                    <div className="w-full bg-blue-200 rounded-full h-2">
+                    <div className={`w-full rounded-full h-2 ${summary.capaian_output_persen >= 70 ? 'bg-green-200' : summary.capaian_output_persen >= 40 ? 'bg-yellow-200' : 'bg-red-200'}`}>
                       <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all"
-                        style={{ width: `${Math.min((kegiatan.output_realisasi || 0) / kegiatan.target_output * 100, 100)}%` }}
+                        className={`h-2 rounded-full transition-all ${summary.capaian_output_persen >= 70 ? 'bg-green-500' : summary.capaian_output_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(summary.capaian_output_persen, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -918,11 +918,11 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     <span className="text-2xl">💰</span>
                     <span className="text-sm font-medium text-green-700">Serapan Anggaran</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${
-                    summary.realisasi_anggaran_persen >= 80 ? 'text-green-600' :
-                    summary.realisasi_anggaran_persen >= 50 ? 'text-yellow-600' : 'text-gray-500'
+                  <p className={`text-4xl font-bold mb-1 ${
+                    summary.realisasi_anggaran_persen >= 70 ? 'text-green-600' :
+                    summary.realisasi_anggaran_persen >= 40 ? 'text-yellow-600' : 'text-red-600'
                   }`}>
-                    {summary.realisasi_anggaran_persen}%
+                    {(Math.round(summary.realisasi_anggaran_persen * 100) / 100).toFixed(2)}%
                   </p>
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
@@ -939,9 +939,9 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     </div>
                   </div>
                   <div className="mt-3">
-                    <div className="w-full bg-green-200 rounded-full h-2">
+                    <div className={`w-full rounded-full h-2 ${summary.realisasi_anggaran_persen >= 70 ? 'bg-green-200' : summary.realisasi_anggaran_persen >= 40 ? 'bg-yellow-200' : 'bg-red-200'}`}>
                       <div 
-                        className="bg-green-600 h-2 rounded-full transition-all"
+                        className={`h-2 rounded-full transition-all ${summary.realisasi_anggaran_persen >= 70 ? 'bg-green-500' : summary.realisasi_anggaran_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                         style={{ width: `${Math.min(summary.realisasi_anggaran_persen, 100)}%` }}
                       />
                     </div>
@@ -950,22 +950,22 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
 
                 {/* 3. Ketepatan Waktu */}
                 <div className={`rounded-xl p-5 border ${
-                  summary.indikator.ketepatan_waktu >= 80 
+                  summary.indikator.ketepatan_waktu >= 70 
                     ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200' 
-                    : summary.indikator.ketepatan_waktu >= 60 
+                    : summary.indikator.ketepatan_waktu >= 40 
                     ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
                     : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
                 }`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-2xl">⏱️</span>
                     <span className={`text-sm font-medium ${
-                      summary.indikator.ketepatan_waktu >= 80 ? 'text-emerald-700' :
-                      summary.indikator.ketepatan_waktu >= 60 ? 'text-yellow-700' : 'text-red-700'
+                      summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-700' :
+                      summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-700' : 'text-red-700'
                     }`}>Ketepatan Waktu</span>
                   </div>
                   <p className={`text-4xl font-bold mb-2 ${
-                    summary.indikator.ketepatan_waktu >= 80 ? 'text-emerald-600' :
-                    summary.indikator.ketepatan_waktu >= 60 ? 'text-yellow-600' : 'text-red-600'
+                    summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-600' :
+                    summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-600' : 'text-red-600'
                   }`}>
                     {Math.round(summary.indikator.ketepatan_waktu)}%
                   </p>
@@ -989,13 +989,13 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                   </div>
                   <div className="mt-3">
                     <div className={`w-full rounded-full h-2 ${
-                      summary.indikator.ketepatan_waktu >= 80 ? 'bg-emerald-200' :
-                      summary.indikator.ketepatan_waktu >= 60 ? 'bg-yellow-200' : 'bg-red-200'
+                      summary.indikator.ketepatan_waktu >= 70 ? 'bg-emerald-200' :
+                      summary.indikator.ketepatan_waktu >= 40 ? 'bg-yellow-200' : 'bg-red-200'
                     }`}>
                       <div 
                         className={`h-2 rounded-full transition-all ${
-                          summary.indikator.ketepatan_waktu >= 80 ? 'bg-emerald-600' :
-                          summary.indikator.ketepatan_waktu >= 60 ? 'bg-yellow-600' : 'bg-red-600'
+                          summary.indikator.ketepatan_waktu >= 70 ? 'bg-emerald-600' :
+                          summary.indikator.ketepatan_waktu >= 40 ? 'bg-yellow-600' : 'bg-red-600'
                         }`}
                         style={{ width: `${Math.min(summary.indikator.ketepatan_waktu, 100)}%` }}
                       />
@@ -1005,22 +1005,22 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
 
                 {/* 4. Kualitas Output */}
                 <div className={`rounded-xl p-5 border ${
-                  summary.indikator.kualitas_output >= 80 
+                  summary.indikator.kualitas_output >= 70 
                     ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200' 
-                    : summary.indikator.kualitas_output >= 50 
+                    : summary.indikator.kualitas_output >= 40 
                     ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
                     : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'
                 }`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-2xl">✅</span>
                     <span className={`text-sm font-medium ${
-                      summary.indikator.kualitas_output >= 80 ? 'text-purple-700' :
-                      summary.indikator.kualitas_output >= 50 ? 'text-yellow-700' : 'text-gray-600'
+                      summary.indikator.kualitas_output >= 70 ? 'text-purple-700' :
+                      summary.indikator.kualitas_output >= 40 ? 'text-yellow-700' : 'text-gray-600'
                     }`}>Kualitas Output</span>
                   </div>
                   <p className={`text-4xl font-bold mb-2 ${
-                    summary.indikator.kualitas_output >= 80 ? 'text-purple-600' :
-                    summary.indikator.kualitas_output >= 50 ? 'text-yellow-600' : 'text-gray-500'
+                    summary.indikator.kualitas_output >= 70 ? 'text-purple-600' :
+                    summary.indikator.kualitas_output >= 40 ? 'text-yellow-600' : 'text-gray-500'
                   }`}>
                     {Math.round(summary.indikator.kualitas_output)}%
                   </p>
@@ -1029,13 +1029,13 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                       <span className="text-gray-600">Status Verifikasi</span>
                       <span className={`font-medium ${
                         statusVerifikasiDokumen.status === 'valid' ? 'text-green-600' :
-                        statusVerifikasiDokumen.status === 'revisi' ? 'text-orange-600' :
+                        statusVerifikasiDokumen.status === 'revisi' ? 'text-blue-600' :
                         statusVerifikasiDokumen.status === 'menunggu' ? 'text-blue-600' : 'text-gray-500'
                       }`}>
                         {statusVerifikasiDokumen.target > 0 
                           ? `${statusVerifikasiDokumen.disahkan}/${statusVerifikasiDokumen.target} Valid`
                           : (statusVerifikasiDokumen.status === 'valid' ? '✓ Valid' :
-                             statusVerifikasiDokumen.status === 'revisi' ? '⚠ Revisi' :
+                             statusVerifikasiDokumen.status === 'revisi' ? '⏳ Menunggu' :
                              statusVerifikasiDokumen.status === 'menunggu' ? '⏳ Menunggu' : 'Belum')}
                       </span>
                     </div>
@@ -1095,7 +1095,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                       <span className="font-medium text-green-600">{summary.kendala_resolved} kendala</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Pending</span>
+                      <span className="text-gray-600">Menunggu</span>
                       <span className={`font-medium ${summary.total_kendala - summary.kendala_resolved > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                         {summary.total_kendala - summary.kendala_resolved} kendala
                       </span>
@@ -1439,7 +1439,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         k.status === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
                       }`}>
-                        {k.status === 'selesai' ? '✓ Selesai' : 'Pending'}
+                        {k.status === 'selesai' ? '✓ Selesai' : 'Menunggu'}
                       </span>
                     </div>
                     <p className="text-gray-900 mb-2">{k.deskripsi}</p>
@@ -1563,7 +1563,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                                       isRejected ? 'bg-red-100 text-red-700' :
                                       'bg-yellow-100 text-yellow-700'
                                     }`}>
-                                      Pimpinan: {isValidated ? '🏆 Disahkan' : isRejected ? '❌ Ditolak' : '⏳ Pending'}
+                                      Pimpinan: {isValidated ? '🏆 Disahkan' : isRejected ? '❌ Ditolak' : '⏳ Menunggu'}
                                     </span>
                                   </div>
 

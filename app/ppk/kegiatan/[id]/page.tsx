@@ -14,6 +14,7 @@ interface KegiatanDetail {
   target_output: number;
   output_realisasi: number;
   satuan_output: string;
+  jenis_validasi?: 'dokumen' | 'kuantitas';
   tanggal_mulai: string;
   tanggal_selesai: string;
   tanggal_realisasi_mulai: string | null;
@@ -103,6 +104,16 @@ interface DokumenOutput {
   tanggal_disahkan?: string;
 }
 
+interface ValidasiKuantitas {
+  id: number;
+  kegiatan_id: number;
+  jumlah_output: number;
+  bukti_path?: string;
+  keterangan?: string;
+  status: string;
+  created_at: string;
+}
+
 export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const kegiatanId = resolvedParams.id;
@@ -115,6 +126,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
   const [kendala, setKendala] = useState<Kendala[]>([]);
   const [evaluasi, setEvaluasi] = useState<Evaluasi[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
+  const [validasiKuantitas, setValidasiKuantitas] = useState<ValidasiKuantitas[]>([]);
   
   const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'waktu' | 'evaluasi'>('evaluasi-kinerja');
 
@@ -148,6 +160,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
         setKendala(data.kendala || []);
         setEvaluasi(data.evaluasi || []);
         setDokumenOutput(data.dokumen_output || []);
+        setValidasiKuantitas(data.validasi_kuantitas || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -352,7 +365,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
               { id: 'progres', label: 'Progres', icon: '📈', count: progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
-              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
               { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
               { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasi.length },
             ].map((tab) => (
@@ -391,12 +404,12 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                     <span className="text-2xl">🎯</span>
                     <span className="text-sm font-medium text-blue-700">Capaian Output</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.capaian_output_persen >= 80 ? 'text-green-600' : summary.capaian_output_persen >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <p className={`text-4xl font-bold mb-2 ${summary.capaian_output_persen >= 70 ? 'text-green-600' : summary.capaian_output_persen >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
                     {Math.round(summary.capaian_output_persen)}%
                   </p>
                   <div className="mt-3">
-                    <div className="w-full bg-blue-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${Math.min(summary.capaian_output_persen, 100)}%` }} />
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className={`h-2 rounded-full transition-all ${summary.capaian_output_persen >= 70 ? 'bg-green-500' : summary.capaian_output_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${Math.min(summary.capaian_output_persen, 100)}%` }} />
                     </div>
                   </div>
                 </div>
@@ -407,23 +420,23 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                     <span className="text-2xl">💰</span>
                     <span className="text-sm font-medium text-green-700">Serapan Anggaran</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.realisasi_anggaran_persen >= 80 ? 'text-green-600' : summary.realisasi_anggaran_persen >= 50 ? 'text-yellow-600' : 'text-gray-500'}`}>
+                  <p className={`text-4xl font-bold mb-2 ${summary.realisasi_anggaran_persen >= 70 ? 'text-green-600' : summary.realisasi_anggaran_persen >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
                     {summary.realisasi_anggaran_persen}%
                   </p>
                   <div className="mt-3">
-                    <div className="w-full bg-green-200 rounded-full h-2">
-                      <div className="bg-green-600 h-2 rounded-full transition-all" style={{ width: `${Math.min(summary.realisasi_anggaran_persen, 100)}%` }} />
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className={`h-2 rounded-full transition-all ${summary.realisasi_anggaran_persen >= 70 ? 'bg-green-500' : summary.realisasi_anggaran_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${Math.min(summary.realisasi_anggaran_persen, 100)}%` }} />
                     </div>
                   </div>
                 </div>
 
                 {/* 3. Ketepatan Waktu */}
-                <div className={`rounded-xl p-5 border ${summary.indikator.ketepatan_waktu >= 80 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200' : summary.indikator.ketepatan_waktu >= 60 ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200' : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'}`}>
+                <div className={`rounded-xl p-5 border ${summary.indikator.ketepatan_waktu >= 70 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200' : summary.indikator.ketepatan_waktu >= 40 ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200' : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'}`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-2xl">⏱️</span>
-                    <span className={`text-sm font-medium ${summary.indikator.ketepatan_waktu >= 80 ? 'text-emerald-700' : summary.indikator.ketepatan_waktu >= 60 ? 'text-yellow-700' : 'text-red-700'}`}>Ketepatan Waktu</span>
+                    <span className={`text-sm font-medium ${summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-700' : summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-700' : 'text-red-700'}`}>Ketepatan Waktu</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.indikator.ketepatan_waktu >= 80 ? 'text-emerald-600' : summary.indikator.ketepatan_waktu >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <p className={`text-4xl font-bold mb-2 ${summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-600' : summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
                     {Math.round(summary.indikator.ketepatan_waktu)}%
                   </p>
                 </div>
@@ -611,7 +624,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
                         Prioritas {k.tingkat_prioritas}
                       </span>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${k.status === 'selesai' || k.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {k.status === 'selesai' || k.status === 'resolved' ? '✓ Selesai' : 'Pending'}
+                        {k.status === 'selesai' || k.status === 'resolved' ? '✓ Selesai' : 'Menunggu'}
                       </span>
                     </div>
                     <p className="text-gray-900 mb-2">{k.deskripsi}</p>

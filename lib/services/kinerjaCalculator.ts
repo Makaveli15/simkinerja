@@ -26,6 +26,7 @@ export interface KegiatanData {
   
   // Data Realisasi (raw data yang diinput pengguna)
   output_realisasi: number;
+  output_tervalidasi?: number;  // Output yang sudah disahkan (dari validasi_kuantitas/dokumen_output)
   tanggal_realisasi_selesai: string | Date | null;  // Tanggal selesai aktual
   status_verifikasi: 'belum_verifikasi' | 'menunggu' | 'valid' | 'revisi';
   
@@ -464,8 +465,12 @@ export function hitungKinerjaKegiatan(data: KegiatanData): KinerjaResult {
   // Tentukan status kinerja
   const statusKinerja = tentukanStatusKinerja(totalSkor);
 
-  // Hitung deviasi output
-  const deviasiOutput = data.output_realisasi - data.target_output;
+  // Hitung deviasi output - gunakan output_tervalidasi jika tersedia
+  // output_tervalidasi adalah data yang sudah disahkan dari validasi_kuantitas atau dokumen_output
+  const outputUntukDeviasi = data.output_tervalidasi !== undefined 
+    ? data.output_tervalidasi 
+    : data.output_realisasi;
+  const deviasiOutput = outputUntukDeviasi - data.target_output;
 
   return {
     indikator: {

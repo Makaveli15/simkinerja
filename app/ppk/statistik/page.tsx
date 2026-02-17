@@ -284,7 +284,7 @@ export default function StatistikAnggaranPage() {
                 <LuClock className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm text-yellow-700 font-medium">Anggaran Pending</p>
+                <p className="text-sm text-yellow-700 font-medium">Anggaran Menunggu</p>
                 <p className="text-xl font-bold text-yellow-800">{formatCurrency(statistik?.anggaran_pending || 0)}</p>
               </div>
             </div>

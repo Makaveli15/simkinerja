@@ -475,7 +475,7 @@ export default function PelaksanaDashboard() {
               </>
             )}
             <div className="p-4 bg-yellow-50 rounded-xl text-center">
-              <p className="text-sm text-gray-500">Pending</p>
+              <p className="text-sm text-gray-500">Menunggu</p>
               <p className="text-2xl font-bold text-yellow-600">{stats.totalKendala - stats.kendalaResolved}</p>
             </div>
           </div>

@@ -232,12 +232,12 @@ export default function KoordinatorKegiatanDetailPage() {
                   <LuTarget className="w-5 h-5 text-green-600" />
                   Progress Output
                 </h3>
-                <span className="text-2xl font-bold text-green-600">{progressOutput}%</span>
+                <span className={`text-2xl font-bold ${progressOutput >= 70 ? 'text-green-600' : progressOutput >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{progressOutput}%</span>
               </div>
               <div className="space-y-2">
                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-green-500 rounded-full transition-all"
+                    className={`h-full rounded-full transition-all ${progressOutput >= 70 ? 'bg-green-500' : progressOutput >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                     style={{ width: `${progressOutput}%` }}
                   ></div>
                 </div>
@@ -255,12 +255,12 @@ export default function KoordinatorKegiatanDetailPage() {
                   <LuWallet className="w-5 h-5 text-green-600" />
                   Progress Anggaran
                 </h3>
-                <span className="text-2xl font-bold text-green-600">{progressAnggaran}%</span>
+                <span className={`text-2xl font-bold ${progressAnggaran >= 70 ? 'text-green-600' : progressAnggaran >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{progressAnggaran}%</span>
               </div>
               <div className="space-y-2">
                 <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-green-500 rounded-full transition-all"
+                    className={`h-full rounded-full transition-all ${progressAnggaran >= 70 ? 'bg-green-500' : progressAnggaran >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                     style={{ width: `${progressAnggaran}%` }}
                   ></div>
                 </div>

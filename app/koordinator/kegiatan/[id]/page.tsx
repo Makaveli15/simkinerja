@@ -28,9 +28,11 @@ interface KegiatanDetail {
 interface Summary {
   total_realisasi_anggaran: number;
   realisasi_anggaran_persen: number;
+  output_tervalidasi: number;
   capaian_output_persen: number;
   total_kendala: number;
   kendala_resolved: number;
+  kendala_pending: number;
   skor_kinerja: number;
   status_kinerja: string;
   indikator: {
@@ -617,12 +619,12 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                   <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
                     statusVerifikasiDokumen.status === 'valid' ? 'bg-green-100 text-green-700' :
                     statusVerifikasiDokumen.status === 'menunggu' ? 'bg-blue-100 text-blue-700' :
-                    statusVerifikasiDokumen.status === 'revisi' ? 'bg-orange-100 text-orange-700' :
+                    statusVerifikasiDokumen.status === 'revisi' ? 'bg-blue-100 text-blue-700' :
                     'bg-gray-100 text-gray-700'
                   }`}>
                     {statusVerifikasiDokumen.status === 'valid' ? '✅ Valid' :
                      statusVerifikasiDokumen.status === 'menunggu' ? '⏳ Menunggu' :
-                     statusVerifikasiDokumen.status === 'revisi' ? '📝 Revisi' :
+                     statusVerifikasiDokumen.status === 'revisi' ? '⏳ Menunggu' :
                      'Belum Ada'}
                   </span>
                   {statusVerifikasiDokumen.target > 0 && (
@@ -720,7 +722,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
               { id: 'progres', label: 'Progres', icon: '📈', count: progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: '⚠️', count: kendala.length },
-              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+              { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: '✅', count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
               { id: 'waktu', label: 'Waktu Penyelesaian', icon: '⏰' },
               { id: 'evaluasi', label: 'Evaluasi', icon: '📝', count: evaluasi.length },
             ].map((tab) => (
@@ -759,12 +761,37 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                     <span className="text-2xl">🎯</span>
                     <span className="text-sm font-medium text-blue-700">Capaian Output</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.capaian_output_persen >= 80 ? 'text-green-600' : summary.capaian_output_persen >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                    {Math.round(summary.capaian_output_persen)}%
+                  <p className={`text-4xl font-bold mb-1 ${
+                    summary.capaian_output_persen >= 70 
+                      ? 'text-green-600' 
+                      : summary.capaian_output_persen >= 40 
+                      ? 'text-yellow-600' 
+                      : 'text-red-600'
+                  }`}>
+                    {(Math.round(summary.capaian_output_persen * 100) / 100).toFixed(2)}%
                   </p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Tervalidasi</span>
+                      <span className="font-medium text-blue-700">{Math.round(summary.output_tervalidasi || 0)} {kegiatan?.satuan_output}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Target</span>
+                      <span className="font-medium text-gray-700">{Math.round(kegiatan?.target_output || 0)} {kegiatan?.satuan_output}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Selisih</span>
+                      <span className={`font-medium ${((summary.output_tervalidasi || 0) - (kegiatan?.target_output || 0)) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {((summary.output_tervalidasi || 0) - (kegiatan?.target_output || 0)) >= 0 ? '+' : ''}{Math.round((summary.output_tervalidasi || 0) - (kegiatan?.target_output || 0))} {kegiatan?.satuan_output}
+                      </span>
+                    </div>
+                  </div>
                   <div className="mt-3">
-                    <div className="w-full bg-blue-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${Math.min(summary.capaian_output_persen, 100)}%` }} />
+                    <div className={`w-full rounded-full h-2 ${summary.capaian_output_persen >= 70 ? 'bg-green-200' : summary.capaian_output_persen >= 40 ? 'bg-yellow-200' : 'bg-red-200'}`}>
+                      <div 
+                        className={`h-2 rounded-full transition-all ${summary.capaian_output_persen >= 70 ? 'bg-green-500' : summary.capaian_output_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(summary.capaian_output_persen, 100)}%` }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -775,51 +802,213 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                     <span className="text-2xl">💰</span>
                     <span className="text-sm font-medium text-green-700">Serapan Anggaran</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.realisasi_anggaran_persen >= 80 ? 'text-green-600' : summary.realisasi_anggaran_persen >= 50 ? 'text-yellow-600' : 'text-gray-500'}`}>
-                    {summary.realisasi_anggaran_persen}%
+                  <p className={`text-4xl font-bold mb-1 ${
+                    summary.realisasi_anggaran_persen >= 70 ? 'text-green-600' :
+                    summary.realisasi_anggaran_persen >= 40 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
+                    {(Math.round(summary.realisasi_anggaran_persen * 100) / 100).toFixed(2)}%
                   </p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Realisasi</span>
+                      <span className="font-medium text-green-700">Rp {(summary.total_realisasi_anggaran || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Target</span>
+                      <span className="font-medium text-gray-700">Rp {(kegiatan?.anggaran_pagu || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Sisa</span>
+                      <span className="font-medium text-blue-600">Rp {((kegiatan?.anggaran_pagu || 0) - (summary.total_realisasi_anggaran || 0)).toLocaleString('id-ID')}</span>
+                    </div>
+                  </div>
                   <div className="mt-3">
-                    <div className="w-full bg-green-200 rounded-full h-2">
-                      <div className="bg-green-600 h-2 rounded-full transition-all" style={{ width: `${Math.min(summary.realisasi_anggaran_persen, 100)}%` }} />
+                    <div className={`w-full rounded-full h-2 ${summary.realisasi_anggaran_persen >= 70 ? 'bg-green-200' : summary.realisasi_anggaran_persen >= 40 ? 'bg-yellow-200' : 'bg-red-200'}`}>
+                      <div 
+                        className={`h-2 rounded-full transition-all ${summary.realisasi_anggaran_persen >= 70 ? 'bg-green-500' : summary.realisasi_anggaran_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(summary.realisasi_anggaran_persen, 100)}%` }}
+                      />
                     </div>
                   </div>
                 </div>
 
                 {/* 3. Ketepatan Waktu */}
-                <div className={`rounded-xl p-5 border ${summary.indikator.ketepatan_waktu >= 80 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200' : summary.indikator.ketepatan_waktu >= 60 ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200' : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'}`}>
+                <div className={`rounded-xl p-5 border ${
+                  summary.indikator.ketepatan_waktu >= 70 
+                    ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200' 
+                    : summary.indikator.ketepatan_waktu >= 40 
+                    ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
+                    : 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
+                }`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-2xl">⏱️</span>
-                    <span className={`text-sm font-medium ${summary.indikator.ketepatan_waktu >= 80 ? 'text-emerald-700' : summary.indikator.ketepatan_waktu >= 60 ? 'text-yellow-700' : 'text-red-700'}`}>Ketepatan Waktu</span>
+                    <span className={`text-sm font-medium ${
+                      summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-700' :
+                      summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-700' : 'text-red-700'
+                    }`}>Ketepatan Waktu</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.indikator.ketepatan_waktu >= 80 ? 'text-emerald-600' : summary.indikator.ketepatan_waktu >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <p className={`text-4xl font-bold mb-2 ${
+                    summary.indikator.ketepatan_waktu >= 70 ? 'text-emerald-600' :
+                    summary.indikator.ketepatan_waktu >= 40 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
                     {Math.round(summary.indikator.ketepatan_waktu)}%
                   </p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Rencana Selesai</span>
+                      <span className="font-medium text-gray-700">{formatDate(kegiatan?.tanggal_selesai)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Aktual Selesai</span>
+                      <span className={`font-medium ${kegiatan?.tanggal_realisasi_selesai ? 'text-green-600' : 'text-gray-400'}`}>
+                        {kegiatan?.tanggal_realisasi_selesai ? formatDate(kegiatan.tanggal_realisasi_selesai) : 'Belum'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Status</span>
+                      <span className={`font-medium ${summary.deviasi.waktu >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {summary.deviasi.waktu >= 0 ? `${summary.deviasi.waktu} hari tersisa` : `Terlambat ${Math.abs(summary.deviasi.waktu)} hari`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className={`w-full rounded-full h-2 ${
+                      summary.indikator.ketepatan_waktu >= 70 ? 'bg-emerald-200' :
+                      summary.indikator.ketepatan_waktu >= 40 ? 'bg-yellow-200' : 'bg-red-200'
+                    }`}>
+                      <div 
+                        className={`h-2 rounded-full transition-all ${
+                          summary.indikator.ketepatan_waktu >= 70 ? 'bg-emerald-600' :
+                          summary.indikator.ketepatan_waktu >= 40 ? 'bg-yellow-600' : 'bg-red-600'
+                        }`}
+                        style={{ width: `${Math.min(summary.indikator.ketepatan_waktu, 100)}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* 4. Kualitas Output */}
-                <div className={`rounded-xl p-5 border ${summary.indikator.kualitas_output >= 80 ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200' : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'}`}>
+                <div className={`rounded-xl p-5 border ${
+                  summary.indikator.kualitas_output >= 70 
+                    ? 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200' 
+                    : summary.indikator.kualitas_output >= 40 
+                    ? 'bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200'
+                    : 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200'
+                }`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-2xl">✅</span>
-                    <span className="text-sm font-medium text-purple-700">Kualitas Output</span>
+                    <span className={`text-sm font-medium ${
+                      summary.indikator.kualitas_output >= 70 ? 'text-purple-700' :
+                      summary.indikator.kualitas_output >= 40 ? 'text-yellow-700' : 'text-gray-600'
+                    }`}>Kualitas Output</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.indikator.kualitas_output >= 80 ? 'text-purple-600' : 'text-gray-500'}`}>
+                  <p className={`text-4xl font-bold mb-2 ${
+                    summary.indikator.kualitas_output >= 70 ? 'text-purple-600' :
+                    summary.indikator.kualitas_output >= 40 ? 'text-yellow-600' : 'text-gray-500'
+                  }`}>
                     {Math.round(summary.indikator.kualitas_output)}%
                   </p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Status Verifikasi</span>
+                      <span className={`font-medium ${
+                        kegiatan?.status_verifikasi === 'valid' ? 'text-green-600' :
+                        kegiatan?.status_verifikasi === 'revisi' ? 'text-blue-600' :
+                        kegiatan?.status_verifikasi === 'menunggu' ? 'text-blue-600' : 'text-gray-500'
+                      }`}>
+                        {kegiatan?.status_verifikasi === 'valid' ? '✓ Valid' :
+                         kegiatan?.status_verifikasi === 'revisi' ? '⏳ Menunggu' :
+                         kegiatan?.status_verifikasi === 'menunggu' ? '⏳ Menunggu' : 'Belum'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Dokumen</span>
+                      <span className="font-medium text-gray-700">{dokumenOutput.length} file</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Disahkan</span>
+                      <span className="font-medium text-green-600">{dokumenOutput.filter(d => d.tanggal_disahkan || d.status_final === 'disahkan').length} file</span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className={`w-full rounded-full h-2 ${
+                      summary.indikator.kualitas_output >= 70 ? 'bg-purple-200' :
+                      summary.indikator.kualitas_output >= 40 ? 'bg-yellow-200' : 'bg-gray-200'
+                    }`}>
+                      <div 
+                        className={`h-2 rounded-full transition-all ${
+                          summary.indikator.kualitas_output >= 70 ? 'bg-purple-600' :
+                          summary.indikator.kualitas_output >= 40 ? 'bg-yellow-600' : 'bg-gray-400'
+                        }`}
+                        style={{ width: `${Math.min(summary.indikator.kualitas_output, 100)}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* 5. Penyelesaian Kendala */}
-                <div className={`rounded-xl p-5 border ${summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200' : 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200'}`}>
+                <div className={`rounded-xl p-5 border ${
+                  summary.total_kendala === 0 
+                    ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
+                    : summary.kendala_resolved === summary.total_kendala 
+                    ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'
+                    : 'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200'
+                }`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-2xl">🔧</span>
-                    <span className="text-sm font-medium">Kendala</span>
+                    <span className={`text-sm font-medium ${
+                      summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala 
+                        ? 'text-green-700' : 'text-orange-700'
+                    }`}>Kendala</span>
                   </div>
-                  <p className={`text-4xl font-bold mb-2 ${summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala ? 'text-green-600' : 'text-orange-600'}`}>
+                  <p className={`text-4xl font-bold mb-2 ${
+                    summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala 
+                      ? 'text-green-600' : 'text-orange-600'
+                  }`}>
                     {summary.kendala_resolved}/{summary.total_kendala}
                   </p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Total</span>
+                      <span className="font-medium text-gray-700">{summary.total_kendala} kendala</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Selesai</span>
+                      <span className="font-medium text-green-600">{summary.kendala_resolved} kendala</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Menunggu</span>
+                      <span className={`font-medium ${summary.total_kendala - summary.kendala_resolved > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                        {summary.total_kendala - summary.kendala_resolved} kendala
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className={`w-full rounded-full h-2 ${
+                      summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala 
+                        ? 'bg-green-200' : 'bg-orange-200'
+                    }`}>
+                      <div 
+                        className={`h-2 rounded-full transition-all ${
+                          summary.total_kendala === 0 || summary.kendala_resolved === summary.total_kendala 
+                            ? 'bg-green-600' : 'bg-orange-600'
+                        }`}
+                        style={{ width: `${summary.total_kendala > 0 ? (summary.kendala_resolved / summary.total_kendala * 100) : 100}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* 6. Skor Kinerja Total */}
-                <div className={`rounded-xl p-5 border ${summary.skor_kinerja >= 80 ? 'bg-gradient-to-br from-green-100 to-emerald-200 border-green-300' : summary.skor_kinerja >= 60 ? 'bg-gradient-to-br from-yellow-100 to-amber-200 border-yellow-300' : 'bg-gradient-to-br from-red-100 to-rose-200 border-red-300'}`}>
+                <div className={`rounded-xl p-5 border ${
+                  summary.skor_kinerja >= 80 
+                    ? 'bg-gradient-to-br from-green-100 to-emerald-200 border-green-300' 
+                    : summary.skor_kinerja >= 60 
+                    ? 'bg-gradient-to-br from-yellow-100 to-amber-200 border-yellow-300'
+                    : summary.skor_kinerja > 0
+                    ? 'bg-gradient-to-br from-red-100 to-rose-200 border-red-300'
+                    : 'bg-gradient-to-br from-gray-100 to-gray-200 border-gray-300'
+                }`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-2xl">📊</span>
                     <span className={`text-sm font-medium ${getSkorColor(summary.skor_kinerja)}`}>Skor Kinerja</span>
@@ -827,9 +1016,33 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                   <p className={`text-5xl font-bold mb-2 ${getSkorColor(summary.skor_kinerja)}`}>
                     {summary.skor_kinerja}
                   </p>
-                  <span className={`inline-block w-full text-center px-3 py-1.5 rounded-full text-xs font-bold ${summary.status_kinerja === 'Sukses' ? 'bg-green-500 text-white' : summary.status_kinerja === 'Perlu Perhatian' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white'}`}>
-                    {summary.status_kinerja}
-                  </span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Status</span>
+                      <span className={`font-bold ${
+                        summary.status_kinerja === 'Sukses' ? 'text-green-600' :
+                        summary.status_kinerja === 'Perlu Perhatian' ? 'text-yellow-600' :
+                        summary.status_kinerja === 'Bermasalah' ? 'text-red-600' : 'text-gray-500'
+                      }`}>
+                        {summary.status_kinerja}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Threshold</span>
+                      <span className="font-medium text-gray-700">≥80 Sukses</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t border-gray-300">
+                    <span className={`inline-block w-full text-center px-3 py-1.5 rounded-full text-xs font-bold ${
+                      summary.status_kinerja === 'Sukses' ? 'bg-green-500 text-white' :
+                      summary.status_kinerja === 'Perlu Perhatian' ? 'bg-yellow-500 text-white' :
+                      summary.status_kinerja === 'Bermasalah' ? 'bg-red-500 text-white' : 'bg-gray-400 text-white'
+                    }`}>
+                      {summary.status_kinerja === 'Sukses' ? '✓ KINERJA BAIK' :
+                       summary.status_kinerja === 'Perlu Perhatian' ? '! PERLU PERHATIAN' :
+                       summary.status_kinerja === 'Bermasalah' ? '✗ BERMASALAH' : 'BELUM DINILAI'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -842,7 +1055,10 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                       <span className="font-medium text-gray-900">Deviasi Output</span>
                     </div>
                     <p className={`text-3xl font-bold ${summary.deviasi.output >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {summary.deviasi.output >= 0 ? '+' : ''}{summary.deviasi.output} {kegiatan.satuan_output}
+                      {summary.deviasi.output >= 0 ? '+' : ''}{summary.deviasi.output} {kegiatan?.satuan_output}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {summary.deviasi.output >= 0 ? 'Melebihi target' : 'Di bawah target'}
                     </p>
                   </div>
                   
@@ -852,21 +1068,66 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                       <span className="font-medium text-gray-900">Deviasi Waktu</span>
                     </div>
                     <p className={`text-3xl font-bold ${summary.deviasi.waktu >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {summary.deviasi.waktu >= 0 ? `${summary.deviasi.waktu} hari tersisa` : `Terlambat ${Math.abs(summary.deviasi.waktu)} hari`}
+                      {summary.deviasi.waktu >= 0 ? `${summary.deviasi.waktu} hari` : `${Math.abs(summary.deviasi.waktu)} hari`}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {summary.deviasi.waktu >= 0 ? 'Sisa waktu tersedia' : 'Terlambat dari jadwal'}
                     </p>
                   </div>
                   
-                  <div className={`rounded-xl p-5 border ${summary.deviasi.anggaran <= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className={`rounded-xl p-5 border ${
+                    summary.deviasi.anggaran <= 0 ? 'bg-green-50 border-green-200' : 
+                    summary.deviasi.anggaran <= 10 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'
+                  }`}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xl">💵</span>
                       <span className="font-medium text-gray-900">Deviasi Anggaran</span>
                     </div>
-                    <p className={`text-3xl font-bold ${summary.deviasi.anggaran <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <p className={`text-3xl font-bold ${
+                      summary.deviasi.anggaran <= 0 ? 'text-green-600' : 
+                      summary.deviasi.anggaran <= 10 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
                       {summary.deviasi.anggaran >= 0 ? '+' : ''}{summary.deviasi.anggaran.toFixed(1)}%
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {summary.deviasi.anggaran <= 0 ? 'Di bawah anggaran' : 'Melebihi anggaran'}
                     </p>
                   </div>
                 </div>
               )}
+
+              {/* Panduan Penilaian */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  <span>📋</span> Panduan Interpretasi Skor Kinerja
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-lg p-4 border border-green-200 text-center">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <span className="text-2xl">✓</span>
+                    </div>
+                    <p className="text-2xl font-bold text-green-600">≥ 80</p>
+                    <p className="font-semibold text-green-700">SUKSES</p>
+                    <p className="text-xs text-gray-600 mt-1">Kinerja sangat baik, target tercapai</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 border border-yellow-200 text-center">
+                    <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <span className="text-2xl">!</span>
+                    </div>
+                    <p className="text-2xl font-bold text-yellow-600">60 - 79</p>
+                    <p className="font-semibold text-yellow-700">PERLU PERHATIAN</p>
+                    <p className="text-xs text-gray-600 mt-1">Ada aspek yang perlu diperbaiki</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 border border-red-200 text-center">
+                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <span className="text-2xl">✗</span>
+                    </div>
+                    <p className="text-2xl font-bold text-red-600">&lt; 60</p>
+                    <p className="font-semibold text-red-700">BERMASALAH</p>
+                    <p className="text-xs text-gray-600 mt-1">Perlu tindakan korektif segera</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1049,7 +1310,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                         Prioritas {k.tingkat_prioritas}
                       </span>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${k.status === 'selesai' || k.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {k.status === 'selesai' || k.status === 'resolved' ? '✓ Selesai' : 'Pending'}
+                        {k.status === 'selesai' || k.status === 'resolved' ? '✓ Selesai' : 'Menunggu'}
                       </span>
                     </div>
                     <p className="text-gray-900 mb-2">{k.deskripsi}</p>
@@ -1154,7 +1415,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                       isRejected ? 'bg-red-100 text-red-700' :
                                       'bg-yellow-100 text-yellow-700'
                                     }`}>
-                                      Koordinator: {isValidated ? '✅ Valid' : isRejected ? '❌ Ditolak' : '⏳ Pending'}
+                                      Koordinator: {isValidated ? '✅ Valid' : isRejected ? '❌ Ditolak' : '⏳ Menunggu'}
                                     </span>
                                     {val.status_kesubag === 'valid' && (
                                       <span className={`px-2 py-1 rounded ${
@@ -1162,7 +1423,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                         val.status_pimpinan === 'tidak_valid' ? 'bg-red-100 text-red-700' :
                                         'bg-yellow-100 text-yellow-700'
                                       }`}>
-                                        Pimpinan: {val.status_pimpinan === 'valid' ? '✅ Valid' : val.status_pimpinan === 'tidak_valid' ? '❌ Ditolak' : '⏳ Pending'}
+                                        Pimpinan: {val.status_pimpinan === 'valid' ? '✅ Valid' : val.status_pimpinan === 'tidak_valid' ? '❌ Ditolak' : '⏳ Menunggu'}
                                       </span>
                                     )}
                                   </div>

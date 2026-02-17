@@ -160,6 +160,17 @@ interface DokumenOutput {
   validasi_feedback_pimpinan?: string;
 }
 
+interface Evaluasi {
+  id: number;
+  kegiatan_id: number;
+  user_id: number;
+  jenis_evaluasi: 'catatan' | 'arahan' | 'rekomendasi';
+  isi: string;
+  created_at: string;
+  evaluator_nama?: string;
+  evaluator_role?: string;
+}
+
 type TabType = 'progres' | 'waktu' | 'realisasi-anggaran' | 'kendala' | 'evaluasi' | 'dokumen';
 
 interface IndikatorConfigItem {
@@ -191,6 +202,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   const [kendala, setKendala] = useState<Kendala[]>([]);
   const [dokumenOutput, setDokumenOutput] = useState<DokumenOutput[]>([]);
   const [validasiKuantitas, setValidasiKuantitas] = useState<ValidasiKuantitas[]>([]);
+  const [evaluasi, setEvaluasi] = useState<Evaluasi[]>([]);
 
   // Kuantitas Output Form (dengan upload bukti dukung)
   const [kuantitasForm, setKuantitasForm] = useState({
@@ -319,6 +331,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
       setRealisasiFisik(data.realisasi_fisik || []);
       setRealisasiAnggaran(data.realisasi_anggaran || []);
       setKendala(data.kendala || []);
+      setEvaluasi(data.evaluasi || []);
       
       // Set raw data form with existing values
       if (data.kegiatan) {
@@ -925,7 +938,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
       case 'in_progress': return 'Proses';
       case 'open': return 'Terbuka';
       case 'done': return 'Selesai';
-      case 'pending': return 'Pending';
+      case 'pending': return 'Menunggu';
       default: return status;
     }
   };
@@ -967,9 +980,9 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
     { id: 'progres' as TabType, label: 'Progres', icon: '📊', count: progres.length },
     { id: 'realisasi-anggaran' as TabType, label: 'Realisasi Anggaran', icon: '💰', count: realisasiAnggaran.length },
     { id: 'kendala' as TabType, label: 'Kendala & Tindak Lanjut', icon: '⚠️', count: kendala.length },
-    { id: 'dokumen' as TabType, label: 'Verifikasi Kualitas Output', icon: '✅', count: dokumenOutput.length },
+    { id: 'dokumen' as TabType, label: 'Verifikasi Kualitas Output', icon: '✅', count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
     { id: 'waktu' as TabType, label: 'Waktu Penyelesaian', icon: '⏰', count: null },
-    { id: 'evaluasi' as TabType, label: 'Evaluasi Kinerja', icon: '📈', count: null },
+    { id: 'evaluasi' as TabType, label: 'Evaluasi', icon: '📈', count: null },
   ];
 
   return (
@@ -1023,55 +1036,6 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                     <span className="text-sm">Menyimpan...</span>
                   </div>
                 )}
-              </div>
-            </div>
-            
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-xs text-blue-600 font-medium">Capaian Output</p>
-                <p className="text-xl font-bold text-blue-700">
-                  {kegiatan?.jenis_validasi === 'kuantitas'
-                    ? (kegiatan?.target_output && kegiatan.target_output > 0
-                        ? ((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100).toFixed(1)
-                        : 0)
-                    : (summary?.indikator?.capaian_output?.toFixed(1) || 0)}%
-                </p>
-                <p className="text-xs text-blue-600 truncate">
-                  {kegiatan?.jenis_validasi === 'kuantitas'
-                    ? `${Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))} / ${formatNumber(kegiatan.target_output)} ${kegiatan.satuan_output}`
-                    : `${formatNumber(rawDataForm.output_realisasi)} / ${formatNumber(kegiatan.target_output)} ${kegiatan.satuan_output}`}
-                </p>
-              </div>
-              <div className="bg-green-50 p-3 rounded-lg">
-                <p className="text-xs text-green-600 font-medium">Realisasi Anggaran</p>
-                <p className="text-base font-bold text-green-700">{formatCurrency(totalRealisasiAnggaran)}</p>
-                <p className="text-xs text-green-600">{persenAnggaran.toFixed(1)}% dari target</p>
-              </div>
-              <div className="bg-purple-50 p-3 rounded-lg">
-                <p className="text-xs text-purple-600 font-medium">Target Anggaran</p>
-                <p className="text-base font-bold text-purple-700">{formatCurrency(paguAnggaran)}</p>
-              </div>
-              <div className={`p-3 rounded-lg ${
-                summary?.status_kinerja === 'Sukses' ? 'bg-green-50' :
-                summary?.status_kinerja === 'Perlu Perhatian' ? 'bg-yellow-50' :
-                summary?.status_kinerja === 'Bermasalah' ? 'bg-red-50' : 'bg-gray-50'
-              }`}>
-                <p className={`text-xs font-medium ${
-                  summary?.status_kinerja === 'Sukses' ? 'text-green-600' :
-                  summary?.status_kinerja === 'Perlu Perhatian' ? 'text-yellow-600' :
-                  summary?.status_kinerja === 'Bermasalah' ? 'text-red-600' : 'text-gray-600'
-                }`}>Skor Kinerja</p>
-                <p className={`text-xl font-bold ${
-                  summary?.status_kinerja === 'Sukses' ? 'text-green-700' :
-                  summary?.status_kinerja === 'Perlu Perhatian' ? 'text-yellow-700' :
-                  summary?.status_kinerja === 'Bermasalah' ? 'text-red-700' : 'text-gray-700'
-                }`}>{summary?.skor_kinerja || 0}</p>
-                <p className={`text-xs ${
-                  summary?.status_kinerja === 'Sukses' ? 'text-green-600' :
-                  summary?.status_kinerja === 'Perlu Perhatian' ? 'text-yellow-600' :
-                  summary?.status_kinerja === 'Bermasalah' ? 'text-red-600' : 'text-gray-600'
-                }`}>{summary?.status_kinerja || 'Belum Dinilai'}</p>
               </div>
             </div>
           </div>
@@ -1151,7 +1115,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                       <p className="text-sm text-gray-600">Progres Validasi</p>
                       <p className="text-2xl font-bold text-purple-600">
                         {kegiatan?.target_output && kegiatan.target_output > 0
-                          ? Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                          ? (Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
                           : 0}%
                       </p>
                       <p className="text-sm text-gray-500">dari target</p>
@@ -1183,7 +1147,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                       <p className="text-sm text-gray-600">Progres Validasi</p>
                       <p className="text-2xl font-bold text-purple-600">
                         {kegiatan?.target_output && kegiatan.target_output > 0
-                          ? Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100)
+                          ? (Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
                           : 0}%
                       </p>
                       <p className="text-sm text-gray-500">dari target</p>
@@ -1201,16 +1165,19 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                         {Math.round(validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0))} / {Math.round(kegiatan?.target_output || 0)} {kegiatan?.satuan_output} tervalidasi
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div 
-                        className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500"
-                        style={{ 
-                          width: `${kegiatan?.target_output && kegiatan.target_output > 0 
-                            ? Math.min((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
-                            : 0}%` 
-                        }}
-                      ></div>
-                    </div>
+                    {(() => {
+                      const progres = kegiatan?.target_output && kegiatan.target_output > 0 
+                        ? Math.min((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100, 100)
+                        : 0;
+                      return (
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div 
+                            className={`h-4 rounded-full transition-all duration-500 ${progres >= 70 ? 'bg-green-500' : progres >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                            style={{ width: `${progres}%` }}
+                          ></div>
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-between mt-2 text-xs text-gray-500">
                       <span>0%</span>
                       <span>50%</span>
@@ -1226,16 +1193,19 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                         {dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length} / {Math.round(kegiatan?.target_output || 0)} tervalidasi
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div 
-                        className="bg-gradient-to-r from-blue-500 to-green-500 h-4 rounded-full transition-all duration-500"
-                        style={{ 
-                          width: `${kegiatan?.target_output && kegiatan.target_output > 0 
-                            ? Math.min((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100, 100)
-                            : 0}%` 
-                        }}
-                      ></div>
-                    </div>
+                    {(() => {
+                      const progres = kegiatan?.target_output && kegiatan.target_output > 0 
+                        ? Math.min((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100, 100)
+                        : 0;
+                      return (
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                          <div 
+                            className={`h-4 rounded-full transition-all duration-500 ${progres >= 70 ? 'bg-green-500' : progres >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                            style={{ width: `${progres}%` }}
+                          ></div>
+                        </div>
+                      );
+                    })()}
                     <div className="flex justify-between mt-2 text-xs text-gray-500">
                       <span>0%</span>
                       <span>50%</span>
@@ -1269,7 +1239,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                           <p className="text-xs text-gray-600 mb-1">Progres Validasi</p>
                           <p className="text-xl font-bold text-blue-600">
                             {kegiatan?.target_output && kegiatan.target_output > 0
-                              ? Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                              ? (Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
                               : 0}%
                           </p>
                           <p className="text-xs text-gray-500 mt-1">berdasarkan output disahkan</p>
@@ -1318,7 +1288,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                           <p className="text-xs text-gray-600 mb-1">Progres Validasi</p>
                           <p className="text-xl font-bold text-blue-600">
                             {kegiatan.target_output 
-                              ? Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100)
+                              ? (Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
                               : 0}%
                           </p>
                           <p className="text-xs text-gray-500 mt-1">berdasarkan dokumen disahkan</p>
@@ -1721,7 +1691,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                         </div>
                         <div className="bg-white rounded-lg p-3 text-center border border-orange-200">
                           <p className="text-2xl font-bold text-orange-600">{summary?.kendala_pending || 0}</p>
-                          <p className="text-xs text-gray-600">Pending</p>
+                          <p className="text-xs text-gray-600">Menunggu</p>
                         </div>
                       </div>
                       <div className="mt-3">
@@ -1906,7 +1876,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                         <p className="text-sm text-gray-600">Progres Validasi</p>
                         <p className="text-2xl font-bold text-purple-600">
                           {kegiatan?.target_output && kegiatan.target_output > 0
-                            ? Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
+                            ? (Math.round((validasiKuantitas.filter(v => v.status === 'disahkan').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100 * 100) / 100).toFixed(2)
                             : 0}%
                         </p>
                         <p className="text-sm text-gray-500">dari target</p>
@@ -2366,9 +2336,125 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            {/* Tab: Evaluasi Kinerja */}
+            {/* Tab: Evaluasi */}
             {activeTab === 'evaluasi' && (
               <div className="space-y-6">
+                {/* Evaluasi dari Koordinator dan Pimpinan (dari approval) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Evaluasi Koordinator */}
+                  <div className="bg-white border rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-xl">👥</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">Catatan Koordinator</h3>
+                        <p className="text-sm text-gray-500">Dari proses approval kegiatan</p>
+                      </div>
+                    </div>
+                    {kegiatan.catatan_koordinator ? (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-700">{kegiatan.catatan_koordinator}</p>
+                        {kegiatan.tanggal_approval_koordinator && (
+                          <p className="text-xs text-gray-500 mt-3">
+                            📅 {new Date(kegiatan.tanggal_approval_koordinator).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                        <span className="text-3xl mb-2 block">📝</span>
+                        <p className="text-gray-500 text-sm">Belum ada catatan dari Koordinator</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Catatan PPK */}
+                  <div className="bg-white border rounded-xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                        <span className="text-xl">💼</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">Catatan PPK</h3>
+                        <p className="text-sm text-gray-500">Dari proses approval kegiatan</p>
+                      </div>
+                    </div>
+                    {kegiatan.catatan_ppk ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-700">{kegiatan.catatan_ppk}</p>
+                        {kegiatan.tanggal_approval_ppk && (
+                          <p className="text-xs text-gray-500 mt-3">
+                            📅 {new Date(kegiatan.tanggal_approval_ppk).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                        <span className="text-3xl mb-2 block">📝</span>
+                        <p className="text-gray-500 text-sm">Belum ada catatan dari PPK</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Evaluasi Pimpinan (dari tabel evaluasi_pimpinan) */}
+                <div className="bg-white border rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <span className="text-xl">👔</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Evaluasi Pimpinan</h3>
+                      <p className="text-sm text-gray-500">Catatan, arahan, dan rekomendasi dari Pimpinan</p>
+                    </div>
+                  </div>
+                  
+                  {evaluasi.length > 0 ? (
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                      {evaluasi.map((ev) => (
+                        <div key={ev.id} className={`border rounded-lg p-4 ${
+                          ev.jenis_evaluasi === 'arahan' ? 'bg-purple-50 border-purple-200' :
+                          ev.jenis_evaluasi === 'rekomendasi' ? 'bg-green-50 border-green-200' :
+                          'bg-blue-50 border-blue-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                              ev.jenis_evaluasi === 'arahan' ? 'bg-purple-100 text-purple-700' :
+                              ev.jenis_evaluasi === 'rekomendasi' ? 'bg-green-100 text-green-700' :
+                              'bg-blue-100 text-blue-700'
+                            }`}>
+                              {ev.jenis_evaluasi === 'arahan' ? '📋 Arahan' :
+                               ev.jenis_evaluasi === 'rekomendasi' ? '💡 Rekomendasi' : '📝 Catatan'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(ev.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700">{ev.isi}</p>
+                          {ev.evaluator_nama && (
+                            <p className="text-xs text-gray-500 mt-2">— {ev.evaluator_nama}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : kegiatan.catatan_kepala ? (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-700">{kegiatan.catatan_kepala}</p>
+                      {kegiatan.tanggal_approval_kepala && (
+                        <p className="text-xs text-gray-500 mt-3">
+                          📅 {new Date(kegiatan.tanggal_approval_kepala).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
+                      <span className="text-3xl mb-2 block">📝</span>
+                      <p className="text-gray-500 text-sm">Belum ada evaluasi dari Pimpinan</p>
+                    </div>
+                  )}
+                </div>
+
                 {/* Skor Kinerja Utama */}
                 <div className={`rounded-xl p-6 ${
                   summary?.status_kinerja === 'Sukses' ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200' :
@@ -2548,7 +2634,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                           <span className="text-lg font-bold text-green-600">{summary.kendala_resolved}</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                          <p className="font-medium text-orange-700">Pending</p>
+                          <p className="font-medium text-orange-700">Menunggu</p>
                           <span className="text-lg font-bold text-orange-600">{summary.kendala_pending}</span>
                         </div>
                       </div>

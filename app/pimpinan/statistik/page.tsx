@@ -540,7 +540,7 @@ export default function StatistikKinerjaPage() {
                         <div className="flex flex-col items-center gap-1">
                           <div className="w-16 bg-gray-200 rounded-full h-1.5">
                             <div 
-                              className={`h-1.5 rounded-full transition-all ${item.serapan_persen >= 80 ? 'bg-emerald-500' : item.serapan_persen >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                              className={`h-1.5 rounded-full transition-all ${item.serapan_persen >= 70 ? 'bg-green-500' : item.serapan_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                               style={{ width: `${Math.min(item.serapan_persen, 100)}%` }}
                             ></div>
                           </div>
@@ -649,7 +649,7 @@ export default function StatistikKinerjaPage() {
                         <div className="flex flex-col items-center gap-1">
                           <div className="w-20 bg-gray-200 rounded-full h-2">
                             <div 
-                              className={`h-2 rounded-full transition-all ${item.serapan_persen >= 80 ? 'bg-emerald-500' : item.serapan_persen >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                              className={`h-2 rounded-full transition-all ${item.serapan_persen >= 70 ? 'bg-green-500' : item.serapan_persen >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`}
                               style={{ width: `${Math.min(item.serapan_persen, 100)}%` }}
                             ></div>
                           </div>

@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
         ko.output_realisasi,
         ko.satuan_output,
         ko.jenis_validasi,
-        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status_pimpinan = 'valid'), 0) as output_tervalidasi,
+        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status = 'disahkan'), 0) as output_tervalidasi,
         ko.tanggal_mulai,
         ko.tanggal_selesai,
         ko.tanggal_realisasi_selesai,
@@ -171,8 +171,9 @@ export async function GET(req: NextRequest) {
           ? Math.round((parseFloat(kg.total_realisasi_anggaran) / parseFloat(kg.anggaran_pagu)) * 100 * 100) / 100 
           : 0,
         capaian_output_persen: kg.target_output > 0 
-          ? Math.round(((kg.jenis_validasi === 'kuantitas' ? parseFloat(kg.output_tervalidasi) : parseFloat(kg.output_realisasi)) / parseFloat(kg.target_output)) * 100 * 100) / 100 
+          ? Math.round(((kg.jenis_validasi === 'kuantitas' ? parseFloat(kg.output_tervalidasi) : parseInt(kg.dokumen_disahkan)) / parseFloat(kg.target_output)) * 100 * 100) / 100 
           : 0,
+        dokumen_disahkan: parseInt(kg.dokumen_disahkan) || 0,
         output_tervalidasi: parseFloat(kg.output_tervalidasi) || 0,
         jenis_validasi: kg.jenis_validasi
       };
