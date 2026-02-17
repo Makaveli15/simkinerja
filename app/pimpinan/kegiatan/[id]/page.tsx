@@ -619,7 +619,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
         </div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Kegiatan tidak ditemukan</h3>
         <p className="text-gray-500 mb-4">Kegiatan dengan ID {kegiatanId} tidak ada atau sudah dihapus.</p>
-        <Link href="/pimpinan/kegiatan" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+        <Link href="/pimpinan/kegiatan/monitoring" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
           <LuChevronLeft className="w-4 h-4" />
           Kembali ke daftar kegiatan
         </Link>
@@ -633,7 +633,7 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-            <Link href="/pimpinan/kegiatan" className="hover:text-blue-600">Monitoring Kegiatan</Link>
+            <Link href="/pimpinan/kegiatan/monitoring" className="hover:text-blue-600">Monitoring Kegiatan</Link>
             <span>/</span>
             <span className="text-gray-900">Detail</span>
           </div>

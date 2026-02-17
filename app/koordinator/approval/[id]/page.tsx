@@ -70,7 +70,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
         setKegiatan(data.kegiatan);
         setApprovalHistory(data.approval_history || []);
       } else {
-        router.push('/koordinator/approval');
+        router.push('/koordinator/kegiatan/approval');
       }
     } catch (error) {
       console.error('Error fetching kegiatan:', error);
@@ -96,7 +96,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
       if (res.ok) {
         const data = await res.json();
         alert(data.message);
-        router.push('/koordinator/approval');
+        router.push('/koordinator/kegiatan/approval');
       } else {
         const error = await res.json();
         alert(error.error || 'Terjadi kesalahan');
@@ -152,7 +152,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link
-          href="/koordinator/approval"
+          href="/koordinator/kegiatan/approval"
           className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
         >
           <LuArrowLeft className="w-5 h-5" />

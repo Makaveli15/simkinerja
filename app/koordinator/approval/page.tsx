@@ -424,7 +424,7 @@ export default function KoordinatorApprovalPage() {
                     <div className="flex flex-col gap-2 lg:items-end">
                       {(item.status_pengajuan === 'diajukan' || item.status_pengajuan === 'review_koordinator') && (
                         <Link
-                          href={`/koordinator/approval/${item.id}`}
+                          href={`/koordinator/kegiatan/approval/${item.id}`}
                           className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all text-center font-medium"
                         >
                           Review & Approval

@@ -222,14 +222,14 @@ export default function PPKLayout({
       if (notif.type === 'approval_request') {
         return `/ppk/kegiatan/approval/${id}`;
       }
-      return `/ppk/kegiatan/monitoring/${id}`;
+      return `/ppk/kegiatan/${id}`;
     }
     
     switch (notif.type) {
       case 'approval_request':
         return '/ppk/kegiatan/approval';
       case 'kegiatan':
-        return id ? `/ppk/kegiatan/monitoring/${id}` : '/ppk/kegiatan/monitoring';
+        return id ? `/ppk/kegiatan/${id}` : '/ppk/kegiatan/approval';
       default:
         return '/ppk/dashboard';
     }

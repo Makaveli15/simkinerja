@@ -100,11 +100,11 @@ export default function PPKApprovalDetailPage() {
         setApprovalHistory(data.approval_history || []);
         setDokumen(data.dokumen || []);
       } else {
-        router.push('/ppk/approval');
+        router.push('/ppk/kegiatan/approval');
       }
     } catch (error) {
       console.error('Error fetching kegiatan:', error);
-      router.push('/ppk/approval');
+      router.push('/ppk/kegiatan/approval');
     } finally {
       setLoading(false);
     }
@@ -131,7 +131,7 @@ export default function PPKApprovalDetailPage() {
           revisi: 'Kegiatan dikembalikan untuk revisi'
         };
         alert(actionMessages[action]);
-        router.push('/ppk/approval');
+        router.push('/ppk/kegiatan/approval');
       } else {
         const error = await res.json();
         alert(error.error || 'Gagal memproses approval');
@@ -219,7 +219,7 @@ export default function PPKApprovalDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Kegiatan tidak ditemukan</p>
-        <Link href="/ppk/approval" className="text-blue-600 hover:underline mt-2 inline-block">
+        <Link href="/ppk/kegiatan/approval" className="text-blue-600 hover:underline mt-2 inline-block">
           Kembali ke daftar approval
         </Link>
       </div>

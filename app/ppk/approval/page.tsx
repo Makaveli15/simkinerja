@@ -233,7 +233,7 @@ export default function PPKApprovalPage() {
             {filteredKegiatan.map((item) => (
               <Link
                 key={item.id}
-                href={`/ppk/approval/${item.id}`}
+                href={`/ppk/kegiatan/approval/${item.id}`}
                 className="block p-6 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
