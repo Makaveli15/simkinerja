@@ -65,6 +65,14 @@ export async function PUT(
       }
       updates.push('status = ?');
       values.push(status);
+      
+      // If resolving kendala, also update all tindak_lanjut to 'selesai'
+      if (status === 'resolved') {
+        await pool.query<ResultSetHeader>(
+          `UPDATE tindak_lanjut SET status = 'selesai' WHERE kendala_id = ?`,
+          [kendalaId]
+        );
+      }
     }
 
     if (deskripsi !== undefined) {

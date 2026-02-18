@@ -362,7 +362,7 @@ export default function PPKKegiatanDetailPage({ params }: { params: Promise<{ id
           <div className="flex flex-wrap lg:flex-nowrap">
             {[
               { id: 'evaluasi-kinerja', label: 'Ringkasan Performa', icon: <LuChartBar className="w-4 h-4" /> },
-              { id: 'progres', label: 'Progres', icon: <LuTrendingUp className="w-4 h-4" />, count: progres.length },
+              { id: 'progres', label: 'Progres', icon: <LuTrendingUp className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: <LuWallet className="w-4 h-4" />, count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: <LuTriangleAlert className="w-4 h-4" />, count: kendala.length },
               { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: <LuCircleCheck className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },

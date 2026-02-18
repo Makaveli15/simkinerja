@@ -145,6 +145,7 @@ interface Kendala {
   id: number;
   tanggal_kendala?: string;
   created_at?: string;
+  resolved_at?: string;
   deskripsi: string;
   tingkat_prioritas: string;
   status: string;
@@ -918,6 +919,26 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const handleUpdateTindakLanjutStatus = async (tindakLanjutId: number, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/pelaksana/tindak-lanjut`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tindakLanjutId, status: newStatus })
+      });
+
+      if (res.ok) {
+        setSuccess('Status tindak lanjut berhasil diupdate');
+        fetchData(); // Refresh data
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Gagal mengupdate status tindak lanjut');
+      }
+    } catch (error) {
+      setError('Terjadi kesalahan');
+    }
+  };
+
   const openTindakLanjutModal = (k: Kendala) => {
     setSelectedKendalaForTL(k);
     setTindakLanjutForm({
@@ -971,7 +992,12 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
 
   const isOverdue = (batasWaktu?: string) => {
     if (!batasWaktu) return false;
-    return new Date(batasWaktu) < new Date();
+    const batas = new Date(batasWaktu);
+    const today = new Date();
+    // Set both to midnight for date-only comparison
+    batas.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return batas < today;
   };
 
   // Calculate totals
@@ -1797,7 +1823,10 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                                   <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadge(k.status)}`}>
                                     {getStatusLabel(k.status)}
                                   </span>
-                                  <span className="text-xs text-gray-500">{formatDate(k.tanggal_kendala || k.created_at)}</span>
+                                  <span className="text-xs text-gray-500">Dilaporkan: {formatDate(k.tanggal_kendala || k.created_at)}</span>
+                                  {k.status === 'resolved' && k.resolved_at && (
+                                    <span className="text-xs text-green-600 font-medium">• Diselesaikan: {formatDate(k.resolved_at)}</span>
+                                  )}
                                 </div>
                                 <p className="text-gray-900">{k.deskripsi}</p>
                               </div>
@@ -1827,7 +1856,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                                 <p className="text-sm font-medium text-gray-700 mb-3">Tindak Lanjut:</p>
                                 <div className="space-y-3 pl-4 border-l-2 border-blue-200">
                                   {k.tindak_lanjut.map((tl) => (
-                                    <div key={tl.id} className={`bg-gray-50 p-3 rounded-lg ${isOverdue(tl.batas_waktu) && tl.status !== 'done' ? 'border-2 border-red-300' : ''}`}>
+                                    <div key={tl.id} className={`bg-gray-50 p-3 rounded-lg ${isOverdue(tl.batas_waktu) && tl.status !== 'done' && tl.status !== 'selesai' ? 'border-2 border-red-300' : ''}`}>
                                       <div className="flex justify-between items-start mb-1">
                                         <div className="flex items-center gap-2">
                                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusBadge(tl.status)}`}>
@@ -1837,12 +1866,22 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                                             {formatDate(tl.tanggal_tindak_lanjut || tl.created_at)}
                                           </span>
                                         </div>
-                                        {tl.batas_waktu && (
-                                          <div className={`text-xs ${isOverdue(tl.batas_waktu) && tl.status !== 'done' ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                                            {isOverdue(tl.batas_waktu) && tl.status !== 'done' ? 'Overdue! ' : ''}
-                                            Batas: {formatDate(tl.batas_waktu)}
-                                          </div>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                          {tl.batas_waktu && (
+                                            <div className={`text-xs ${isOverdue(tl.batas_waktu) && tl.status !== 'done' && tl.status !== 'selesai' ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                                              {isOverdue(tl.batas_waktu) && tl.status !== 'done' && tl.status !== 'selesai' ? 'Overdue! ' : ''}
+                                              Batas: {formatDate(tl.batas_waktu)}
+                                            </div>
+                                          )}
+                                          {tl.status !== 'selesai' && tl.status !== 'done' && k.status !== 'resolved' && (
+                                            <button
+                                              onClick={() => handleUpdateTindakLanjutStatus(tl.id, 'selesai')}
+                                              className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200 flex items-center gap-1"
+                                            >
+                                              <LuCircleCheck className="w-3 h-3" /> Selesai
+                                            </button>
+                                          )}
+                                        </div>
                                       </div>
                                       <p className="text-sm text-gray-800">{tl.deskripsi}</p>
                                     </div>
@@ -2494,7 +2533,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
 
       {/* Modal Tindak Lanjut */}
       {showTindakLanjutModal && selectedKendalaForTL && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-lg w-full p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Tambah Tindak Lanjut</h3>
             <div className="bg-orange-50 p-3 rounded-lg mb-4">

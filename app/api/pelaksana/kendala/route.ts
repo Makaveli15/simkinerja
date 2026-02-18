@@ -100,18 +100,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
-    const [kendala] = await pool.query<RowDataPacket[]>(
-      `SELECT * FROM kendala_kegiatan 
-       WHERE kegiatan_id = ? 
-       ORDER BY 
-         CASE tingkat_prioritas 
-           WHEN 'tinggi' THEN 1 
-           WHEN 'sedang' THEN 2 
-           WHEN 'rendah' THEN 3 
-         END,
-         tanggal_kendala DESC`,
-      [kegiatanId]
-    );
+    let kendalaRows: RowDataPacket[] = [];
+    try {
+      const [result] = await pool.query<RowDataPacket[]>(
+        `SELECT id, kegiatan_id, user_id, tanggal_kejadian, deskripsi, 
+                tingkat_dampak as tingkat_prioritas, status, resolved_at, created_at 
+         FROM kendala_kegiatan 
+         WHERE kegiatan_id = ? 
+         ORDER BY 
+           CASE tingkat_dampak 
+             WHEN 'tinggi' THEN 1 
+             WHEN 'sedang' THEN 2 
+             WHEN 'rendah' THEN 3 
+           END,
+           tanggal_kejadian DESC`,
+        [kegiatanId]
+      );
+      kendalaRows = result;
+    } catch (e) {
+      // Fallback: try without resolved_at column
+      const [result] = await pool.query<RowDataPacket[]>(
+        `SELECT id, kegiatan_id, user_id, tanggal_kejadian, deskripsi, 
+                tingkat_dampak as tingkat_prioritas, status, NULL as resolved_at, created_at 
+         FROM kendala_kegiatan 
+         WHERE kegiatan_id = ? 
+         ORDER BY 
+           CASE tingkat_dampak 
+             WHEN 'tinggi' THEN 1 
+             WHEN 'sedang' THEN 2 
+             WHEN 'rendah' THEN 3 
+           END,
+           tanggal_kejadian DESC`,
+        [kegiatanId]
+      );
+      kendalaRows = result;
+    }
+
+    const kendala = kendalaRows;
 
     // Get tindak lanjut for each kendala
     const kendalaWithTindakLanjut = await Promise.all(kendala.map(async (k) => {
@@ -200,7 +225,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (tingkat_prioritas && validPrioritas.includes(tingkat_prioritas)) {
-      updateFields.push('tingkat_prioritas = ?');
+      updateFields.push('tingkat_dampak = ?');
       updateValues.push(tingkat_prioritas);
     }
 

@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
 
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO tindak_lanjut 
-       (kendala_id, user_id, deskripsi, tanggal, batas_waktu)
-       VALUES (?, ?, ?, CURDATE(), ?)`,
+       (kendala_id, user_id, deskripsi, tanggal, batas_waktu, status)
+       VALUES (?, ?, ?, CURDATE(), ?, 'direncanakan')`,
       [kendala_id, auth.id, deskripsi, batas_waktu || null]
     );
 
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT - Update tindak lanjut
+// PUT - Update tindak lanjut (deskripsi or status)
 export async function PUT(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -149,14 +149,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id, deskripsi } = await request.json();
+    const { id, deskripsi, status } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'Tindak lanjut ID diperlukan' }, { status: 400 });
-    }
-
-    if (!deskripsi) {
-      return NextResponse.json({ error: 'Deskripsi harus diisi' }, { status: 400 });
     }
 
     // Get kendala_id first
@@ -174,9 +170,33 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
+    // Build update query dynamically
+    const updates: string[] = [];
+    const values: (string | number)[] = [];
+
+    if (deskripsi !== undefined) {
+      updates.push('deskripsi = ?');
+      values.push(deskripsi);
+    }
+
+    if (status !== undefined) {
+      const validStatuses = ['direncanakan', 'dalam_proses', 'selesai'];
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json({ error: 'Status tidak valid' }, { status: 400 });
+      }
+      updates.push('status = ?');
+      values.push(status);
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json({ error: 'Tidak ada data untuk diupdate' }, { status: 400 });
+    }
+
+    values.push(id);
+
     await pool.query<ResultSetHeader>(
-      'UPDATE tindak_lanjut SET deskripsi = ? WHERE id = ?',
-      [deskripsi, id]
+      `UPDATE tindak_lanjut SET ${updates.join(', ')} WHERE id = ?`,
+      values
     );
 
     return NextResponse.json({ message: 'Tindak lanjut berhasil diupdate' });

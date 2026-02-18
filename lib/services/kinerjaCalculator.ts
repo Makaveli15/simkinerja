@@ -35,6 +35,9 @@ export interface KegiatanData {
   total_kendala: number;
   kendala_resolved: number;
   
+  // Jenis validasi untuk menentukan cara hitung kualitas output
+  jenis_validasi?: 'kuantitas' | 'dokumen';
+  
   // Data dokumen untuk perhitungan status verifikasi per dokumen (opsional)
   dokumen_stats?: {
     total_final: number;           // Total dokumen final
@@ -176,13 +179,17 @@ const AMBANG_EFEKTIVITAS_ANGGARAN = 95;
 
 /**
  * Hitung skor Capaian Output (30%)
- * Formula: (output_realisasi / target_output) * 100
+ * Formula: (output_tervalidasi / target_output) * 100
+ * Gunakan output_tervalidasi jika tersedia, fallback ke output_realisasi
  * Maksimal skor: 100
  */
-function hitungCapaianOutput(targetOutput: number, outputRealisasi: number): number {
+function hitungCapaianOutput(targetOutput: number, outputRealisasi: number, outputTervalidasi?: number): number {
   if (!targetOutput || targetOutput <= 0) return 0;
   
-  const persentase = (outputRealisasi / targetOutput) * 100;
+  // Prioritaskan output_tervalidasi (data yang sudah disahkan)
+  const output = outputTervalidasi !== undefined && outputTervalidasi > 0 ? outputTervalidasi : outputRealisasi;
+  
+  const persentase = (output / targetOutput) * 100;
   return Math.min(persentase, 100); // Cap at 100
 }
 
@@ -341,16 +348,18 @@ function hitungSerapanAnggaran(
 /**
  * Hitung skor Kualitas Output (20%)
  * 
- * LOGIKA BARU - Berdasarkan dokumen dan target output:
- * - Skor = (dokumen_disahkan / target_output) * 100
- * - Jika ada dokumen revisi: penalti
- * - Jika tidak ada dokumen final: gunakan status_verifikasi lama
+ * LOGIKA BARU - Mendukung 2 jenis validasi:
  * 
- * LOGIKA LAMA (fallback jika tidak ada data dokumen):
- * - VALID: 100
- * - MENUNGGU: 50 (sedang menunggu validasi)
- * - REVISI: 30 (output perlu perbaikan)
- * - BELUM_VERIFIKASI: 0 (belum bisa dinilai)
+ * 1. KUANTITAS (jenis_validasi = 'kuantitas'):
+ *    - Skor = (output_tervalidasi / target_output) * 100
+ *    - Menggunakan data dari validasi_output_kuantitas yang status_validasi = 'valid'
+ * 
+ * 2. DOKUMEN (jenis_validasi = 'dokumen'):
+ *    - Skor = (dokumen_disahkan / target_output) * 100
+ *    - Jika ada dokumen revisi: penalti
+ * 
+ * FALLBACK:
+ * - Jika tidak ada data, gunakan status_verifikasi lama
  */
 function hitungKualitasOutput(
   statusVerifikasi: 'belum_verifikasi' | 'menunggu' | 'valid' | 'revisi',
@@ -360,8 +369,22 @@ function hitungKualitasOutput(
     final_menunggu: number;
     final_revisi: number;
   },
-  targetOutput?: number
+  targetOutput?: number,
+  jenisValidasi?: 'kuantitas' | 'dokumen',
+  outputTervalidasi?: number
 ): number {
+  // ========== JENIS VALIDASI: KUANTITAS ==========
+  if (jenisValidasi === 'kuantitas') {
+    if (!targetOutput || targetOutput <= 0) return 0;
+    
+    // Gunakan output_tervalidasi (dari validasi_output_kuantitas yang status = 'valid')
+    const tervalidasi = outputTervalidasi || 0;
+    const persentase = (tervalidasi / targetOutput) * 100;
+    
+    return Math.max(0, Math.min(100, persentase));
+  }
+  
+  // ========== JENIS VALIDASI: DOKUMEN ==========
   // Jika ada data dokumen, hitung berdasarkan dokumen
   if (dokumenStats && dokumenStats.total_final > 0) {
     const { final_disahkan, final_menunggu, final_revisi } = dokumenStats;
@@ -383,7 +406,7 @@ function hitungKualitasOutput(
     return Math.max(0, Math.min(100, skor));
   }
   
-  // Fallback ke logika lama jika tidak ada data dokumen
+  // ========== FALLBACK: Status Verifikasi Lama ==========
   switch (statusVerifikasi) {
     case 'valid':
       return 100;
@@ -425,9 +448,11 @@ function tentukanStatusKinerja(skor: number): 'Sukses' | 'Perlu Perhatian' | 'Be
  */
 export function hitungKinerjaKegiatan(data: KegiatanData): KinerjaResult {
   // Hitung masing-masing indikator
+  // Capaian output menggunakan output_tervalidasi jika tersedia
   const skorCapaianOutput = hitungCapaianOutput(
     data.target_output, 
-    data.output_realisasi
+    data.output_realisasi,
+    data.output_tervalidasi
   );
 
   const { skor: skorKetepatanWaktu, deviasiHari } = hitungKetepatanWaktu(
@@ -441,12 +466,15 @@ export function hitungKinerjaKegiatan(data: KegiatanData): KinerjaResult {
     data.total_realisasi_anggaran
   );
 
-  // Hitung kualitas output berdasarkan dokumen jika tersedia
-  // Kirimkan target_output untuk perhitungan yang akurat
+  // Hitung kualitas output berdasarkan jenis_validasi
+  // Untuk kuantitas: gunakan output_tervalidasi
+  // Untuk dokumen: gunakan dokumen_stats
   const skorKualitasOutput = hitungKualitasOutput(
     data.status_verifikasi,
     data.dokumen_stats,
-    data.target_output
+    data.target_output,
+    data.jenis_validasi,
+    data.output_tervalidasi
   );
 
   const skorPenyelesaianKendala = hitungPenyelesaianKendala(

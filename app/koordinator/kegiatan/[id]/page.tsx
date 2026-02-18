@@ -77,6 +77,7 @@ interface Kendala {
   tingkat_prioritas: string;
   status: string;
   created_at: string;
+  resolved_at?: string;
   tindak_lanjut: TindakLanjut[];
 }
 
@@ -726,7 +727,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
           <div className="flex flex-wrap lg:flex-nowrap">
             {[
               { id: 'evaluasi-kinerja', label: 'Ringkasan Performa', icon: <LuChartBar className="w-4 h-4" /> },
-              { id: 'progres', label: 'Progres', icon: <LuChartLine className="w-4 h-4" />, count: progres.length },
+              { id: 'progres', label: 'Progres', icon: <LuChartLine className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : progres.length },
               { id: 'anggaran', label: 'Realisasi Anggaran', icon: <LuWallet className="w-4 h-4" />, count: realisasiAnggaran.length },
               { id: 'kendala', label: 'Kendala', icon: <LuTriangleAlert className="w-4 h-4" />, count: kendala.length },
               { id: 'dokumen', label: 'Verifikasi Kualitas Output', icon: <LuCircleCheck className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
@@ -919,22 +920,27 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-600">Status Verifikasi</span>
                       <span className={`font-medium flex items-center gap-1 ${
-                        kegiatan?.status_verifikasi === 'valid' ? 'text-green-600' :
-                        kegiatan?.status_verifikasi === 'revisi' ? 'text-blue-600' :
-                        kegiatan?.status_verifikasi === 'menunggu' ? 'text-blue-600' : 'text-gray-500'
+                        statusVerifikasiDokumen.status === 'valid' ? 'text-green-600' :
+                        statusVerifikasiDokumen.status === 'menunggu' ? 'text-blue-600' :
+                        statusVerifikasiDokumen.status === 'revisi' ? 'text-orange-600' : 'text-gray-500'
                       }`}>
-                        {kegiatan?.status_verifikasi === 'valid' ? <><LuCircleCheck className="w-3 h-3" /> Valid</> :
-                         kegiatan?.status_verifikasi === 'revisi' ? <><LuHourglass className="w-3 h-3" /> Menunggu</> :
-                         kegiatan?.status_verifikasi === 'menunggu' ? <><LuHourglass className="w-3 h-3" /> Menunggu</> : 'Belum'}
+                        {statusVerifikasiDokumen.status === 'valid' ? <><LuCircleCheck className="w-3 h-3" /> Valid</> :
+                         statusVerifikasiDokumen.status === 'menunggu' ? <><LuHourglass className="w-3 h-3" /> Menunggu</> :
+                         statusVerifikasiDokumen.status === 'revisi' ? <><LuCircleX className="w-3 h-3" /> Revisi</> : 'Belum'}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Dokumen</span>
-                      <span className="font-medium text-gray-700">{dokumenOutput.length} file</span>
+                      <span className="text-gray-600">{kegiatan?.jenis_validasi === 'kuantitas' ? 'Pengajuan' : 'Dokumen'}</span>
+                      <span className="font-medium text-gray-700">{kegiatan?.jenis_validasi === 'kuantitas' ? `${validasiKuantitas.length} pengajuan` : `${dokumenOutput.length} file`}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-gray-600">Disahkan</span>
-                      <span className="font-medium text-green-600">{dokumenOutput.filter(d => d.tanggal_disahkan || d.status_final === 'disahkan').length} file</span>
+                      <span className="font-medium text-green-600">
+                        {kegiatan?.jenis_validasi === 'kuantitas' 
+                          ? `${statusVerifikasiDokumen.disahkan} ${kegiatan?.satuan_output || ''}`
+                          : `${dokumenOutput.filter(d => d.tanggal_disahkan || d.status_final === 'disahkan').length} file`
+                        }
+                      </span>
                     </div>
                   </div>
                   <div className="mt-3">
@@ -1175,9 +1181,9 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                   <p className="text-2xl font-bold text-purple-600">
                     {kegiatan?.target_output && kegiatan.target_output > 0
                       ? kegiatan?.jenis_validasi === 'kuantitas'
-                        ? Math.round((validasiKuantitas.filter(v => v.status_kesubag === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100)
-                        : Math.round((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100)
-                      : 0}%
+                        ? ((validasiKuantitas.filter(v => v.status_kesubag === 'valid').reduce((sum, v) => sum + Number(v.jumlah_output), 0) / kegiatan.target_output) * 100).toFixed(2)
+                        : ((dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'disahkan').length / kegiatan.target_output) * 100).toFixed(2)
+                      : '0.00'}%
                   </p>
                   <p className="text-sm text-gray-500">dari target</p>
                 </div>
@@ -1212,12 +1218,24 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                 </div>
               </div>
 
-              {/* Riwayat Info */}
+              {/* Info Ringkasan Validasi */}
               <div className="mb-4 p-4 bg-gray-50 rounded-xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Output Realisasi (Manual)</p>
-                    <p className="font-semibold text-gray-900">{Math.round(kegiatan?.output_realisasi || 0)} {kegiatan?.satuan_output}</p>
+                    <p className="text-sm text-gray-600">Total Pengajuan</p>
+                    <p className="font-semibold text-gray-900">
+                      {kegiatan?.jenis_validasi === 'kuantitas' 
+                        ? validasiKuantitas.length 
+                        : dokumenOutput.filter(d => d.tipe_dokumen === 'final').length} pengajuan
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Menunggu Validasi Anda</p>
+                    <p className="font-semibold text-yellow-600">
+                      {kegiatan?.jenis_validasi === 'kuantitas' 
+                        ? validasiKuantitas.filter(v => v.status_kesubag === 'menunggu').length
+                        : dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'menunggu').length} pengajuan
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Tanggal Selesai Aktual</p>
@@ -1228,31 +1246,88 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                 </div>
               </div>
 
-              {/* Riwayat Progres */}
-              <h4 className="font-semibold text-gray-900 mb-3">Riwayat Update Progres</h4>
-              {progres.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">Belum ada riwayat progres</p>
-                </div>
+              {/* Riwayat Validasi */}
+              <h4 className="font-semibold text-gray-900 mb-3">Riwayat Validasi Output</h4>
+              {kegiatan?.jenis_validasi === 'kuantitas' ? (
+                validasiKuantitas.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500">Belum ada pengajuan validasi kuantitas</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Jumlah Output</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Keterangan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {validasiKuantitas.slice(0, 10).map(v => (
+                          <tr key={v.id}>
+                            <td className="px-4 py-3 text-sm">{formatDate(v.created_at)}</td>
+                            <td className="px-4 py-3 font-medium">{Math.round(v.jumlah_output)} {kegiatan?.satuan_output}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                v.status_kesubag === 'valid' ? 'bg-green-100 text-green-700' :
+                                v.status_kesubag === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {v.status_kesubag === 'valid' ? 'Divalidasi' : v.status_kesubag === 'ditolak' ? 'Ditolak' : 'Menunggu'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{v.catatan_kesubag || v.keterangan || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {validasiKuantitas.length > 10 && (
+                      <p className="text-center text-sm text-gray-500 mt-2">Menampilkan 10 dari {validasiKuantitas.length} pengajuan</p>
+                    )}
+                  </div>
+                )
               ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal Update</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Capaian Output (%)</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Keterangan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {progres.map(p => (
-                      <tr key={p.id}>
-                        <td className="px-4 py-3">{formatDate(p.tanggal_update)}</td>
-                        <td className="px-4 py-3 font-medium">{Math.round(p.capaian_output)}%</td>
-                        <td className="px-4 py-3">{p.keterangan || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                dokumenOutput.filter(d => d.tipe_dokumen === 'final').length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500">Belum ada dokumen output final</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Nama Dokumen</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Catatan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {dokumenOutput.filter(d => d.tipe_dokumen === 'final').slice(0, 10).map(d => (
+                          <tr key={d.id}>
+                            <td className="px-4 py-3 text-sm">{formatDate(d.created_at)}</td>
+                            <td className="px-4 py-3 font-medium text-sm">{d.nama_dokumen}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                d.status_final === 'disahkan' ? 'bg-green-100 text-green-700' :
+                                d.status_final === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {d.status_final === 'disahkan' ? 'Disahkan' : d.status_final === 'ditolak' ? 'Ditolak' : 'Menunggu'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{d.catatan_validasi || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {dokumenOutput.filter(d => d.tipe_dokumen === 'final').length > 10 && (
+                      <p className="text-center text-sm text-gray-500 mt-2">Menampilkan 10 dari {dokumenOutput.filter(d => d.tipe_dokumen === 'final').length} dokumen</p>
+                    )}
+                  </div>
+                )
               )}
             </div>
           )}
@@ -1322,7 +1397,40 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                       </span>
                     </div>
                     <p className="text-gray-900 mb-2">{k.deskripsi}</p>
-                    <p className="text-xs text-gray-500">Dilaporkan: {formatDate(k.created_at)}</p>
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <span>Dilaporkan: {formatDate(k.created_at)}</span>
+                      {(k.status === 'selesai' || k.status === 'resolved') && k.resolved_at && (
+                        <span className="text-green-600 font-medium">• Diselesaikan: {formatDate(k.resolved_at)}</span>
+                      )}
+                    </div>
+                    
+                    {/* Tindak Lanjut */}
+                    {k.tindak_lanjut && k.tindak_lanjut.length > 0 && (
+                      <div className="mt-3 pl-4 border-l-2 border-blue-300 space-y-2">
+                        <p className="text-xs font-medium text-blue-600 flex items-center gap-1">
+                          <LuArrowRight className="w-3 h-3" /> Tindak Lanjut ({k.tindak_lanjut.length})
+                        </p>
+                        {k.tindak_lanjut.map((tl) => (
+                          <div key={tl.id} className="text-sm bg-white p-3 rounded-lg border border-gray-100">
+                            <p className="text-gray-700">{tl.deskripsi}</p>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                              {tl.batas_waktu && (
+                                <span className="flex items-center gap-1">
+                                  <LuCalendar className="w-3 h-3" /> Batas: {formatDate(tl.batas_waktu)}
+                                </span>
+                              )}
+                              <span className={`px-2 py-0.5 rounded-full ${
+                                (tl.status === 'done' || tl.status === 'selesai' || k.status === 'resolved' || k.status === 'selesai')
+                                  ? 'bg-green-100 text-green-700' 
+                                  : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                                {(tl.status === 'done' || tl.status === 'selesai' || k.status === 'resolved' || k.status === 'selesai') ? 'Selesai' : 'Belum Selesai'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

@@ -146,28 +146,32 @@ export async function GET(
       console.log('Table realisasi_anggaran might not exist');
     }
 
-    // Get kendala list - try tanggal_kendala first, fallback to created_at, then id
+    // Get kendala list - try with resolved_at first, fallback without it
     let kendala: RowDataPacket[] = [];
     try {
       const [kendalaResult] = await pool.query<RowDataPacket[]>(
-        `SELECT * FROM kendala_kegiatan 
+        `SELECT id, kegiatan_id, user_id, tanggal_kejadian, deskripsi, 
+                tingkat_dampak as tingkat_prioritas, status, resolved_at, created_at 
+         FROM kendala_kegiatan 
          WHERE kegiatan_id = ? 
-         ORDER BY COALESCE(tanggal_kendala, created_at, id) DESC`,
+         ORDER BY COALESCE(tanggal_kejadian, created_at, id) DESC`,
         [id]
       );
       kendala = kendalaResult;
     } catch (e1) {
-      // Fallback: try simpler query without tanggal_kendala
+      // Fallback: try without resolved_at column (might not exist yet)
       try {
         const [kendalaResult] = await pool.query<RowDataPacket[]>(
-          `SELECT * FROM kendala_kegiatan 
+          `SELECT id, kegiatan_id, user_id, tanggal_kejadian, deskripsi, 
+                  tingkat_dampak as tingkat_prioritas, status, NULL as resolved_at, created_at 
+           FROM kendala_kegiatan 
            WHERE kegiatan_id = ? 
-           ORDER BY id DESC`,
+           ORDER BY COALESCE(tanggal_kejadian, created_at, id) DESC`,
           [id]
         );
         kendala = kendalaResult;
       } catch (e2) {
-        console.log('Table kendala_kegiatan might not exist');
+        console.log('Error fetching kendala:', e2);
       }
     }
 
@@ -220,12 +224,21 @@ export async function GET(
     let validasiKuantitasList: RowDataPacket[] = [];
     try {
       const [validasiResult] = await pool.query<RowDataPacket[]>(
-        `SELECT * FROM validasi_kuantitas WHERE kegiatan_id = ? ORDER BY created_at DESC`,
+        `SELECT * FROM validasi_output_kuantitas WHERE kegiatan_id = ? ORDER BY created_at DESC`,
         [id]
       );
       validasiKuantitasList = validasiResult;
     } catch (e) {
-      console.log('Could not get validasi_kuantitas:', e);
+      // Fallback ke tabel lama
+      try {
+        const [validasiResult] = await pool.query<RowDataPacket[]>(
+          `SELECT * FROM validasi_kuantitas WHERE kegiatan_id = ? ORDER BY created_at DESC`,
+          [id]
+        );
+        validasiKuantitasList = validasiResult;
+      } catch (e2) {
+        console.log('Could not get validasi_kuantitas:', e2);
+      }
     }
 
     // Prepare data for automatic kinerja calculation
@@ -242,9 +255,9 @@ export async function GET(
     let outputTervalidasi = 0;
     const jenisValidasi = kegiatanDetail.jenis_validasi || 'dokumen';
     if (jenisValidasi === 'kuantitas') {
-      // Untuk kuantitas: SUM jumlah_output dari validasi_kuantitas yang status = 'disahkan'
+      // Untuk kuantitas: SUM jumlah_output dari validasi_output_kuantitas yang status_validasi = 'valid'
       outputTervalidasi = validasiKuantitasList
-        .filter((v: RowDataPacket) => v.status === 'disahkan')
+        .filter((v: RowDataPacket) => v.status_validasi === 'valid' || v.status === 'disahkan')
         .reduce((sum: number, v: RowDataPacket) => sum + (parseFloat(v.jumlah_output) || 0), 0);
     } else {
       // Untuk dokumen: COUNT dokumen yang status_final = 'disahkan'
@@ -266,6 +279,7 @@ export async function GET(
       kendala_resolved: resolvedKendala,
       // Tambahkan dokumen_stats untuk perhitungan kualitas output berdasarkan dokumen
       dokumen_stats: dokumenStats.total_final > 0 ? dokumenStats : undefined,
+      jenis_validasi: jenisValidasi as 'kuantitas' | 'dokumen'
     };
 
     // Calculate kinerja using rule-based service (automatic calculation)
@@ -307,20 +321,38 @@ export async function GET(
       return null;
     };
 
-    // Get evaluasi from evaluasi_pimpinan table
+    // Get evaluasi from evaluasi table (unified table for both pimpinan & kesubag)
     let evaluasiList: RowDataPacket[] = [];
     try {
       const [evaluasiResult] = await pool.query<RowDataPacket[]>(
-        `SELECT ep.*, u.username as evaluator_nama, u.role as evaluator_role
-         FROM evaluasi_pimpinan ep
-         LEFT JOIN users u ON ep.user_id = u.id
-         WHERE ep.kegiatan_id = ?
-         ORDER BY ep.created_at DESC`,
+        `SELECT 
+          e.*,
+          COALESCE(u.nama_lengkap, u.username) as evaluator_nama,
+          u.username as pemberi_username,
+          u.role as evaluator_role,
+          u.role as pemberi_role
+         FROM evaluasi e
+         LEFT JOIN users u ON e.user_id = u.id
+         WHERE e.kegiatan_id = ?
+         ORDER BY e.created_at DESC`,
         [id]
       );
       evaluasiList = evaluasiResult;
     } catch (e) {
-      console.log('Could not get evaluasi:', e);
+      // Fallback to evaluasi_pimpinan if evaluasi table doesn't exist
+      try {
+        const [evaluasiResult] = await pool.query<RowDataPacket[]>(
+          `SELECT ep.*, u.username as evaluator_nama, u.role as evaluator_role
+           FROM evaluasi_pimpinan ep
+           LEFT JOIN users u ON ep.user_id = u.id
+           WHERE ep.kegiatan_id = ?
+           ORDER BY ep.created_at DESC`,
+          [id]
+        );
+        evaluasiList = evaluasiResult;
+      } catch (e2) {
+        console.log('Could not get evaluasi:', e2);
+      }
     }
 
     // Format kegiatan dates properly to avoid timezone issues
@@ -431,7 +463,7 @@ export async function PUT(
     // Get current kegiatan data to preserve fields that are not being updated
     const [currentData] = await pool.query<RowDataPacket[]>(
       `SELECT nama, deskripsi, kro_id, mitra_id, tanggal_mulai, tanggal_selesai, 
-              target_output, satuan_output, anggaran_pagu, status,
+              target_output, satuan_output, jenis_validasi, anggaran_pagu, status,
               output_realisasi, tanggal_realisasi_selesai, status_verifikasi 
        FROM kegiatan WHERE id = ?`,
       [id]
@@ -515,8 +547,29 @@ export async function PUT(
       : currentKegiatan.anggaran_pagu;
     const finalStatus = status !== undefined && status !== '' ? status : currentKegiatan.status;
 
-    // Get jenis_validasi from satuan_output table if satuan_output changed
-    let finalJenisValidasi = currentKegiatan.jenis_validasi || 'dokumen';
+    // Always preserve jenis_validasi from current kegiatan data
+    // Only update if satuan_output explicitly changed
+    let finalJenisValidasi = currentKegiatan.jenis_validasi;
+    
+    // If jenis_validasi is null, try to get from satuan_output table
+    if (!finalJenisValidasi) {
+      const satuanToCheck = satuan_output !== undefined && satuan_output !== '' ? satuan_output : currentKegiatan.satuan_output;
+      if (satuanToCheck) {
+        const [satuanRows] = await pool.query<RowDataPacket[]>(
+          'SELECT jenis_validasi FROM satuan_output WHERE nama = ? LIMIT 1',
+          [satuanToCheck]
+        );
+        if (satuanRows.length > 0 && satuanRows[0].jenis_validasi) {
+          finalJenisValidasi = satuanRows[0].jenis_validasi;
+        }
+      }
+      // Default to 'dokumen' only if still null
+      if (!finalJenisValidasi) {
+        finalJenisValidasi = 'dokumen';
+      }
+    }
+    
+    // If satuan_output explicitly changed, update jenis_validasi from new satuan_output
     if (satuan_output !== undefined && satuan_output !== '' && satuan_output !== currentKegiatan.satuan_output) {
       const [satuanRows] = await pool.query<RowDataPacket[]>(
         'SELECT jenis_validasi FROM satuan_output WHERE nama = ? LIMIT 1',

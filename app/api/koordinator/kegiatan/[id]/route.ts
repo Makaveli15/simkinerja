@@ -94,7 +94,9 @@ export async function GET(
     let kendala: RowDataPacket[] = [];
     try {
       const [kendalaRows] = await pool.query<RowDataPacket[]>(`
-        SELECT * FROM kendala_kegiatan 
+        SELECT id, kegiatan_id, user_id, tanggal_kejadian, deskripsi, 
+               tingkat_dampak as tingkat_prioritas, status, resolved_at, created_at 
+        FROM kendala_kegiatan 
         WHERE kegiatan_id = ?
         ORDER BY created_at DESC
       `, [kegiatanId]);
@@ -114,8 +116,34 @@ export async function GET(
       }
       kendala = kendalaRows;
     } catch (err) {
-      console.error('Error fetching kendala:', err);
-      kendala = [];
+      // Fallback: try without resolved_at column
+      try {
+        const [kendalaRows] = await pool.query<RowDataPacket[]>(`
+          SELECT id, kegiatan_id, user_id, tanggal_kejadian, deskripsi, 
+                 tingkat_dampak as tingkat_prioritas, status, NULL as resolved_at, created_at 
+          FROM kendala_kegiatan 
+          WHERE kegiatan_id = ?
+          ORDER BY created_at DESC
+        `, [kegiatanId]);
+        
+        for (const k of kendalaRows) {
+          try {
+            const [tlRows] = await pool.query<RowDataPacket[]>(`
+              SELECT id, deskripsi, batas_waktu, status, created_at 
+              FROM tindak_lanjut 
+              WHERE kendala_id = ?
+              ORDER BY created_at DESC
+            `, [k.id]);
+            k.tindak_lanjut = tlRows;
+          } catch {
+            k.tindak_lanjut = [];
+          }
+        }
+        kendala = kendalaRows;
+      } catch (err2) {
+        console.error('Error fetching kendala:', err2);
+        kendala = [];
+      }
     }
 
     // Get evaluasi
@@ -179,14 +207,24 @@ export async function GET(
     let validasiKuantitas: RowDataPacket[] = [];
     try {
       const [validasiRows] = await pool.query<RowDataPacket[]>(`
-        SELECT * FROM validasi_kuantitas 
+        SELECT * FROM validasi_output_kuantitas 
         WHERE kegiatan_id = ?
         ORDER BY created_at DESC
       `, [kegiatanId]);
       validasiKuantitas = validasiRows;
     } catch (err) {
-      console.error('Error fetching validasi kuantitas:', err);
-      validasiKuantitas = [];
+      // Fallback ke tabel lama jika tabel baru tidak ada
+      try {
+        const [validasiRows] = await pool.query<RowDataPacket[]>(`
+          SELECT * FROM validasi_kuantitas 
+          WHERE kegiatan_id = ?
+          ORDER BY created_at DESC
+        `, [kegiatanId]);
+        validasiKuantitas = validasiRows;
+      } catch (err2) {
+        console.error('Error fetching validasi kuantitas:', err2);
+        validasiKuantitas = [];
+      }
     }
 
     // Get mitra terkait kegiatan dari kedua sumber
@@ -275,9 +313,9 @@ export async function GET(
     // Calculate output tervalidasi berdasarkan jenis_validasi
     let outputTervalidasi = 0;
     if (jenis_validasi === 'kuantitas') {
-      // Untuk kuantitas: SUM jumlah_output dari validasi_kuantitas yang status = 'disahkan'
+      // Untuk kuantitas: SUM jumlah_output dari validasi_output_kuantitas yang status_validasi = 'valid'
       outputTervalidasi = validasiKuantitas
-        .filter((v: RowDataPacket) => v.status === 'disahkan')
+        .filter((v: RowDataPacket) => v.status_validasi === 'valid' || v.status === 'disahkan')
         .reduce((sum: number, v: RowDataPacket) => sum + (parseFloat(v.jumlah_output) || 0), 0);
     } else {
       // Untuk dokumen: COUNT dokumen yang status_final = 'disahkan'
@@ -303,7 +341,8 @@ export async function GET(
       total_realisasi_anggaran: totalRealisasiAnggaran,
       total_kendala: totalKendala,
       kendala_resolved: kendalaResolved,
-      dokumen_stats: dokumenStats
+      dokumen_stats: dokumenStats,
+      jenis_validasi: jenis_validasi as 'kuantitas' | 'dokumen'
     };
 
     const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
