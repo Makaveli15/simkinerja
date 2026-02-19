@@ -167,17 +167,34 @@ export async function GET(req: NextRequest) {
 
     // Calculate kinerja for each kegiatan and get mitra list
     const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg) => {
+      // Determine output tervalidasi based on jenis_validasi
+      const jenisValidasi = kg.jenis_validasi || 'dokumen';
+      const outputTervalidasi = jenisValidasi === 'kuantitas' 
+        ? parseFloat(kg.output_tervalidasi) || 0 
+        : parseInt(kg.dokumen_disahkan) || 0;
+      
+      // Build dokumen_stats if needed
+      const dokumenStats = jenisValidasi === 'dokumen' ? {
+        total_final: parseInt(kg.dokumen_disahkan) || 0,
+        final_disahkan: parseInt(kg.dokumen_disahkan) || 0,
+        final_menunggu: 0,
+        final_revisi: 0
+      } : undefined;
+
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
         tanggal_mulai: kg.tanggal_mulai,
         tanggal_selesai: kg.tanggal_selesai,
         anggaran_pagu: parseFloat(kg.anggaran_pagu) || 0,
         output_realisasi: parseFloat(kg.output_realisasi) || 0,
+        output_tervalidasi: outputTervalidasi,
         tanggal_realisasi_selesai: kg.tanggal_realisasi_selesai,
         status_verifikasi: kg.status_verifikasi || 'belum_verifikasi',
         total_realisasi_anggaran: parseFloat(kg.total_realisasi_anggaran) || 0,
         total_kendala: parseInt(kg.total_kendala) || 0,
-        kendala_resolved: parseInt(kg.kendala_resolved) || 0
+        kendala_resolved: parseInt(kg.kendala_resolved) || 0,
+        jenis_validasi: jenisValidasi as 'kuantitas' | 'dokumen',
+        dokumen_stats: dokumenStats
       };
 
       const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);

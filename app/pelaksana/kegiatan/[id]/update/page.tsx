@@ -2280,10 +2280,14 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                           <div className="space-y-3 max-h-[500px] overflow-y-auto">
                             {dokumenOutput.map((dok) => (
                               <div key={dok.id} className={`border rounded-lg p-4 ${
-                                dok.status_final === 'disahkan' ? 'bg-green-50 border-green-200' :
-                                dok.status_final === 'ditolak' ? 'bg-red-50 border-red-200' :
-                                dok.status_final === 'menunggu_kesubag' || dok.status_final === 'menunggu_pimpinan' ? 'bg-yellow-50 border-yellow-200' :
-                                'bg-white border-gray-200'
+                                dok.tipe_dokumen === 'draft'
+                                  ? (dok.draft_status_kesubag === 'diterima' ? 'bg-green-50 border-green-200' :
+                                     dok.draft_status_kesubag === 'ditolak' || dok.draft_status_kesubag === 'revisi' ? 'bg-red-50 border-red-200' :
+                                     'bg-amber-50 border-amber-200')
+                                  : (dok.status_final === 'disahkan' ? 'bg-green-50 border-green-200' :
+                                     dok.status_final === 'ditolak' ? 'bg-red-50 border-red-200' :
+                                     dok.status_final === 'menunggu_kesubag' || dok.status_final === 'menunggu_pimpinan' ? 'bg-yellow-50 border-yellow-200' :
+                                     'bg-white border-gray-200')
                               }`}>
                                 <div className="flex justify-between items-start">
                                   <div className="flex-1">
@@ -2313,16 +2317,26 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <span className={`px-2 py-1 text-xs rounded-full ${
-                                      dok.status_final === 'disahkan' ? 'bg-green-100 text-green-700' :
-                                      dok.status_final === 'ditolak' || dok.validasi_kesubag === 'tidak_valid' || dok.validasi_pimpinan === 'tidak_valid' ? 'bg-red-100 text-red-700' :
-                                      dok.status_final === 'menunggu_kesubag' || dok.status_final === 'menunggu_pimpinan' ? 'bg-yellow-100 text-yellow-700' :
-                                      'bg-gray-100 text-gray-700'
+                                      dok.tipe_dokumen === 'draft' 
+                                        ? (dok.draft_status_kesubag === 'diterima' ? 'bg-green-100 text-green-700' :
+                                           dok.draft_status_kesubag === 'ditolak' || dok.draft_status_kesubag === 'revisi' ? 'bg-red-100 text-red-700' :
+                                           dok.draft_status_kesubag === 'reviewed' ? 'bg-blue-100 text-blue-700' :
+                                           'bg-yellow-100 text-yellow-700')
+                                        : (dok.status_final === 'disahkan' ? 'bg-green-100 text-green-700' :
+                                           dok.status_final === 'ditolak' || dok.validasi_kesubag === 'tidak_valid' || dok.validasi_pimpinan === 'tidak_valid' ? 'bg-red-100 text-red-700' :
+                                           dok.status_final === 'menunggu_kesubag' || dok.status_final === 'menunggu_pimpinan' ? 'bg-yellow-100 text-yellow-700' :
+                                           'bg-gray-100 text-gray-700')
                                     }`}>
-                                      {dok.status_final === 'disahkan' ? 'Disahkan' :
-                                       dok.status_final === 'ditolak' || dok.validasi_kesubag === 'tidak_valid' || dok.validasi_pimpinan === 'tidak_valid' ? 'Ditolak' :
-                                       dok.status_final === 'menunggu_kesubag' ? 'Menunggu Koordinator' :
-                                       dok.status_final === 'menunggu_pimpinan' ? 'Menunggu Pimpinan' : 
-                                       dok.tipe_dokumen === 'draft' ? 'Draft (Review Otomatis)' : 'Belum Diajukan'}
+                                      {dok.tipe_dokumen === 'draft' 
+                                        ? (dok.draft_status_kesubag === 'diterima' ? 'Diterima' :
+                                           dok.draft_status_kesubag === 'ditolak' || dok.draft_status_kesubag === 'revisi' ? 'Perlu Revisi' :
+                                           dok.draft_status_kesubag === 'reviewed' ? 'Sudah Direview' :
+                                           'Menunggu Review')
+                                        : (dok.status_final === 'disahkan' ? 'Disahkan' :
+                                           dok.status_final === 'ditolak' || dok.validasi_kesubag === 'tidak_valid' || dok.validasi_pimpinan === 'tidak_valid' ? 'Ditolak' :
+                                           dok.status_final === 'menunggu_kesubag' ? 'Menunggu Koordinator' :
+                                           dok.status_final === 'menunggu_pimpinan' ? 'Menunggu Pimpinan' : 
+                                           'Belum Diajukan')}
                                     </span>
                                     {/* Tombol Ajukan hanya untuk dokumen final yang belum diajukan (bukan yang ditolak) */}
                                     {dok.tipe_dokumen === 'final' && (!dok.status_final || dok.status_final === 'draft') && !dok.minta_validasi && 
@@ -2378,13 +2392,17 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                     </div>
 
                     {/* Statistics */}
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      <div className="bg-amber-50 rounded-lg p-4 text-center">
+                        <p className="text-3xl font-bold text-amber-600">{dokumenOutput.filter(d => d.tipe_dokumen === 'draft').length}</p>
+                        <p className="text-sm text-amber-600">Draft</p>
+                      </div>
                       <div className="bg-gray-50 rounded-lg p-4 text-center">
-                        <p className="text-3xl font-bold text-gray-700">{dokumenOutput.filter(d => (!d.status_final || d.status_final === 'draft') && !d.minta_validasi && d.validasi_kesubag !== 'tidak_valid' && d.validasi_pimpinan !== 'tidak_valid').length}</p>
-                        <p className="text-sm text-gray-500">Belum Diajukan</p>
+                        <p className="text-3xl font-bold text-gray-700">{dokumenOutput.filter(d => d.tipe_dokumen === 'final' && (!d.status_final || d.status_final === 'draft') && !d.minta_validasi && d.validasi_kesubag !== 'tidak_valid' && d.validasi_pimpinan !== 'tidak_valid').length}</p>
+                        <p className="text-sm text-gray-500">Final Belum Diajukan</p>
                       </div>
                       <div className="bg-yellow-50 rounded-lg p-4 text-center">
-                        <p className="text-3xl font-bold text-yellow-600">{dokumenOutput.filter(d => d.minta_validasi === 1 && d.status_final !== 'disahkan' && d.validasi_kesubag !== 'tidak_valid' && d.validasi_pimpinan !== 'tidak_valid').length}</p>
+                        <p className="text-3xl font-bold text-yellow-600">{dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.minta_validasi === 1 && d.status_final !== 'disahkan' && d.validasi_kesubag !== 'tidak_valid' && d.validasi_pimpinan !== 'tidak_valid').length}</p>
                         <p className="text-sm text-yellow-600">Menunggu Validasi</p>
                       </div>
                       <div className="bg-green-50 rounded-lg p-4 text-center">
@@ -2392,7 +2410,7 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                         <p className="text-sm text-green-600">Disahkan</p>
                       </div>
                       <div className="bg-red-50 rounded-lg p-4 text-center">
-                        <p className="text-3xl font-bold text-red-600">{dokumenOutput.filter(d => d.status_final === 'ditolak' || d.validasi_kesubag === 'tidak_valid' || d.validasi_pimpinan === 'tidak_valid').length}</p>
+                        <p className="text-3xl font-bold text-red-600">{dokumenOutput.filter(d => d.tipe_dokumen === 'final' && (d.status_final === 'ditolak' || d.validasi_kesubag === 'tidak_valid' || d.validasi_pimpinan === 'tidak_valid')).length}</p>
                         <p className="text-sm text-red-600">Ditolak</p>
                       </div>
                     </div>

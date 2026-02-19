@@ -130,6 +130,20 @@ export async function GET(request: NextRequest) {
         console.log('Could not fetch kendala list:', e);
       }
 
+      // Determine output tervalidasi based on jenis_validasi
+      const jenisValidasi = k.jenis_validasi || 'dokumen';
+      const outputTervalidasi = jenisValidasi === 'kuantitas' 
+        ? parseFloat(k.output_tervalidasi) || 0 
+        : parseInt(k.dokumen_disahkan) || 0;
+      
+      // Build dokumen_stats if needed
+      const dokumenStats = jenisValidasi === 'dokumen' ? {
+        total_final: parseInt(k.total_dokumen) || 0,
+        final_disahkan: parseInt(k.dokumen_disahkan) || 0,
+        final_menunggu: 0,
+        final_revisi: 0
+      } : undefined;
+
       // Prepare data for rule-based kinerja calculator
       const kinerjaData: KegiatanData = {
         target_output: parseFloat(k.target_output) || 0,
@@ -137,11 +151,14 @@ export async function GET(request: NextRequest) {
         tanggal_selesai: k.tanggal_selesai,
         anggaran_pagu: parseFloat(k.anggaran_pagu) || 0,
         output_realisasi: parseFloat(k.output_realisasi) || 0,
+        output_tervalidasi: outputTervalidasi,
         tanggal_realisasi_selesai: k.tanggal_realisasi_selesai,
         status_verifikasi: k.status_verifikasi || 'belum_verifikasi',
         total_realisasi_anggaran: parseFloat(k.total_anggaran_realisasi) || 0,
         total_kendala: parseInt(kendalaStats[0]?.total) || 0,
         kendala_resolved: parseInt(kendalaStats[0]?.resolved) || 0,
+        jenis_validasi: jenisValidasi as 'kuantitas' | 'dokumen',
+        dokumen_stats: dokumenStats
       };
 
       // Calculate kinerja using the service (automatic calculation)

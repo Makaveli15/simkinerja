@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import ExcelJS from 'exceljs';
 import { 
   LuTrendingUp, 
   LuTrendingDown,
@@ -15,7 +16,8 @@ import {
   LuArrowDownRight,
   LuBanknote,
   LuReceipt,
-  LuBuilding2
+  LuBuilding2,
+  LuDownload
 } from 'react-icons/lu';
 
 interface StatistikData {
@@ -57,6 +59,7 @@ interface TopKegiatan {
 
 export default function StatistikAnggaranPage() {
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [statistik, setStatistik] = useState<StatistikData | null>(null);
   const [anggaranPerTim, setAnggaranPerTim] = useState<AnggaranPerTim[]>([]);
   const [anggaranPerBulan, setAnggaranPerBulan] = useState<AnggaranPerBulan[]>([]);
@@ -153,6 +156,131 @@ export default function StatistikAnggaranPage() {
     }
   };
 
+  // Export to Excel
+  const exportToExcel = async () => {
+    if (!statistik) return;
+    
+    setExporting(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'SimKinerja';
+      workbook.created = new Date();
+
+      // Sheet 1: Ringkasan
+      const ringkasanSheet = workbook.addWorksheet('Ringkasan Anggaran');
+      ringkasanSheet.mergeCells('A1:D1');
+      ringkasanSheet.getCell('A1').value = 'STATISTIK ANGGARAN PPK';
+      ringkasanSheet.getCell('A1').font = { bold: true, size: 16 };
+      ringkasanSheet.getCell('A1').alignment = { horizontal: 'center' };
+      
+      ringkasanSheet.mergeCells('A2:D2');
+      ringkasanSheet.getCell('A2').value = `Digenerate: ${new Date().toLocaleDateString('id-ID', { 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      })}`;
+      ringkasanSheet.getCell('A2').alignment = { horizontal: 'center' };
+      ringkasanSheet.getCell('A2').font = { size: 10, italic: true };
+      
+      ringkasanSheet.addRow([]);
+      
+      const ringkasanHeaderRow = ringkasanSheet.addRow(['Indikator', 'Nilai']);
+      ringkasanHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      ringkasanHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+      
+      ringkasanSheet.addRow(['Total Target Anggaran', formatCurrency(statistik.total_anggaran)]);
+      ringkasanSheet.addRow(['Total Realisasi', formatCurrency(statistik.total_realisasi)]);
+      ringkasanSheet.addRow(['Sisa Anggaran', formatCurrency(statistik.sisa_anggaran)]);
+      ringkasanSheet.addRow(['Persentase Serapan', `${statistik.persentase_serapan.toFixed(1)}%`]);
+      ringkasanSheet.addRow([]);
+      ringkasanSheet.addRow(['Total Kegiatan', statistik.total_kegiatan]);
+      ringkasanSheet.addRow(['Kegiatan Disetujui', statistik.kegiatan_approved]);
+      ringkasanSheet.addRow(['Kegiatan Pending', statistik.kegiatan_pending]);
+      ringkasanSheet.addRow(['Kegiatan Ditolak', statistik.kegiatan_rejected]);
+      ringkasanSheet.addRow(['Kegiatan Bulan Ini', statistik.kegiatan_bulan_ini]);
+      ringkasanSheet.addRow([]);
+      ringkasanSheet.addRow(['Anggaran Disetujui', formatCurrency(statistik.anggaran_approved)]);
+      ringkasanSheet.addRow(['Anggaran Pending', formatCurrency(statistik.anggaran_pending)]);
+      ringkasanSheet.addRow(['Anggaran Ditolak/Revisi', formatCurrency(statistik.anggaran_rejected)]);
+      ringkasanSheet.addRow([]);
+      ringkasanSheet.addRow(['Rata-rata Waktu Approval', `${statistik.rata_rata_waktu_approval} hari`]);
+      
+      ringkasanSheet.getColumn(1).width = 30;
+      ringkasanSheet.getColumn(2).width = 30;
+
+      // Sheet 2: Anggaran Per Tim
+      if (anggaranPerTim.length > 0) {
+        const timSheet = workbook.addWorksheet('Anggaran Per Tim');
+        const timHeaderRow = timSheet.addRow(['No', 'Nama Tim', 'Target Anggaran', 'Realisasi', 'Serapan (%)']);
+        timHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        timHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+        
+        anggaranPerTim.forEach((item, idx) => {
+          const serapan = item.target_anggaran > 0 ? (item.realisasi_anggaran / item.target_anggaran * 100) : 0;
+          timSheet.addRow([idx + 1, item.tim_nama, formatCurrency(item.target_anggaran), formatCurrency(item.realisasi_anggaran), `${serapan.toFixed(1)}%`]);
+        });
+        
+        timSheet.getColumn(1).width = 5;
+        timSheet.getColumn(2).width = 30;
+        timSheet.getColumn(3).width = 25;
+        timSheet.getColumn(4).width = 25;
+        timSheet.getColumn(5).width = 15;
+      }
+
+      // Sheet 3: Tren Bulanan
+      if (anggaranPerBulan.length > 0) {
+        const bulanSheet = workbook.addWorksheet('Tren Bulanan');
+        const bulanHeaderRow = bulanSheet.addRow(['Bulan', 'Target Anggaran', 'Realisasi', 'Serapan (%)']);
+        bulanHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        bulanHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B5CF6' } };
+        
+        anggaranPerBulan.forEach((item) => {
+          const serapan = item.target_anggaran > 0 ? (item.realisasi_anggaran / item.target_anggaran * 100) : 0;
+          bulanSheet.addRow([item.bulan, formatCurrency(item.target_anggaran), formatCurrency(item.realisasi_anggaran), `${serapan.toFixed(1)}%`]);
+        });
+        
+        bulanSheet.getColumn(1).width = 20;
+        bulanSheet.getColumn(2).width = 25;
+        bulanSheet.getColumn(3).width = 25;
+        bulanSheet.getColumn(4).width = 15;
+      }
+
+      // Sheet 4: Top Kegiatan
+      if (topKegiatan.length > 0) {
+        const topSheet = workbook.addWorksheet('Top Kegiatan');
+        const topHeaderRow = topSheet.addRow(['No', 'Nama Kegiatan', 'Tim', 'Target Anggaran', 'Realisasi', 'Serapan (%)', 'Status']);
+        topHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        topHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF59E0B' } };
+        
+        topKegiatan.forEach((item, idx) => {
+          const serapan = item.target_anggaran > 0 ? (item.realisasi_anggaran / item.target_anggaran * 100) : 0;
+          topSheet.addRow([idx + 1, item.nama, item.tim_nama || '-', formatCurrency(item.target_anggaran), formatCurrency(item.realisasi_anggaran), `${serapan.toFixed(1)}%`, getStatusLabel(item.status_pengajuan)]);
+        });
+        
+        topSheet.getColumn(1).width = 5;
+        topSheet.getColumn(2).width = 40;
+        topSheet.getColumn(3).width = 25;
+        topSheet.getColumn(4).width = 25;
+        topSheet.getColumn(5).width = 25;
+        topSheet.getColumn(6).width = 15;
+        topSheet.getColumn(7).width = 18;
+      }
+
+      // Generate and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Statistik_Anggaran_PPK_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting:', error);
+      alert('Gagal mengexport data');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -180,9 +308,28 @@ export default function StatistikAnggaranPage() {
             </h1>
             <p className="text-blue-100 mt-2">Monitoring dan analisis pengelolaan anggaran kegiatan</p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
-            <LuCalendar className="w-4 h-4" />
-            {mounted ? new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exportToExcel}
+              disabled={exporting || !statistik}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            >
+              {exporting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Mengexport...</span>
+                </>
+              ) : (
+                <>
+                  <LuDownload className="w-5 h-5" />
+                  <span>Export Excel</span>
+                </>
+              )}
+            </button>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white/20 rounded-xl text-sm">
+              <LuCalendar className="w-4 h-4" />
+              {mounted ? new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
+            </div>
           </div>
         </div>
       </div>

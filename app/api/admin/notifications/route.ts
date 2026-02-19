@@ -23,23 +23,17 @@ export async function GET() {
       return NextResponse.json({ notifications: [], unreadCount: 0 });
     }
 
-    // Ensure notifications_read table exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS notifications_read (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        notification_id VARCHAR(100) NOT NULL,
-        read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_read (user_id, notification_id)
-      )
-    `);
-
     // Get read notification IDs for this user
-    const [readNotifs] = await pool.query<RowDataPacket[]>(
-      `SELECT notification_id FROM notifications_read WHERE user_id = ?`,
-      [userId]
-    );
-    const readIds = new Set(readNotifs.map((r: RowDataPacket) => r.notification_id));
+    let readIds = new Set<string>();
+    try {
+      const [readNotifs] = await pool.query<RowDataPacket[]>(
+        `SELECT notification_id FROM notifications_read WHERE user_id = ?`,
+        [userId]
+      );
+      readIds = new Set(readNotifs.map((r: RowDataPacket) => r.notification_id));
+    } catch {
+      // Table might not exist, that's ok
+    }
 
     // Get recent activities as notifications
     const [recentUsers] = await pool.query<RowDataPacket[]>(

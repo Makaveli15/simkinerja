@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
         ko.target_output,
         ko.output_realisasi,
         ko.satuan_output,
+        ko.jenis_validasi,
         ko.tanggal_mulai,
         ko.tanggal_selesai,
         ko.tanggal_realisasi_selesai,
@@ -80,7 +81,12 @@ export async function GET(req: NextRequest) {
         kro.nama as kro_nama,
         COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_realisasi_anggaran,
         COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id), 0) as total_kendala,
-        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved
+        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved,
+        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status = 'disahkan'), 0) as output_tervalidasi,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final' AND status_final = 'disahkan'), 0) as dokumen_disahkan,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final'), 0) as total_dokumen_final,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final' AND status_final = 'menunggu'), 0) as dokumen_menunggu,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final' AND status_final = 'revisi'), 0) as dokumen_revisi
       FROM kegiatan ko
       LEFT JOIN tim t ON ko.tim_id = t.id
       LEFT JOIN kro ON ko.kro_id = kro.id
@@ -90,17 +96,34 @@ export async function GET(req: NextRequest) {
 
     // Calculate kinerja for each kegiatan
     const kegiatanWithKinerja: KegiatanWithKinerja[] = await Promise.all(kegiatanRows.map(async (kg) => {
+      // Determine output tervalidasi based on jenis_validasi
+      const jenisValidasi = kg.jenis_validasi || 'dokumen';
+      const outputTervalidasi = jenisValidasi === 'kuantitas' 
+        ? parseFloat(kg.output_tervalidasi) || 0 
+        : parseInt(kg.dokumen_disahkan) || 0;
+      
+      // Build dokumen_stats for jenis_validasi dokumen
+      const dokumenStats = jenisValidasi === 'dokumen' ? {
+        total_final: parseInt(kg.total_dokumen_final) || 0,
+        final_disahkan: parseInt(kg.dokumen_disahkan) || 0,
+        final_menunggu: parseInt(kg.dokumen_menunggu) || 0,
+        final_revisi: parseInt(kg.dokumen_revisi) || 0
+      } : undefined;
+
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
         tanggal_mulai: kg.tanggal_mulai,
         tanggal_selesai: kg.tanggal_selesai,
         anggaran_pagu: parseFloat(kg.anggaran_pagu) || 0,
         output_realisasi: parseFloat(kg.output_realisasi) || 0,
+        output_tervalidasi: outputTervalidasi,
         tanggal_realisasi_selesai: kg.tanggal_realisasi_selesai,
         status_verifikasi: kg.status_verifikasi || 'belum_verifikasi',
         total_realisasi_anggaran: parseFloat(kg.total_realisasi_anggaran) || 0,
         total_kendala: parseInt(kg.total_kendala) || 0,
-        kendala_resolved: parseInt(kg.kendala_resolved) || 0
+        kendala_resolved: parseInt(kg.kendala_resolved) || 0,
+        jenis_validasi: jenisValidasi as 'kuantitas' | 'dokumen',
+        dokumen_stats: dokumenStats
       };
 
       const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);

@@ -169,12 +169,6 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
   const [validationAction, setValidationAction] = useState<'reviewed' | 'rejected' | 'valid' | 'tidak_valid' | null>(null);
   const [modalCatatan, setModalCatatan] = useState('');
   
-  // Bulk validation states
-  const [bulkValidating, setBulkValidating] = useState(false);
-  const [showBulkValidationModal, setShowBulkValidationModal] = useState(false);
-  const [bulkValidationType, setBulkValidationType] = useState<'valid' | 'reviewed'>('valid');
-  const [bulkCatatan, setBulkCatatan] = useState('');
-  
   const [activeTab, setActiveTab] = useState<'evaluasi-kinerja' | 'progres' | 'anggaran' | 'kendala' | 'dokumen' | 'waktu' | 'evaluasi'>('evaluasi-kinerja');
 
   // Evaluasi form states
@@ -412,41 +406,6 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
       return;
     }
     submitValidation(selectedDokumen.id, validationAction, modalCatatan);
-  };
-
-  // Handle bulk validation
-  const handleBulkValidation = async () => {
-    setBulkValidating(true);
-    try {
-      const res = await fetch('/api/koordinator/dokumen-output', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kegiatan_id: kegiatanId,
-          action: bulkValidationType,
-          catatan: bulkCatatan || undefined
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setSuccessMessage(`${data.count} dokumen berhasil ${bulkValidationType === 'valid' ? 'divalidasi' : 'direview'}`);
-        setShowBulkValidationModal(false);
-        setBulkCatatan('');
-        fetchData(); // Refresh data
-        setTimeout(() => setSuccessMessage(''), 3000);
-      } else {
-        const error = await res.json();
-        setErrorMessage(error.error || 'Gagal melakukan validasi massal');
-        setTimeout(() => setErrorMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error bulk validating:', error);
-      setErrorMessage('Terjadi kesalahan');
-      setTimeout(() => setErrorMessage(''), 3000);
-    } finally {
-      setBulkValidating(false);
-    }
   };
 
   // Handle validasi kuantitas
@@ -1630,18 +1589,6 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                       Review draft dokumen dan validasi dokumen final yang diajukan oleh pelaksana. Setelah Anda memvalidasi, dokumen akan dilanjutkan ke Pimpinan.
                     </p>
                   </div>
-                  
-                  {/* Bulk Validation Button */}
-                  {(pendingFinalDocs > 0 || pendingDraftDocs > 0) && (
-                    <button
-                      onClick={() => setShowBulkValidationModal(true)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-green-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-green-600 transition-all shadow-md"
-                    >
-                      <LuCheck className="w-4 h-4" />
-                      <span>Validasi Semua</span>
-                      <span className="bg-white/20 px-2 py-0.5 rounded text-xs">{pendingFinalDocs + pendingDraftDocs}</span>
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -2278,116 +2225,6 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
           )}
         </div>
       </div>
-
-      {/* Bulk Validation Modal */}
-      {showBulkValidationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-            <div className="bg-gradient-to-r from-teal-500 to-green-500 p-6 text-white">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <LuCheck className="w-6 h-6" />
-                Validasi Massal Dokumen
-              </h3>
-              <p className="text-sm text-white/80 mt-1">
-                Validasi semua dokumen yang menunggu dalam satu kali proses
-              </p>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              {/* Summary */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-teal-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-teal-600">{pendingFinalDocs}</p>
-                  <p className="text-xs text-teal-700">Dokumen Final Menunggu</p>
-                </div>
-                <div className="bg-amber-50 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-amber-600">{pendingDraftDocs}</p>
-                  <p className="text-xs text-amber-700">Draft Menunggu Review</p>
-                </div>
-              </div>
-
-              {/* Validation Type Selection */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Jenis Validasi:</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setBulkValidationType('valid')}
-                    disabled={pendingFinalDocs === 0}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      bulkValidationType === 'valid' 
-                        ? 'border-teal-500 bg-teal-50' 
-                        : 'border-gray-200 hover:border-teal-300'
-                    } ${pendingFinalDocs === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <p className="font-medium text-gray-900 flex items-center gap-1"><LuCircleCheck className="w-4 h-4" /> Validasi Final</p>
-                    <p className="text-xs text-gray-500">{pendingFinalDocs} dokumen</p>
-                  </button>
-                  <button
-                    onClick={() => setBulkValidationType('reviewed')}
-                    disabled={pendingDraftDocs === 0}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      bulkValidationType === 'reviewed' 
-                        ? 'border-amber-500 bg-amber-50' 
-                        : 'border-gray-200 hover:border-amber-300'
-                    } ${pendingDraftDocs === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <p className="font-medium text-gray-900 flex items-center gap-1"><LuFilePen className="w-4 h-4" /> Review Draft</p>
-                    <p className="text-xs text-gray-500">{pendingDraftDocs} dokumen</p>
-                  </button>
-                </div>
-              </div>
-
-              {/* Optional Note */}
-              <div>
-                <label className="text-sm font-medium text-gray-700">Catatan (opsional):</label>
-                <textarea
-                  value={bulkCatatan}
-                  onChange={(e) => setBulkCatatan(e.target.value)}
-                  placeholder="Tambahkan catatan untuk semua dokumen..."
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  rows={2}
-                />
-              </div>
-
-              {/* Warning */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-sm text-amber-800 flex items-center gap-1">
-                  <LuTriangleAlert className="w-4 h-4 flex-shrink-0" /> Tindakan ini akan memproses <strong>{bulkValidationType === 'valid' ? pendingFinalDocs : pendingDraftDocs}</strong> dokumen sekaligus. Pastikan Anda sudah mereview dokumen sebelum melanjutkan.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-6 bg-gray-50 flex gap-3">
-              <button
-                onClick={() => {
-                  setShowBulkValidationModal(false);
-                  setBulkCatatan('');
-                }}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-all"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleBulkValidation}
-                disabled={bulkValidating || (bulkValidationType === 'valid' ? pendingFinalDocs === 0 : pendingDraftDocs === 0)}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-green-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-              >
-                {bulkValidating ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <LuCheck className="w-4 h-4" />
-                    {bulkValidationType === 'valid' ? 'Validasi Semua' : 'Review Semua'}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

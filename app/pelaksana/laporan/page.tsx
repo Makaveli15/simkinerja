@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Pagination from '../../components/Pagination';
 import { 
-  LuFilePlus, 
   LuUpload, 
   LuFileText, 
   LuDownload, 
@@ -27,12 +26,6 @@ interface Laporan {
   created_at: string;
 }
 
-interface KRO {
-  id: number;
-  kode: string;
-  nama: string;
-}
-
 const BULAN_NAMES = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -40,13 +33,10 @@ const BULAN_NAMES = [
 
 export default function LaporanPage() {
   const [laporanList, setLaporanList] = useState<Laporan[]>([]);
-  const [kroList, setKroList] = useState<KRO[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -65,18 +55,11 @@ export default function LaporanPage() {
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Generate form state
-  const [genBulan, setGenBulan] = useState<number | ''>('');
-  const [genTahun, setGenTahun] = useState(new Date().getFullYear());
-  const [genKroId, setGenKroId] = useState<number | ''>('');
-  const [genStatus, setGenStatus] = useState<string>('');
-
   // Generate years for dropdown
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   useEffect(() => {
     fetchLaporan();
-    fetchKRO();
   }, [filterTahun, filterBulan]);
 
   const fetchLaporan = async () => {
@@ -95,18 +78,6 @@ export default function LaporanPage() {
       console.error('Error fetching laporan:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchKRO = async () => {
-    try {
-      const response = await fetch('/api/pelaksana/kro');
-      if (response.ok) {
-        const data = await response.json();
-        setKroList(data);
-      }
-    } catch (error) {
-      console.error('Error fetching KRO:', error);
     }
   };
 
@@ -182,66 +153,6 @@ export default function LaporanPage() {
     }
   };
 
-  const handleGenerateReport = async () => {
-    try {
-      setGenerating(true);
-      setError('');
-
-      const response = await fetch('/api/pelaksana/laporan/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bulan: genBulan || null,
-          tahun: genTahun,
-          kro_id: genKroId || null,
-          status: genStatus || null,
-        }),
-      });
-
-      if (response.ok) {
-        // Get the blob from response
-        const blob = await response.blob();
-        
-        // Create download link
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        
-        // Get filename from Content-Disposition header or generate one
-        const contentDisposition = response.headers.get('Content-Disposition');
-        let fileName = 'Laporan_Kegiatan.docx';
-        if (contentDisposition) {
-          const match = contentDisposition.match(/filename="(.+)"/);
-          if (match) {
-            fileName = match[1];
-          }
-        }
-        
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        setSuccess('Laporan berhasil di-generate dan didownload');
-        setShowGenerateModal(false);
-        resetGenerateForm();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await response.json();
-        console.log('Generate error response:', data);
-        setError(data.details || data.error || 'Gagal generate laporan');
-      }
-    } catch (error) {
-      console.error('Error generating report:', error);
-      setError('Terjadi kesalahan saat generate laporan');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!selectedLaporan) return;
     
@@ -274,13 +185,6 @@ export default function LaporanPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
-
-  const resetGenerateForm = () => {
-    setGenBulan('');
-    setGenTahun(new Date().getFullYear());
-    setGenKroId('');
-    setGenStatus('');
   };
 
   const openDeleteModal = (laporan: Laporan) => {
@@ -326,24 +230,15 @@ export default function LaporanPage() {
               </div>
               Laporan
             </h1>
-            <p className="text-blue-100 mt-2">Kelola, upload, dan generate laporan kegiatan</p>
+            <p className="text-blue-100 mt-2">Kelola dan upload laporan kegiatan</p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowGenerateModal(true)}
-              className="bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors flex items-center gap-2"
-            >
-              <LuFilePlus className="h-5 w-5" />
-              Generate Laporan
-            </button>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-lg"
-            >
-              <LuUpload className="h-5 w-5" />
-              Upload Laporan
-            </button>
-          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-lg"
+          >
+            <LuUpload className="h-5 w-5" />
+            Upload Laporan
+          </button>
         </div>
       </div>
 
@@ -353,7 +248,7 @@ export default function LaporanPage() {
           {success}
         </div>
       )}
-      {error && !showModal && !showGenerateModal && (
+      {error && !showModal && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
@@ -405,14 +300,7 @@ export default function LaporanPage() {
             <p className="text-gray-600">
               Belum ada laporan untuk {filterBulan ? `${BULAN_NAMES[filterBulan - 1]} ` : ''}{filterTahun}
             </p>
-            <div className="mt-4 flex justify-center gap-4">
-              <button
-                onClick={() => setShowGenerateModal(true)}
-                className="text-green-600 hover:text-green-800"
-              >
-                Generate laporan otomatis
-              </button>
-              <span className="text-gray-400">atau</span>
+            <div className="mt-4">
               <button
                 onClick={() => setShowModal(true)}
                 className="text-blue-600 hover:text-blue-800"
@@ -506,123 +394,6 @@ export default function LaporanPage() {
         </>
         )}
       </div>
-
-      {/* Generate Report Modal */}
-      {showGenerateModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-800">Generate Laporan Word</h2>
-              <button
-                onClick={() => { setShowGenerateModal(false); resetGenerateForm(); setError(''); }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <LuX className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="p-4 space-y-4">
-              {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded text-sm">
-                  {error}
-                </div>
-              )}
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800 flex items-start gap-2">
-                  <LuFilePen className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                  <span><strong>Generate Laporan Otomatis</strong><br/>
-                  Sistem akan mengambil semua data kegiatan dan generate laporan dalam format Word (.docx) berdasarkan filter yang dipilih.</span>
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
-                  <select
-                    value={genBulan}
-                    onChange={(e) => setGenBulan(e.target.value ? Number(e.target.value) : '')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="">Semua Bulan</option>
-                    {BULAN_NAMES.map((bulan, index) => (
-                      <option key={index} value={index + 1}>{bulan}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tahun <span className="text-red-500">*</span></label>
-                  <select
-                    value={genTahun}
-                    onChange={(e) => setGenTahun(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    {years.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">KRO</label>
-                <select
-                  value={genKroId}
-                  onChange={(e) => setGenKroId(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Semua KRO</option>
-                  {kroList.map((kro) => (
-                    <option key={kro.id} value={kro.id}>{kro.kode} - {kro.nama}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status Kegiatan</label>
-                <select
-                  value={genStatus}
-                  onChange={(e) => setGenStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Semua Status</option>
-                  <option value="belum_mulai">Belum Mulai</option>
-                  <option value="berjalan">Berjalan</option>
-                  <option value="selesai">Selesai</option>
-                  <option value="tertunda">Tertunda</option>
-                </select>
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => { setShowGenerateModal(false); resetGenerateForm(); setError(''); }}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={handleGenerateReport}
-                  disabled={generating}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 flex items-center gap-2"
-                >
-                  {generating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <LuDownload className="h-5 w-5" />
-                      Generate & Download
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Upload Modal */}
       {showModal && (
