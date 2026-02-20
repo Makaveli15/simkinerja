@@ -24,3 +24,52 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+/* Optimize table rendering */
+.table-virtualized {
+  contain: strict;
+  content-visibility: auto;
+}
+
+/* Optimize card rendering */
+.card-optimized {
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 200px;
+}
+
+/* Will-change hints for animations */
+.will-animate {
+  will-change: transform, opacity;
+}
+
+/* GPU acceleration for smooth scrolling */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Reduce repaints for fixed elements */
+.fixed-optimized {
+  will-change: transform;
+  backface-visibility: hidden;
+}

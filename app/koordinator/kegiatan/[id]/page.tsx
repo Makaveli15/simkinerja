@@ -1192,7 +1192,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                     <p className="text-sm text-gray-600">Menunggu Validasi Anda</p>
                     <p className="font-semibold text-yellow-600">
                       {kegiatan?.jenis_validasi === 'kuantitas' 
-                        ? validasiKuantitas.filter(v => v.status_kesubag === 'menunggu').length
+                        ? validasiKuantitas.filter(v => v.status_kesubag === 'pending').length
                         : dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_final === 'menunggu').length} pengajuan
                     </p>
                   </div>
@@ -1231,13 +1231,13 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 v.status_kesubag === 'valid' ? 'bg-green-100 text-green-700' :
-                                v.status_kesubag === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                v.status_kesubag === 'tidak_valid' ? 'bg-red-100 text-red-700' :
                                 'bg-yellow-100 text-yellow-700'
                               }`}>
-                                {v.status_kesubag === 'valid' ? 'Divalidasi' : v.status_kesubag === 'ditolak' ? 'Ditolak' : 'Menunggu'}
+                                {v.status_kesubag === 'valid' ? 'Divalidasi' : v.status_kesubag === 'tidak_valid' ? 'Ditolak' : 'Menunggu'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{v.catatan_kesubag || v.keterangan || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{v.feedback_kesubag || v.keterangan || '-'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1266,8 +1266,8 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                       <tbody className="divide-y">
                         {dokumenOutput.filter(d => d.tipe_dokumen === 'final').slice(0, 10).map(d => (
                           <tr key={d.id}>
-                            <td className="px-4 py-3 text-sm">{formatDate(d.created_at)}</td>
-                            <td className="px-4 py-3 font-medium text-sm">{d.nama_dokumen}</td>
+                            <td className="px-4 py-3 text-sm">{formatDate(d.uploaded_at)}</td>
+                            <td className="px-4 py-3 font-medium text-sm">{d.nama_file}</td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 d.status_final === 'disahkan' ? 'bg-green-100 text-green-700' :
@@ -1277,7 +1277,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                 {d.status_final === 'disahkan' ? 'Disahkan' : d.status_final === 'ditolak' ? 'Ditolak' : 'Menunggu'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{d.catatan_validasi || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{d.deskripsi || '-'}</td>
                           </tr>
                         ))}
                       </tbody>

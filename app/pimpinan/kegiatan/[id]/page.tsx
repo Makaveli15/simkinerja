@@ -1304,8 +1304,8 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                     <p className="text-sm text-gray-600">Menunggu Validasi Anda</p>
                     <p className="font-semibold text-yellow-600">
                       {kegiatan?.jenis_validasi === 'kuantitas' 
-                        ? validasiKuantitas.filter(v => v.status_kesubag === 'valid' && v.status_pimpinan === 'menunggu').length
-                        : dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.status_koordinator === 'valid' && d.status_final === 'menunggu').length} pengajuan
+                        ? validasiKuantitas.filter(v => v.status_kesubag === 'valid' && v.status_pimpinan === 'pending').length
+                        : dokumenOutput.filter(d => d.tipe_dokumen === 'final' && d.validasi_kesubag === 'valid' && d.status_final === 'menunggu_pimpinan').length} pengajuan
                     </p>
                   </div>
                   <div>
@@ -1346,22 +1346,22 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 v.status_kesubag === 'valid' ? 'bg-green-100 text-green-700' :
-                                v.status_kesubag === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                v.status_kesubag === 'tidak_valid' ? 'bg-red-100 text-red-700' :
                                 'bg-yellow-100 text-yellow-700'
                               }`}>
-                                {v.status_kesubag === 'valid' ? 'Valid' : v.status_kesubag === 'ditolak' ? 'Ditolak' : 'Menunggu'}
+                                {v.status_kesubag === 'valid' ? 'Valid' : v.status_kesubag === 'tidak_valid' ? 'Ditolak' : 'Menunggu'}
                               </span>
                             </td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 v.status_pimpinan === 'valid' ? 'bg-green-100 text-green-700' :
-                                v.status_pimpinan === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                v.status_pimpinan === 'tidak_valid' ? 'bg-red-100 text-red-700' :
                                 'bg-yellow-100 text-yellow-700'
                               }`}>
-                                {v.status_pimpinan === 'valid' ? 'Disahkan' : v.status_pimpinan === 'ditolak' ? 'Ditolak' : 'Menunggu'}
+                                {v.status_pimpinan === 'valid' ? 'Disahkan' : v.status_pimpinan === 'tidak_valid' ? 'Ditolak' : 'Menunggu'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{v.catatan_pimpinan || v.catatan_kesubag || v.keterangan || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{v.feedback_pimpinan || v.feedback_kesubag || v.keterangan || '-'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1390,18 +1390,18 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
                       <tbody className="divide-y">
                         {dokumenOutput.filter(d => d.tipe_dokumen === 'final').slice(0, 10).map(d => (
                           <tr key={d.id}>
-                            <td className="px-4 py-3 text-sm">{formatDate(d.created_at)}</td>
-                            <td className="px-4 py-3 font-medium text-sm">{d.nama_dokumen}</td>
+                            <td className="px-4 py-3 text-sm">{formatDate(d.uploaded_at)}</td>
+                            <td className="px-4 py-3 font-medium text-sm">{d.nama_file}</td>
                             <td className="px-4 py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 d.status_final === 'disahkan' ? 'bg-green-100 text-green-700' :
-                                d.status_final === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                d.status_final === 'revisi' ? 'bg-red-100 text-red-700' :
                                 'bg-yellow-100 text-yellow-700'
                               }`}>
-                                {d.status_final === 'disahkan' ? 'Disahkan' : d.status_final === 'ditolak' ? 'Ditolak' : 'Menunggu'}
+                                {d.status_final === 'disahkan' ? 'Disahkan' : d.status_final === 'revisi' ? 'Perlu Revisi' : 'Menunggu'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{d.catatan_validasi || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{d.validasi_feedback_pimpinan || d.validasi_feedback_kesubag || d.deskripsi || '-'}</td>
                           </tr>
                         ))}
                       </tbody>

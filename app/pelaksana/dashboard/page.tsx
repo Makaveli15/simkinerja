@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Pagination from '@/app/components/Pagination';
+import { SkeletonDashboard } from '@/app/components/Skeleton';
 import {
   LuClipboard,
   LuCircleCheck,
@@ -202,15 +203,18 @@ export default function PelaksanaDashboard() {
     ? ((stats.totalRealisasiAnggaran / stats.totalPagu) * 100).toFixed(1) 
     : '0';
 
+  // Memoized format functions
+  const formatCurrencyMemo = useCallback((value: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  }, []);
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-500">Memuat dashboard...</p>
-        </div>
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   const skorKinerja = getSkorKinerjaBadge(stats.skorKinerja);
@@ -367,7 +371,7 @@ export default function PelaksanaDashboard() {
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
                   }}
-                  formatter={(value: number | undefined) => value !== undefined ? formatCurrency(value) : '-'}
+                  formatter={(value) => typeof value === 'number' ? formatCurrency(value) : '-'}
                 />
                 <Legend />
                 <Bar dataKey="pagu" fill="#E5E7EB" name="Target" radius={[4, 4, 0, 0]} />

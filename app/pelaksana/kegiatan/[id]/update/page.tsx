@@ -179,7 +179,8 @@ interface DokumenOutput {
   minta_validasi?: number; // 0 or 1
   status_final?: 'draft' | 'menunggu_kesubag' | 'menunggu_pimpinan' | 'ditolak' | 'disahkan';
   // Draft validation workflow
-  draft_status_kesubag?: 'pending' | 'diterima' | 'ditolak';
+  draft_status_kesubag?: 'pending' | 'diterima' | 'ditolak' | 'revisi' | 'reviewed';
+  draft_feedback_kesubag?: string;
   // Validation status from koordinator and pimpinan
   validasi_kesubag?: 'pending' | 'valid' | 'tidak_valid';
   validasi_pimpinan?: 'pending' | 'valid' | 'tidak_valid';
