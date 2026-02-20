@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Pagination from '../../components/Pagination';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { LuPlus, LuUsers, LuUser, LuSearch, LuPhone, LuMail, LuSquarePen, LuTrash2, LuX } from 'react-icons/lu';
 
 interface Mitra {
@@ -36,6 +37,9 @@ export default function MitraPage() {
   const [filterJK, setFilterJK] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Alert Modal hook
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
 
   const fetchMitra = async () => {
     try {
@@ -107,19 +111,28 @@ export default function MitraPage() {
   };
 
   const handleDelete = async (id: number, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus mitra "${nama}"?`)) return;
-
-    try {
-      const res = await fetch(`/api/admin/mitra?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchMitra();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Gagal menghapus mitra');
+    showConfirm({
+      title: 'Hapus Mitra',
+      message: `Apakah Anda yakin ingin menghapus mitra "${nama}"?`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/mitra?id=${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            showSuccess('Berhasil', 'Mitra berhasil dihapus');
+            fetchMitra();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal menghapus mitra');
+          }
+        } catch (err) {
+          console.error('Error deleting Mitra:', err);
+          showError('Gagal', 'Terjadi kesalahan saat menghapus mitra');
+        }
       }
-    } catch (err) {
-      console.error('Error deleting Mitra:', err);
-    }
+    });
   };
 
   const openAddModal = () => {
@@ -487,6 +500,8 @@ export default function MitraPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

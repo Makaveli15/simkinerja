@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { 
   LuClipboardCheck,
   LuSearch,
@@ -42,6 +43,7 @@ export default function PimpinanApprovalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const { showSuccess, showError, AlertModal } = useAlertModal();
 
   useEffect(() => {
     fetchValidasiKuantitas();
@@ -98,14 +100,15 @@ export default function PimpinanApprovalPage() {
       });
 
       if (res.ok) {
+        showSuccess('Berhasil', action === 'approve' ? 'Validasi berhasil disetujui' : 'Validasi berhasil ditolak');
         fetchValidasiKuantitas();
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal memproses validasi');
+        showError('Gagal', data.error || 'Gagal memproses validasi');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Terjadi kesalahan');
+      showError('Gagal', 'Terjadi kesalahan');
     } finally {
       setProcessingId(null);
     }
@@ -377,6 +380,8 @@ export default function PimpinanApprovalPage() {
           </div>
         )}
       </div>
+
+      <AlertModal />
     </div>
   );
 }

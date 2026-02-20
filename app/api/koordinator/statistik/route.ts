@@ -232,11 +232,23 @@ export async function GET(req: NextRequest) {
       ? Math.round(kegiatanWithKinerja.reduce((sum, k) => sum + k.skor_kinerja, 0) / totalKegiatan * 100) / 100
       : 0;
 
-    // === ANGGARAN STATISTIK ===
-    const totalAnggaran = kegiatanWithKinerja.reduce((sum, k) => sum + (parseFloat(k.anggaran_pagu) || 0), 0);
-    const totalRealisasiAnggaran = kegiatanWithKinerja.reduce((sum, k) => sum + (parseFloat(k.total_realisasi_anggaran) || 0), 0);
+    // Status yang menunjukkan kegiatan sudah disetujui hingga tahap 3 (Kepala/Pimpinan)
+    const STATUS_APPROVED_TAHAP_3 = ['disetujui', 'approved_pimpinan', 'approved'];
+
+    // Filter kegiatan yang sudah disetujui final (tahap 3)
+    const kegiatanApprovedFinal = kegiatanWithKinerja.filter(k => 
+      STATUS_APPROVED_TAHAP_3.includes(k.status_pengajuan)
+    );
+
+    // === ANGGARAN STATISTIK - HANYA dari kegiatan yang sudah disetujui tahap 3 ===
+    const totalAnggaran = kegiatanApprovedFinal.reduce((sum, k) => sum + (parseFloat(k.anggaran_pagu) || 0), 0);
+    const totalRealisasiAnggaran = kegiatanApprovedFinal.reduce((sum, k) => sum + (parseFloat(k.total_realisasi_anggaran) || 0), 0);
     const sisaAnggaran = totalAnggaran - totalRealisasiAnggaran;
     const persentaseSerapan = totalAnggaran > 0 ? Math.round((totalRealisasiAnggaran / totalAnggaran) * 100 * 100) / 100 : 0;
+
+    // Total anggaran dari semua kegiatan (untuk referensi)
+    const totalAnggaranAll = kegiatanWithKinerja.reduce((sum, k) => sum + (parseFloat(k.anggaran_pagu) || 0), 0);
+    const totalRealisasiAnggaranAll = kegiatanWithKinerja.reduce((sum, k) => sum + (parseFloat(k.total_realisasi_anggaran) || 0), 0);
 
     // === OUTPUT STATISTIK ===
     const totalTargetOutput = kegiatanWithKinerja.reduce((sum, k) => sum + (parseFloat(k.target_output) || 0), 0);
@@ -396,6 +408,7 @@ export async function GET(req: NextRequest) {
         kegiatan_berjalan: kegiatanBerjalan,
         kegiatan_draft: kegiatanDraft,
         kegiatan_dibatalkan: kegiatanDibatalkan,
+        kegiatan_approved_final: kegiatanApprovedFinal.length,
         rata_rata_kinerja: avgKinerjaTim,
         total_pelaksana: pelaksanaRows.length
       },
@@ -403,7 +416,10 @@ export async function GET(req: NextRequest) {
         total: totalAnggaran,
         realisasi: totalRealisasiAnggaran,
         sisa: sisaAnggaran,
-        persentase_serapan: persentaseSerapan
+        persentase_serapan: persentaseSerapan,
+        // Info tambahan untuk referensi
+        total_all: totalAnggaranAll,
+        realisasi_all: totalRealisasiAnggaranAll
       },
       output: {
         total_target: totalTargetOutput,

@@ -15,6 +15,7 @@ import {
   LuMapPin,
   LuPhone
 } from 'react-icons/lu';
+import { useAlertModal } from '@/app/components/AlertModal';
 
 interface Mitra {
   id: number;
@@ -80,6 +81,9 @@ export default function ApprovalKegiatanPage() {
   const [catatan, setCatatan] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Alert Modal hook
+  const { showError, showWarning, AlertModal } = useAlertModal();
+
   useEffect(() => {
     fetchApprovalData();
   }, []);
@@ -141,7 +145,7 @@ export default function ApprovalKegiatanPage() {
     if (!selectedKegiatan) return;
     
     if (approvalAction === 'reject' && !catatan.trim()) {
-      alert('Catatan wajib diisi untuk penolakan');
+      showWarning('Catatan Diperlukan', 'Catatan wajib diisi untuk penolakan');
       return;
     }
 
@@ -163,11 +167,11 @@ export default function ApprovalKegiatanPage() {
         fetchApprovalData();
       } else {
         const error = await res.json();
-        alert(error.error || 'Gagal memproses approval');
+        showError('Gagal', error.error || 'Gagal memproses approval');
       }
     } catch (error) {
       console.error('Error processing approval:', error);
-      alert('Terjadi kesalahan saat memproses approval');
+      showError('Kesalahan', 'Terjadi kesalahan saat memproses approval');
     } finally {
       setSubmitting(false);
     }
@@ -765,6 +769,7 @@ export default function ApprovalKegiatanPage() {
           </div>
         </div>
       )}
+      <AlertModal />
     </div>
   );
 }

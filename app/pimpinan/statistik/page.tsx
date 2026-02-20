@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ExcelJS from 'exceljs';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { 
   LuTrendingUp, 
   LuUsers, 
@@ -94,6 +95,7 @@ export default function StatistikKinerjaPage() {
   const [periodeMulai, setPeriodeMulai] = useState('');
   const [periodeSelesai, setPeriodeSelesai] = useState('');
   const [laporanData, setLaporanData] = useState<LaporanResponse | null>(null);
+  const { showError, AlertModal } = useAlertModal();
 
   useEffect(() => {
     fetchData();
@@ -332,7 +334,7 @@ export default function StatistikKinerjaPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting:', error);
-      alert('Gagal mengexport data');
+      showError('Gagal', 'Gagal mengexport data');
     } finally {
       setExporting(false);
     }
@@ -395,6 +397,22 @@ export default function StatistikKinerjaPage() {
               </>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* Info Banner - Data Anggaran dari Kegiatan Disetujui Final */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+            <LuTrendingUp className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-blue-900 text-sm">Informasi Data Statistik</h3>
+            <p className="text-blue-700 text-sm mt-1">
+              Data anggaran (Target Anggaran, Realisasi, Serapan) hanya menampilkan data dari kegiatan yang sudah disetujui final <strong>(Tahap 3: Kepala/Pimpinan)</strong>. 
+              Kegiatan yang masih dalam proses approval tidak termasuk dalam perhitungan anggaran.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -716,6 +734,8 @@ export default function StatistikKinerjaPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

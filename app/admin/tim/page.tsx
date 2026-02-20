@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Pagination from '../../components/Pagination';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { LuPlus, LuUsers, LuTrendingUp, LuSearch, LuSquarePen, LuTrash2, LuChevronRight, LuX, LuUserPlus } from 'react-icons/lu';
 
 interface Member {
@@ -35,6 +36,9 @@ export default function TimPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Alert Modal hook
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
 
   const fetchTim = async () => {
     try {
@@ -103,19 +107,28 @@ export default function TimPage() {
   };
 
   const handleDelete = async (id: number, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus tim "${nama}"?`)) return;
-
-    try {
-      const res = await fetch(`/api/admin/tim?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchTim();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Gagal menghapus tim');
+    showConfirm({
+      title: 'Hapus Tim',
+      message: `Apakah Anda yakin ingin menghapus tim "${nama}"?`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/tim?id=${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            showSuccess('Berhasil', 'Tim berhasil dihapus');
+            fetchTim();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal menghapus tim');
+          }
+        } catch (err) {
+          console.error('Error deleting tim:', err);
+          showError('Gagal', 'Terjadi kesalahan saat menghapus tim');
+        }
       }
-    } catch (err) {
-      console.error('Error deleting tim:', err);
-    }
+    });
   };
 
   const openAddModal = () => {
@@ -477,6 +490,8 @@ export default function TimPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

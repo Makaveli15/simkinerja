@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { LuCircleAlert, LuChevronLeft, LuCircleCheck, LuCircleX, LuPlus, LuCheck, LuTarget, LuCalendar, LuWallet, LuUsers, LuChartBar, LuTrendingUp, LuTriangleAlert, LuClock, LuFilePen, LuPackage, LuClipboardList, LuFolderOpen, LuWrench, LuHourglass, LuLightbulb, LuPaperclip, LuTrophy, LuFileText, LuChevronDown, LuPointer, LuPin, LuRefreshCw, LuMessageCircle, LuUpload, LuBanknote, LuEye, LuImage, LuPresentation, LuArrowRight } from 'react-icons/lu';
 
 interface KegiatanDetail {
@@ -151,6 +152,8 @@ interface ValidasiKuantitas {
 export default function PimpinanKegiatanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const kegiatanId = resolvedParams.id;
+
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
 
   const [loading, setLoading] = useState(true);
   const [kegiatan, setKegiatan] = useState<KegiatanDetail | null>(null);
@@ -414,39 +417,43 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
 
   // Handle sahkan dokumen
   const handleSahkanDokumen = async (dokumenId: number) => {
-    if (!confirm('Apakah Anda yakin ingin mengesahkan dokumen ini? Dokumen yang telah disahkan tidak dapat diubah.')) {
-      return;
-    }
+    showConfirm({
+      title: 'Sahkan Dokumen',
+      message: 'Apakah Anda yakin ingin mengesahkan dokumen ini? Dokumen yang telah disahkan tidak dapat diubah.',
+      type: 'warning',
+      confirmText: 'Ya, Sahkan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setReviewingDokumenId(dokumenId);
+        setError('');
 
-    setReviewingDokumenId(dokumenId);
-    setError('');
+        try {
+          const res = await fetch('/api/pimpinan/dokumen-output', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: dokumenId,
+              action: 'sahkan'
+            })
+          });
 
-    try {
-      const res = await fetch('/api/pimpinan/dokumen-output', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: dokumenId,
-          action: 'sahkan'
-        })
-      });
+          const data = await res.json();
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setSuccess('Dokumen berhasil disahkan!');
-        setReviewForm({ status: '', catatan: '' });
-        fetchDokumen();
-        fetchData(); // Refresh kegiatan data for status_verifikasi
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error || 'Gagal mengesahkan dokumen');
+          if (res.ok) {
+            showSuccess('Berhasil', 'Dokumen berhasil disahkan!');
+            setReviewForm({ status: '', catatan: '' });
+            fetchDokumen();
+            fetchData();
+          } else {
+            showError('Gagal', data.error || 'Gagal mengesahkan dokumen');
+          }
+        } catch {
+          showError('Gagal', 'Terjadi kesalahan saat mengesahkan dokumen');
+        } finally {
+          setReviewingDokumenId(null);
+        }
       }
-    } catch {
-      setError('Terjadi kesalahan saat mengesahkan dokumen');
-    } finally {
-      setReviewingDokumenId(null);
-    }
+    });
   };
 
   // Handle validasi kuantitas
@@ -2338,6 +2345,8 @@ export default function PimpinanKegiatanDetailPage({ params }: { params: Promise
           )}
         </div>
       </div>
+
+      <AlertModal />
     </div>
   );
 }

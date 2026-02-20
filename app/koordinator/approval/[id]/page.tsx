@@ -15,6 +15,7 @@ import {
   LuClock,
   LuTriangleAlert
 } from 'react-icons/lu';
+import { useAlertModal } from '@/app/components/AlertModal';
 
 interface Kegiatan {
   id: number;
@@ -58,6 +59,9 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showRevisiModal, setShowRevisiModal] = useState(false);
 
+  // Alert Modal hook
+  const { showSuccess, showError, showWarning, AlertModal } = useAlertModal();
+
   useEffect(() => {
     fetchKegiatanDetail();
   }, [resolvedParams.id]);
@@ -81,7 +85,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
 
   const handleApproval = async (action: 'approve' | 'reject' | 'revisi') => {
     if ((action === 'reject' || action === 'revisi') && !catatan.trim()) {
-      alert('Catatan wajib diisi untuk menolak atau meminta revisi');
+      showWarning('Catatan Diperlukan', 'Catatan wajib diisi untuk menolak atau meminta revisi');
       return;
     }
 
@@ -95,17 +99,17 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
 
       if (res.ok) {
         const data = await res.json();
-        alert(data.message);
-        router.push('/koordinator/kegiatan/approval');
+        showSuccess('Berhasil', data.message);
+        setTimeout(() => router.push('/koordinator/kegiatan/approval'), 1500);
       } else {
         const error = await res.json();
-        alert(error.error || 'Terjadi kesalahan');
+        showError('Gagal', error.error || 'Terjadi kesalahan');
       }
     } catch (error) {
       console.error('Error processing approval:', error);
-      alert('Terjadi kesalahan');
+      showError('Kesalahan', 'Terjadi kesalahan');
     } finally {
-      setSubmitting(false);
+      setSubmitting(true);
       setShowRejectModal(false);
       setShowRevisiModal(false);
     }
@@ -408,6 +412,7 @@ export default function KoordinatorApprovalDetailPage({ params }: { params: Prom
           </div>
         </div>
       )}
+      <AlertModal />
     </div>
   );
 }

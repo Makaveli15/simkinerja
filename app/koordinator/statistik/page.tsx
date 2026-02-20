@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ExcelJS from 'exceljs';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { 
   LuTrendingUp, 
   LuUsers, 
@@ -37,6 +38,7 @@ interface Ringkasan {
   kegiatan_berjalan: number;
   kegiatan_draft: number;
   kegiatan_dibatalkan: number;
+  kegiatan_approved_final?: number;
   rata_rata_kinerja: number;
   total_pelaksana: number;
 }
@@ -46,6 +48,8 @@ interface Anggaran {
   realisasi: number;
   sisa: number;
   persentase_serapan: number;
+  total_all?: number;
+  realisasi_all?: number;
 }
 
 interface Output {
@@ -185,6 +189,7 @@ export default function StatistikKinerjaPage() {
   const [periodeMulai, setPeriodeMulai] = useState('');
   const [periodeSelesai, setPeriodeSelesai] = useState('');
   const [showFilter, setShowFilter] = useState(false);
+  const { showError, AlertModal } = useAlertModal();
 
   useEffect(() => {
     setMounted(true);
@@ -494,7 +499,7 @@ export default function StatistikKinerjaPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting:', error);
-      alert('Gagal mengexport data');
+      showError('Gagal', 'Gagal mengexport data');
     } finally {
       setExporting(false);
     }
@@ -685,10 +690,22 @@ export default function StatistikKinerjaPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Anggaran Card */}
         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
             <LuWallet className="w-5 h-5 text-blue-600" />
             Statistik Anggaran
           </h3>
+          {/* Info banner untuk kegiatan disetujui final */}
+          <div className="mb-4 p-2.5 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-blue-700 flex items-center gap-1.5">
+              <LuShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Data anggaran hanya dari kegiatan yang sudah disetujui final (Tahap 3: Kepala)</span>
+            </p>
+            {data.ringkasan.kegiatan_approved_final !== undefined && (
+              <p className="text-xs text-blue-600 mt-1 ml-5">
+                <strong>{data.ringkasan.kegiatan_approved_final}</strong> dari {data.ringkasan.total_kegiatan} kegiatan sudah disetujui final
+              </p>
+            )}
+          </div>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total Anggaran</span>
@@ -1267,6 +1284,8 @@ export default function StatistikKinerjaPage() {
           )}
         </div>
       </div>
+
+      <AlertModal />
     </div>
   );
 }

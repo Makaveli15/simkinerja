@@ -18,6 +18,7 @@ import {
   LuHourglass,
   LuPaperclip
 } from 'react-icons/lu';
+import { useAlertModal } from '@/app/components/AlertModal';
 
 interface Kegiatan {
   id: number;
@@ -72,6 +73,9 @@ export default function KoordinatorApprovalPage() {
   const [validasiStatusFilter, setValidasiStatusFilter] = useState<string>('menunggu');
   const [validasiSearchQuery, setValidasiSearchQuery] = useState('');
   const [processingId, setProcessingId] = useState<number | null>(null);
+
+  // Alert Modal hook
+  const { showError, AlertModal } = useAlertModal();
 
   useEffect(() => {
     fetchKegiatan();
@@ -149,11 +153,11 @@ export default function KoordinatorApprovalPage() {
         fetchValidasiKuantitas();
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal memproses validasi');
+        showError('Gagal', data.error || 'Gagal memproses validasi');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Terjadi kesalahan');
+      showError('Kesalahan', 'Terjadi kesalahan');
     } finally {
       setProcessingId(null);
     }
@@ -620,6 +624,7 @@ export default function KoordinatorApprovalPage() {
           </div>
         </>
       )}
+      <AlertModal />
     </div>
   );
 }

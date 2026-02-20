@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Pagination from '@/app/components/Pagination';
+import { useAlertModal } from '@/app/components/AlertModal';
 import {
   LuFileSpreadsheet,
   LuFileText,
@@ -96,6 +97,9 @@ export default function KegiatanPage() {
   const [exportTahun, setExportTahun] = useState(new Date().getFullYear().toString());
   const [exportBulan, setExportBulan] = useState((new Date().getMonth() + 1).toString());
   const [submittingId, setSubmittingId] = useState<number | null>(null);
+  
+  // Alert Modal hook
+  const { showConfirm, showSuccess, showError, showWarning, AlertModal } = useAlertModal();
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -225,29 +229,34 @@ export default function KegiatanPage() {
   };
 
   const handleSubmitKegiatan = async (kegiatanId: number, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin mengajukan kegiatan "${nama}" untuk disetujui?`)) {
-      return;
-    }
-    
-    setSubmittingId(kegiatanId);
-    try {
-      const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}/submit`, {
-        method: 'POST',
-      });
-      
-      if (res.ok) {
-        alert('Kegiatan berhasil diajukan ke Koordinator untuk review');
-        fetchData();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Terjadi kesalahan');
+    showConfirm({
+      title: 'Ajukan Kegiatan',
+      message: `Apakah Anda yakin ingin mengajukan kegiatan "${nama}" untuk disetujui?`,
+      type: 'confirm',
+      confirmText: 'Ya, Ajukan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setSubmittingId(kegiatanId);
+        try {
+          const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}/submit`, {
+            method: 'POST',
+          });
+          
+          if (res.ok) {
+            showSuccess('Berhasil', 'Kegiatan berhasil diajukan ke Koordinator untuk review');
+            fetchData();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Terjadi kesalahan');
+          }
+        } catch (error) {
+          console.error('Error submitting kegiatan:', error);
+          showError('Gagal', 'Terjadi kesalahan saat mengajukan kegiatan');
+        } finally {
+          setSubmittingId(null);
+        }
       }
-    } catch (error) {
-      console.error('Error submitting kegiatan:', error);
-      alert('Terjadi kesalahan');
-    } finally {
-      setSubmittingId(null);
-    }
+    });
   };
 
   // Helper function to generate kendala section for PDF
@@ -546,7 +555,7 @@ export default function KegiatanPage() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      alert('Gagal mengekspor data ke Excel');
+      showError('Gagal', 'Gagal mengekspor data ke Excel');
     } finally {
       setExporting(false);
       setShowExportModal(false);
@@ -559,7 +568,7 @@ export default function KegiatanPage() {
     try {
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        alert('Popup diblokir. Izinkan popup untuk mengekspor PDF.');
+        showWarning('Popup Diblokir', 'Izinkan popup untuk mengekspor PDF.');
         setExporting(false);
         return;
       }
@@ -808,7 +817,7 @@ export default function KegiatanPage() {
       printWindow.document.close();
     } catch (error) {
       console.error('Error exporting to PDF:', error);
-      alert('Gagal mengekspor data ke PDF');
+      showError('Gagal', 'Gagal mengekspor data ke PDF');
     } finally {
       setExporting(false);
       setShowExportModal(false);
@@ -871,7 +880,7 @@ export default function KegiatanPage() {
   const handleExport = () => {
     const exportData = getExportData();
     if (exportData.length === 0) {
-      alert('Tidak ada data untuk periode yang dipilih');
+      showWarning('Tidak Ada Data', 'Tidak ada data untuk periode yang dipilih');
       return;
     }
     
@@ -931,6 +940,9 @@ export default function KegiatanPage() {
 
   return (
     <div className="space-y-6">
+      {/* Alert Modal */}
+      <AlertModal />
+      
       {/* Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Pagination from '../../components/Pagination';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { LuPlus, LuFileText, LuSearch, LuSquarePen, LuTrash2, LuX } from 'react-icons/lu';
 
 interface KRO {
@@ -23,6 +24,9 @@ export default function KROPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Alert Modal hook
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
 
   const fetchKRO = async () => {
     try {
@@ -86,19 +90,28 @@ export default function KROPage() {
   };
 
   const handleDelete = async (id: number, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus KRO "${nama}"?`)) return;
-
-    try {
-      const res = await fetch(`/api/admin/kro?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchKRO();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Gagal menghapus KRO');
+    showConfirm({
+      title: 'Hapus KRO',
+      message: `Apakah Anda yakin ingin menghapus KRO "${nama}"?`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/kro?id=${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            showSuccess('Berhasil', 'KRO berhasil dihapus');
+            fetchKRO();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal menghapus KRO');
+          }
+        } catch (err) {
+          console.error('Error deleting KRO:', err);
+          showError('Gagal', 'Terjadi kesalahan saat menghapus KRO');
+        }
       }
-    } catch (err) {
-      console.error('Error deleting KRO:', err);
-    }
+    });
   };
 
   const openAddModal = () => {
@@ -342,6 +355,8 @@ export default function KROPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

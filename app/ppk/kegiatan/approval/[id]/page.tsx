@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { 
   LuArrowLeft,
   LuCalendar,
@@ -70,6 +71,7 @@ export default function PPKApprovalDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const { showSuccess, showError, AlertModal } = useAlertModal();
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -107,7 +109,7 @@ export default function PPKApprovalDetailPage() {
 
   const handleApproval = async (action: 'approve' | 'reject' | 'revisi') => {
     if ((action === 'reject' || action === 'revisi') && !catatan.trim()) {
-      alert('Catatan harus diisi');
+      showError('Perhatian', 'Catatan harus diisi');
       return;
     }
 
@@ -125,15 +127,15 @@ export default function PPKApprovalDetailPage() {
           reject: 'Kegiatan berhasil ditolak',
           revisi: 'Kegiatan dikembalikan untuk revisi'
         };
-        alert(actionMessages[action]);
-        router.push('/ppk/kegiatan/approval');
+        showSuccess('Berhasil', actionMessages[action]);
+        setTimeout(() => router.push('/ppk/kegiatan/approval'), 1500);
       } else {
         const error = await res.json();
-        alert(error.error || 'Gagal memproses approval');
+        showError('Gagal', error.error || 'Gagal memproses approval');
       }
     } catch (error) {
       console.error('Error processing approval:', error);
-      alert('Terjadi kesalahan');
+      showError('Gagal', 'Terjadi kesalahan');
     } finally {
       setSubmitting(false);
       setShowRejectModal(false);
@@ -639,6 +641,8 @@ export default function PPKApprovalDetailPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

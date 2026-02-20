@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ExcelJS from 'exceljs';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { 
   LuTrendingUp, 
   LuTrendingDown,
@@ -26,14 +27,15 @@ interface StatistikData {
   kegiatan_approved: number;
   kegiatan_rejected: number;
   kegiatan_bulan_ini: number;
+  kegiatan_final_approved: number;
   rata_rata_waktu_approval: number;
   total_anggaran: number;
   total_realisasi: number;
   sisa_anggaran: number;
   persentase_serapan: number;
-  anggaran_approved: number;
   anggaran_pending: number;
   anggaran_rejected: number;
+  total_anggaran_all: number;
 }
 
 interface AnggaranPerTim {
@@ -65,6 +67,7 @@ export default function StatistikAnggaranPage() {
   const [anggaranPerBulan, setAnggaranPerBulan] = useState<AnggaranPerBulan[]>([]);
   const [topKegiatan, setTopKegiatan] = useState<TopKegiatan[]>([]);
   const [mounted, setMounted] = useState(false);
+  const { showError, AlertModal } = useAlertModal();
 
   useEffect(() => {
     setMounted(true);
@@ -186,19 +189,20 @@ export default function StatistikAnggaranPage() {
       ringkasanHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       ringkasanHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
       
-      ringkasanSheet.addRow(['Total Target Anggaran', formatCurrency(statistik.total_anggaran)]);
-      ringkasanSheet.addRow(['Total Realisasi', formatCurrency(statistik.total_realisasi)]);
-      ringkasanSheet.addRow(['Sisa Anggaran', formatCurrency(statistik.sisa_anggaran)]);
+      ringkasanSheet.addRow(['Total Target Anggaran (Disetujui Final)', formatCurrency(statistik.total_anggaran)]);
+      ringkasanSheet.addRow(['Total Realisasi (Disetujui Final)', formatCurrency(statistik.total_realisasi)]);
+      ringkasanSheet.addRow(['Sisa Anggaran (Disetujui Final)', formatCurrency(statistik.sisa_anggaran)]);
       ringkasanSheet.addRow(['Persentase Serapan', `${statistik.persentase_serapan.toFixed(1)}%`]);
       ringkasanSheet.addRow([]);
       ringkasanSheet.addRow(['Total Kegiatan', statistik.total_kegiatan]);
-      ringkasanSheet.addRow(['Kegiatan Disetujui', statistik.kegiatan_approved]);
-      ringkasanSheet.addRow(['Kegiatan Pending', statistik.kegiatan_pending]);
+      ringkasanSheet.addRow(['Kegiatan Disetujui Final (Tahap 3)', statistik.kegiatan_final_approved || 0]);
+      ringkasanSheet.addRow(['Kegiatan Dalam Proses Approval', statistik.kegiatan_approved]);
+      ringkasanSheet.addRow(['Kegiatan Pending PPK', statistik.kegiatan_pending]);
       ringkasanSheet.addRow(['Kegiatan Ditolak', statistik.kegiatan_rejected]);
       ringkasanSheet.addRow(['Kegiatan Bulan Ini', statistik.kegiatan_bulan_ini]);
       ringkasanSheet.addRow([]);
-      ringkasanSheet.addRow(['Anggaran Disetujui', formatCurrency(statistik.anggaran_approved)]);
-      ringkasanSheet.addRow(['Anggaran Pending', formatCurrency(statistik.anggaran_pending)]);
+      ringkasanSheet.addRow(['Total Anggaran Semua Kegiatan', formatCurrency(statistik.total_anggaran_all || 0)]);
+      ringkasanSheet.addRow(['Anggaran Menunggu Approval', formatCurrency(statistik.anggaran_pending)]);
       ringkasanSheet.addRow(['Anggaran Ditolak/Revisi', formatCurrency(statistik.anggaran_rejected)]);
       ringkasanSheet.addRow([]);
       ringkasanSheet.addRow(['Rata-rata Waktu Approval', `${statistik.rata_rata_waktu_approval} hari`]);
@@ -275,7 +279,7 @@ export default function StatistikAnggaranPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting:', error);
-      alert('Gagal mengexport data');
+      showError('Gagal', 'Gagal mengexport data');
     } finally {
       setExporting(false);
     }
@@ -307,6 +311,10 @@ export default function StatistikAnggaranPage() {
               Statistik Anggaran
             </h1>
             <p className="text-blue-100 mt-2">Monitoring dan analisis pengelolaan anggaran kegiatan</p>
+            <p className="text-blue-200 text-sm mt-1 flex items-center gap-2">
+              <LuCircleCheck className="w-4 h-4" />
+              Data anggaran hanya dari kegiatan yang sudah disetujui final (Tahap 3 - Pimpinan)
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -334,6 +342,32 @@ export default function StatistikAnggaranPage() {
         </div>
       </div>
 
+      {/* Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <LuCircleCheck className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-blue-800">Informasi Data Anggaran</h3>
+            <p className="text-sm text-blue-700 mt-1">
+              Data anggaran yang ditampilkan hanya berasal dari kegiatan yang telah <strong>disetujui hingga tahap 3</strong> (persetujuan Pimpinan/Kepala). 
+              Kegiatan yang masih dalam proses review (Koordinator, PPK, atau menunggu Pimpinan) tidak akan dihitung dalam statistik anggaran.
+            </p>
+            <div className="flex flex-wrap gap-4 mt-3 text-sm">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 rounded-full text-blue-700">
+                <LuCircleCheck className="w-4 h-4" />
+                Kegiatan Disetujui Final: <strong>{statistik?.kegiatan_final_approved || 0}</strong>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-yellow-100 rounded-full text-yellow-700">
+                <LuClock className="w-4 h-4" />
+                Menunggu Approval: <strong>{(statistik?.total_kegiatan || 0) - (statistik?.kegiatan_final_approved || 0) - (statistik?.kegiatan_rejected || 0)}</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Anggaran Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Target Anggaran */}
@@ -341,8 +375,9 @@ export default function StatistikAnggaranPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-500 font-medium">Total Target Anggaran</p>
+              <p className="text-xs text-green-600">(Kegiatan Disetujui Final)</p>
               <p className="text-2xl font-bold mt-2 text-gray-900">{formatCurrency(statistik?.total_anggaran || 0)}</p>
-              <p className="text-xs text-gray-400 mt-1">dari {statistik?.total_kegiatan || 0} kegiatan</p>
+              <p className="text-xs text-gray-400 mt-1">dari {statistik?.kegiatan_final_approved || 0} kegiatan disetujui</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
               <LuBanknote className="w-6 h-6 text-blue-600" />
@@ -355,6 +390,7 @@ export default function StatistikAnggaranPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-500 font-medium">Total Realisasi</p>
+              <p className="text-xs text-green-600">(Kegiatan Disetujui Final)</p>
               <p className="text-2xl font-bold mt-2 text-gray-900">{formatCurrency(statistik?.total_realisasi || 0)}</p>
               <div className="flex items-center gap-1 mt-1">
                 {serapanPersen >= 50 ? (
@@ -376,6 +412,7 @@ export default function StatistikAnggaranPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-500 font-medium">Sisa Anggaran</p>
+              <p className="text-xs text-green-600">(Kegiatan Disetujui Final)</p>
               <p className="text-2xl font-bold mt-2 text-gray-900">{formatCurrency(statistik?.sisa_anggaran || 0)}</p>
               <p className="text-xs text-gray-400 mt-1">{(100 - serapanPersen).toFixed(1)}% tersisa</p>
             </div>
@@ -390,6 +427,7 @@ export default function StatistikAnggaranPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm text-gray-500 font-medium">Persentase Serapan</p>
+              <p className="text-xs text-green-600">(Kegiatan Disetujui Final)</p>
               <p className={`text-3xl font-bold mt-2 ${serapanPersen >= 80 ? 'text-green-600' : serapanPersen >= 50 ? 'text-amber-600' : 'text-red-600'}`}>{serapanPersen.toFixed(1)}%</p>
               <p className={`text-xs mt-1 ${serapanPersen >= 80 ? 'text-green-500' : serapanPersen >= 50 ? 'text-amber-500' : 'text-red-500'}`}>
                 {serapanPersen >= 80 ? 'Sangat Baik' : serapanPersen >= 50 ? 'Cukup' : 'Perlu Perhatian'}
@@ -406,7 +444,7 @@ export default function StatistikAnggaranPage() {
       <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <LuActivity className="w-5 h-5 text-blue-600" />
-          Anggaran Berdasarkan Status Approval
+          Status Anggaran Keseluruhan
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="p-4 bg-green-50 rounded-xl border border-green-100">
@@ -415,19 +453,20 @@ export default function StatistikAnggaranPage() {
                 <LuCircleCheck className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm text-green-700 font-medium">Anggaran Disetujui</p>
-                <p className="text-xl font-bold text-green-800">{formatCurrency(statistik?.anggaran_approved || 0)}</p>
+                <p className="text-sm text-green-700 font-medium">Anggaran Disetujui Final</p>
+                <p className="text-xs text-green-600">(Tahap 3 - Pimpinan)</p>
+                <p className="text-xl font-bold text-green-800">{formatCurrency(statistik?.total_anggaran || 0)}</p>
               </div>
             </div>
             <div className="mt-3">
               <div className="h-2 bg-green-200 rounded-full">
                 <div 
                   className="h-2 bg-green-500 rounded-full transition-all duration-500"
-                  style={{ width: `${statistik?.total_anggaran ? (statistik.anggaran_approved / statistik.total_anggaran * 100) : 0}%` }}
+                  style={{ width: `${statistik?.total_anggaran_all ? (statistik.total_anggaran / statistik.total_anggaran_all * 100) : 0}%` }}
                 ></div>
               </div>
               <p className="text-xs text-green-600 mt-1">
-                {statistik?.total_anggaran ? Math.round(statistik.anggaran_approved / statistik.total_anggaran * 100) : 0}% dari total anggaran
+                {statistik?.total_anggaran_all ? Math.round(statistik.total_anggaran / statistik.total_anggaran_all * 100) : 0}% dari total semua anggaran
               </p>
             </div>
           </div>
@@ -439,6 +478,7 @@ export default function StatistikAnggaranPage() {
               </div>
               <div>
                 <p className="text-sm text-yellow-700 font-medium">Anggaran Menunggu</p>
+                <p className="text-xs text-yellow-600">(Belum Tahap 3)</p>
                 <p className="text-xl font-bold text-yellow-800">{formatCurrency(statistik?.anggaran_pending || 0)}</p>
               </div>
             </div>
@@ -446,11 +486,11 @@ export default function StatistikAnggaranPage() {
               <div className="h-2 bg-yellow-200 rounded-full">
                 <div 
                   className="h-2 bg-yellow-500 rounded-full transition-all duration-500"
-                  style={{ width: `${statistik?.total_anggaran ? (statistik.anggaran_pending / statistik.total_anggaran * 100) : 0}%` }}
+                  style={{ width: `${statistik?.total_anggaran_all ? (statistik.anggaran_pending / statistik.total_anggaran_all * 100) : 0}%` }}
                 ></div>
               </div>
               <p className="text-xs text-yellow-600 mt-1">
-                {statistik?.total_anggaran ? Math.round(statistik.anggaran_pending / statistik.total_anggaran * 100) : 0}% menunggu approval
+                {statistik?.total_anggaran_all ? Math.round(statistik.anggaran_pending / statistik.total_anggaran_all * 100) : 0}% menunggu approval final
               </p>
             </div>
           </div>
@@ -462,6 +502,7 @@ export default function StatistikAnggaranPage() {
               </div>
               <div>
                 <p className="text-sm text-red-700 font-medium">Anggaran Ditolak/Revisi</p>
+                <p className="text-xs text-red-600">(Perlu Perbaikan)</p>
                 <p className="text-xl font-bold text-red-800">{formatCurrency(statistik?.anggaran_rejected || 0)}</p>
               </div>
             </div>
@@ -469,14 +510,22 @@ export default function StatistikAnggaranPage() {
               <div className="h-2 bg-red-200 rounded-full">
                 <div 
                   className="h-2 bg-red-500 rounded-full transition-all duration-500"
-                  style={{ width: `${statistik?.total_anggaran ? (statistik.anggaran_rejected / statistik.total_anggaran * 100) : 0}%` }}
+                  style={{ width: `${statistik?.total_anggaran_all ? (statistik.anggaran_rejected / statistik.total_anggaran_all * 100) : 0}%` }}
                 ></div>
               </div>
               <p className="text-xs text-red-600 mt-1">
-                {statistik?.total_anggaran ? Math.round(statistik.anggaran_rejected / statistik.total_anggaran * 100) : 0}% perlu revisi
+                {statistik?.total_anggaran_all ? Math.round(statistik.anggaran_rejected / statistik.total_anggaran_all * 100) : 0}% perlu revisi
               </p>
             </div>
           </div>
+        </div>
+        
+        {/* Total All Anggaran Info */}
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-sm text-gray-600">
+            <strong>Total Anggaran Semua Kegiatan:</strong> {formatCurrency(statistik?.total_anggaran_all || 0)} 
+            <span className="text-gray-400 ml-2">({statistik?.total_kegiatan || 0} kegiatan)</span>
+          </p>
         </div>
       </div>
 
@@ -698,6 +747,8 @@ export default function StatistikAnggaranPage() {
           </div>
         </div>
       </div>
+
+      <AlertModal />
     </div>
   );
 }

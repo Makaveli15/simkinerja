@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { useAlertModal } from '@/app/components/AlertModal';
 import {
   LuTriangleAlert,
   LuChevronLeft,
@@ -212,6 +213,7 @@ interface IndikatorConfigItem {
 export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const kegiatanId = resolvedParams.id;
+  const { showConfirm, showSuccess, showError, showWarning, AlertModal } = useAlertModal();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -494,30 +496,36 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
 
   // Handle delete dokumen
   const handleDeleteDokumen = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus dokumen ini?')) return;
+    showConfirm({
+      title: 'Hapus Dokumen',
+      message: 'Apakah Anda yakin ingin menghapus dokumen ini?',
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setDeletingDokumenId(id);
+        setError('');
 
-    setDeletingDokumenId(id);
-    setError('');
+        try {
+          const res = await fetch(`/api/pelaksana/dokumen-output?id=${id}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      const res = await fetch(`/api/pelaksana/dokumen-output?id=${id}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) {
-        setSuccess('Dokumen berhasil dihapus');
-        fetchDokumenOutput();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal menghapus dokumen');
+          if (res.ok) {
+            showSuccess('Berhasil', 'Dokumen berhasil dihapus');
+            fetchDokumenOutput();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal menghapus dokumen');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showError('Gagal', 'Terjadi kesalahan saat menghapus dokumen');
+        } finally {
+          setDeletingDokumenId(null);
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Terjadi kesalahan saat menghapus dokumen');
-    } finally {
-      setDeletingDokumenId(null);
-    }
+    });
   };
 
   // Handle minta validasi dokumen (mirip dengan handleMintaValidasiKuantitas)
@@ -604,55 +612,67 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
 
   // Handle delete kuantitas
   const handleDeleteKuantitas = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus catatan kuantitas ini?')) return;
+    showConfirm({
+      title: 'Hapus Catatan Kuantitas',
+      message: 'Apakah Anda yakin ingin menghapus catatan kuantitas ini?',
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setError('');
 
-    setError('');
+        try {
+          const res = await fetch(`/api/pelaksana/validasi-kuantitas?id=${id}`, {
+            method: 'DELETE'
+          });
 
-    try {
-      const res = await fetch(`/api/pelaksana/validasi-kuantitas?id=${id}`, {
-        method: 'DELETE'
-      });
-
-      if (res.ok) {
-        setSuccess('Catatan kuantitas berhasil dihapus');
-        fetchValidasiKuantitas();
-        fetchData();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal menghapus catatan kuantitas');
+          if (res.ok) {
+            showSuccess('Berhasil', 'Catatan kuantitas berhasil dihapus');
+            fetchValidasiKuantitas();
+            fetchData();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal menghapus catatan kuantitas');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showError('Gagal', 'Terjadi kesalahan saat menghapus catatan kuantitas');
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Terjadi kesalahan saat menghapus catatan kuantitas');
-    }
+    });
   };
 
   // Handle minta validasi kuantitas (ubah status dari draft ke menunggu)
   const handleMintaValidasiKuantitas = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin mengajukan validasi? Status akan berubah dan tidak dapat diubah kembali.')) return;
+    showConfirm({
+      title: 'Ajukan Validasi',
+      message: 'Apakah Anda yakin ingin mengajukan validasi? Status akan berubah dan tidak dapat diubah kembali.',
+      type: 'info',
+      confirmText: 'Ya, Ajukan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setError('');
 
-    setError('');
+        try {
+          const res = await fetch('/api/pelaksana/validasi-kuantitas', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, action: 'minta_validasi' })
+          });
 
-    try {
-      const res = await fetch('/api/pelaksana/validasi-kuantitas', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'minta_validasi' })
-      });
-
-      if (res.ok) {
-        setSuccess('Validasi berhasil diajukan! Menunggu persetujuan Koordinator.');
-        fetchValidasiKuantitas();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal mengajukan validasi');
+          if (res.ok) {
+            showSuccess('Berhasil', 'Validasi berhasil diajukan! Menunggu persetujuan Koordinator.');
+            fetchValidasiKuantitas();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal mengajukan validasi');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showError('Gagal', 'Terjadi kesalahan saat mengajukan validasi');
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Terjadi kesalahan saat mengajukan validasi');
-    }
+    });
   };
 
   // Format file size
@@ -1528,14 +1548,14 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                       });
                       
                       if (res.ok) {
-                        alert('Tanggal selesai berhasil disimpan');
+                        showSuccess('Berhasil', 'Tanggal selesai berhasil disimpan');
                         fetchData();
                       } else {
                         const data = await res.json();
-                        alert(data.error || 'Gagal menyimpan');
+                        showError('Gagal', data.error || 'Gagal menyimpan');
                       }
                     } catch {
-                      alert('Terjadi kesalahan');
+                      showError('Kesalahan', 'Terjadi kesalahan');
                     }
                   }} className="space-y-4">
                     <div>
@@ -1565,22 +1585,28 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
                       {rawDataForm.tanggal_realisasi_selesai && (
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (confirm('Hapus tanggal selesai aktual?')) {
-                              setRawDataForm({...rawDataForm, tanggal_realisasi_selesai: ''});
-                              try {
-                                await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatan.id}/update-raw-data`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    tanggal_realisasi_selesai: null
-                                  })
-                                });
-                                fetchData();
-                              } catch {
-                                alert('Gagal menghapus');
+                          onClick={() => {
+                            showConfirm({
+                              title: 'Hapus Tanggal',
+                              message: 'Hapus tanggal selesai aktual?',
+                              confirmText: 'Hapus',
+                              cancelText: 'Batal',
+                              onConfirm: async () => {
+                                setRawDataForm({...rawDataForm, tanggal_realisasi_selesai: ''});
+                                try {
+                                  await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatan.id}/update-raw-data`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      tanggal_realisasi_selesai: null
+                                    })
+                                  });
+                                  fetchData();
+                                } catch {
+                                  showError('Gagal', 'Gagal menghapus');
+                                }
                               }
-                            }
+                            });
                           }}
                           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
                         >
@@ -2619,6 +2645,8 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

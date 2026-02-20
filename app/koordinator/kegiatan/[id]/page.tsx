@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { LuCircleAlert, LuChevronLeft, LuCircleCheck, LuCircleX, LuDownload, LuPlus, LuCheck, LuTarget, LuCalendar, LuWallet, LuUsers, LuChartBar, LuChartLine, LuTriangleAlert, LuClock, LuFilePen, LuPackage, LuClipboardList, LuFolderOpen, LuWrench, LuHourglass, LuLightbulb, LuArrowRight, LuPaperclip, LuUpload, LuTrophy, LuFileText, LuChevronDown, LuPointer } from 'react-icons/lu';
+import { useAlertModal } from '@/app/components/AlertModal';
 
 interface KegiatanDetail {
   id: number;
@@ -149,6 +150,9 @@ interface ValidasiKuantitas {
 export default function KoordinatorKegiatanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const kegiatanId = resolvedParams.id;
+
+  // Alert Modal hook
+  const { showError, showWarning, AlertModal } = useAlertModal();
 
   const [loading, setLoading] = useState(true);
   const [kegiatan, setKegiatan] = useState<KegiatanDetail | null>(null);
@@ -389,11 +393,11 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
         });
       } else {
         const error = await res.json();
-        alert(error.error || 'Gagal memvalidasi dokumen');
+        showError('Gagal', error.error || 'Gagal memvalidasi dokumen');
       }
     } catch (error) {
       console.error('Error validating:', error);
-      alert('Terjadi kesalahan');
+      showError('Kesalahan', 'Terjadi kesalahan');
     } finally {
       setValidatingDokumen(null);
     }
@@ -402,7 +406,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
   const handleSubmitValidation = () => {
     if (!selectedDokumen || !validationAction) return;
     if ((validationAction === 'rejected' || validationAction === 'tidak_valid') && !modalCatatan.trim()) {
-      alert('Catatan diperlukan untuk penolakan');
+      showWarning('Catatan Diperlukan', 'Catatan diperlukan untuk penolakan');
       return;
     }
     submitValidation(selectedDokumen.id, validationAction, modalCatatan);
@@ -1540,7 +1544,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                               const textarea = document.getElementById(`catatan-kuantitas-${val.id}`) as HTMLTextAreaElement;
                                               const catatan = textarea?.value || '';
                                               if (!catatan.trim()) {
-                                                alert('Harap berikan catatan alasan penolakan');
+                                                showWarning('Catatan Diperlukan', 'Harap berikan catatan alasan penolakan');
                                                 return;
                                               }
                                               handleValidasiKuantitas(val.id, 'tidak_valid', catatan);
@@ -1846,7 +1850,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                       onClick={() => {
                                         const catatan = dokumenCatatan[doc.id] || '';
                                         if (!catatan.trim()) {
-                                          alert('Harap berikan catatan alasan penolakan');
+                                          showWarning('Catatan Diperlukan', 'Harap berikan catatan alasan penolakan');
                                           return;
                                         }
                                         submitValidation(doc.id, 'tidak_valid', catatan);
@@ -1887,7 +1891,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                                       onClick={() => {
                                         const catatan = dokumenCatatan[doc.id] || '';
                                         if (!catatan.trim()) {
-                                          alert('Harap berikan catatan alasan penolakan');
+                                          showWarning('Catatan Diperlukan', 'Harap berikan catatan alasan penolakan');
                                           return;
                                         }
                                         submitValidation(doc.id, 'rejected', catatan);
@@ -2225,6 +2229,7 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
           )}
         </div>
       </div>
+      <AlertModal />
     </div>
   );
 }

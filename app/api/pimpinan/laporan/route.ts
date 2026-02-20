@@ -3,6 +3,9 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 import { hitungKinerjaKegiatanAsync, KegiatanData, IndikatorSkor } from '@/lib/services/kinerjaCalculator';
 
+// Status yang menunjukkan kegiatan sudah disetujui hingga tahap 3 (Kepala/Pimpinan)
+const STATUS_APPROVED_TAHAP_3 = ['disetujui', 'approved_pimpinan', 'approved'];
+
 interface KegiatanWithKinerja {
   id: number;
   nama: string;
@@ -16,6 +19,7 @@ interface KegiatanWithKinerja {
   tanggal_realisasi_selesai: string | null;
   anggaran_pagu: number;
   status: string;
+  status_pengajuan: string;
   status_verifikasi: string;
   tim_nama: string;
   kro_kode: string;
@@ -75,6 +79,7 @@ export async function GET(req: NextRequest) {
         ko.tanggal_realisasi_selesai,
         ko.anggaran_pagu,
         ko.status,
+        ko.status_pengajuan,
         ko.status_verifikasi,
         t.nama as tim_nama,
         kro.kode as kro_kode,
@@ -141,6 +146,7 @@ export async function GET(req: NextRequest) {
         tanggal_realisasi_selesai: kg.tanggal_realisasi_selesai,
         anggaran_pagu: parseFloat(kg.anggaran_pagu) || 0,
         status: kg.status,
+        status_pengajuan: kg.status_pengajuan,
         status_verifikasi: kg.status_verifikasi,
         tim_nama: kg.tim_nama,
         kro_kode: kg.kro_kode,
@@ -154,6 +160,11 @@ export async function GET(req: NextRequest) {
       };
     }));
 
+    // Filter kegiatan yang sudah disetujui final (tahap 3) untuk statistik anggaran
+    const kegiatanApprovedFinal = kegiatanWithKinerja.filter(k => 
+      STATUS_APPROVED_TAHAP_3.includes(k.status_pengajuan)
+    );
+
     let laporan;
 
     switch (jenis_laporan) {
@@ -165,8 +176,10 @@ export async function GET(req: NextRequest) {
           judul: 'Rekap Capaian Kinerja per KRO',
           data: kroList.map(kro => {
             const kroKegiatan = kegiatanWithKinerja.filter(k => k.kro_id === kro.id);
-            const totalPagu = kroKegiatan.reduce((sum, k) => sum + k.anggaran_pagu, 0);
-            const totalRealisasi = kroKegiatan.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
+            // Filter kegiatan yang sudah disetujui final untuk anggaran
+            const kroKegiatanApproved = kegiatanApprovedFinal.filter(k => k.kro_id === kro.id);
+            const totalPagu = kroKegiatanApproved.reduce((sum, k) => sum + k.anggaran_pagu, 0);
+            const totalRealisasi = kroKegiatanApproved.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
             const avgSkor = kroKegiatan.length > 0 
               ? kroKegiatan.reduce((sum, k) => sum + k.skor_kinerja, 0) / kroKegiatan.length 
               : 0;
@@ -176,6 +189,7 @@ export async function GET(req: NextRequest) {
               kro_kode: kro.kode,
               kro_nama: kro.nama,
               total_kegiatan: kroKegiatan.length,
+              kegiatan_approved_final: kroKegiatanApproved.length,
               kegiatan_sukses: kroKegiatan.filter(k => k.status_kinerja === 'Sukses').length,
               kegiatan_perlu_perhatian: kroKegiatan.filter(k => k.status_kinerja === 'Perlu Perhatian').length,
               kegiatan_bermasalah: kroKegiatan.filter(k => k.status_kinerja === 'Bermasalah').length,
@@ -189,6 +203,7 @@ export async function GET(req: NextRequest) {
           summary: {
             total_kro: kroList.length,
             total_kegiatan: kegiatanWithKinerja.length,
+            kegiatan_approved_final: kegiatanApprovedFinal.length,
             rata_rata_skor_instansi: kegiatanWithKinerja.length > 0 
               ? Math.round(kegiatanWithKinerja.reduce((sum, k) => sum + k.skor_kinerja, 0) / kegiatanWithKinerja.length * 100) / 100
               : 0
@@ -204,8 +219,10 @@ export async function GET(req: NextRequest) {
           judul: 'Rekap Capaian Kinerja per Tim',
           data: timList.map(tim => {
             const timKegiatan = kegiatanWithKinerja.filter(k => k.tim_id === tim.id);
-            const totalPagu = timKegiatan.reduce((sum, k) => sum + k.anggaran_pagu, 0);
-            const totalRealisasi = timKegiatan.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
+            // Filter kegiatan yang sudah disetujui final untuk anggaran
+            const timKegiatanApproved = kegiatanApprovedFinal.filter(k => k.tim_id === tim.id);
+            const totalPagu = timKegiatanApproved.reduce((sum, k) => sum + k.anggaran_pagu, 0);
+            const totalRealisasi = timKegiatanApproved.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
             const avgSkor = timKegiatan.length > 0 
               ? timKegiatan.reduce((sum, k) => sum + k.skor_kinerja, 0) / timKegiatan.length 
               : 0;
@@ -224,6 +241,7 @@ export async function GET(req: NextRequest) {
               tim_id: tim.id,
               tim_nama: tim.nama,
               total_kegiatan: timKegiatan.length,
+              kegiatan_approved_final: timKegiatanApproved.length,
               kegiatan_sukses: timKegiatan.filter(k => k.status_kinerja === 'Sukses').length,
               kegiatan_perlu_perhatian: timKegiatan.filter(k => k.status_kinerja === 'Perlu Perhatian').length,
               kegiatan_bermasalah: timKegiatan.filter(k => k.status_kinerja === 'Bermasalah').length,
@@ -243,6 +261,7 @@ export async function GET(req: NextRequest) {
           summary: {
             total_tim: timList.length,
             total_kegiatan: kegiatanWithKinerja.length,
+            kegiatan_approved_final: kegiatanApprovedFinal.length,
             rata_rata_skor_instansi: kegiatanWithKinerja.length > 0 
               ? Math.round(kegiatanWithKinerja.reduce((sum, k) => sum + k.skor_kinerja, 0) / kegiatanWithKinerja.length * 100) / 100
               : 0
@@ -251,24 +270,24 @@ export async function GET(req: NextRequest) {
         break;
 
       case 'anggaran':
-        // Rekap realisasi anggaran
-        const totalPaguAll = kegiatanWithKinerja.reduce((sum, k) => sum + k.anggaran_pagu, 0);
-        const totalRealisasiAll = kegiatanWithKinerja.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
+        // Rekap realisasi anggaran - HANYA dari kegiatan yang sudah disetujui tahap 3
+        const totalPaguApproved = kegiatanApprovedFinal.reduce((sum, k) => sum + k.anggaran_pagu, 0);
+        const totalRealisasiApproved = kegiatanApprovedFinal.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
         
-        // Group by KRO
+        // Group by KRO - hanya kegiatan yang sudah disetujui final
         const [kroListAnggaran] = await pool.query<RowDataPacket[]>('SELECT id, kode, nama FROM kro ORDER BY kode');
         
         laporan = {
-          judul: 'Rekap Realisasi Anggaran',
+          judul: 'Rekap Realisasi Anggaran (Kegiatan Disetujui Final)',
           data: kroListAnggaran.map(kro => {
-            const kroKegiatan = kegiatanWithKinerja.filter(k => k.kro_id === kro.id);
-            const pagu = kroKegiatan.reduce((sum, k) => sum + k.anggaran_pagu, 0);
-            const realisasi = kroKegiatan.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
+            const kroKegiatanApproved = kegiatanApprovedFinal.filter(k => k.kro_id === kro.id);
+            const pagu = kroKegiatanApproved.reduce((sum, k) => sum + k.anggaran_pagu, 0);
+            const realisasi = kroKegiatanApproved.reduce((sum, k) => sum + k.total_realisasi_anggaran, 0);
             
             return {
               kro_kode: kro.kode,
               kro_nama: kro.nama,
-              total_kegiatan: kroKegiatan.length,
+              total_kegiatan: kroKegiatanApproved.length,
               pagu_anggaran: pagu,
               realisasi_anggaran: realisasi,
               sisa_anggaran: pagu - realisasi,
@@ -276,10 +295,12 @@ export async function GET(req: NextRequest) {
             };
           }),
           summary: {
-            total_pagu: totalPaguAll,
-            total_realisasi: totalRealisasiAll,
-            total_sisa: totalPaguAll - totalRealisasiAll,
-            serapan_persen: totalPaguAll > 0 ? Math.round((totalRealisasiAll / totalPaguAll) * 100 * 100) / 100 : 0
+            total_pagu: totalPaguApproved,
+            total_realisasi: totalRealisasiApproved,
+            total_sisa: totalPaguApproved - totalRealisasiApproved,
+            total_kegiatan_approved: kegiatanApprovedFinal.length,
+            total_kegiatan_all: kegiatanWithKinerja.length,
+            serapan_persen: totalPaguApproved > 0 ? Math.round((totalRealisasiApproved / totalPaguApproved) * 100 * 100) / 100 : 0
           }
         };
         break;

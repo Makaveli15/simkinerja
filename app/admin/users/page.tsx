@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Pagination from '../../components/Pagination';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { LuPlus, LuUsers, LuCircleCheck, LuBan, LuBadgeCheck, LuSearch, LuKeyRound, LuTrash2, LuInbox, LuX, LuInfo } from 'react-icons/lu';
 
 interface Tim {
@@ -48,6 +49,9 @@ export default function UsersPage() {
     role: 'pelaksana',
     tim_id: '',
   });
+
+  // Alert Modal hook
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
 
   useEffect(() => {
     fetchUsers();
@@ -103,78 +107,108 @@ export default function UsersPage() {
       if (res.ok) {
         setShowModal(false);
         setFormData({ username: '', nama_lengkap: '', email: '', role: 'pelaksana', tim_id: '' });
+        showSuccess('Berhasil', 'Data user berhasil disimpan');
         fetchUsers();
       } else {
         const error = await res.json();
-        alert(error.error || 'Terjadi kesalahan');
+        showError('Gagal', error.error || 'Terjadi kesalahan');
       }
     } catch (error) {
       console.error('Error saving user:', error);
-      alert('Terjadi kesalahan saat menyimpan data');
+      showError('Gagal', 'Terjadi kesalahan saat menyimpan data');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (user: User) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus user "${user.username}"?`)) return;
-    
-    try {
-      const res = await fetch(`/api/admin/users?id=${user.id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchUsers();
-      } else {
-        const error = await res.json();
-        alert(error.error || 'Gagal menghapus user');
+    showConfirm({
+      title: 'Hapus User',
+      message: `Apakah Anda yakin ingin menghapus user "${user.username}"?`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/users?id=${user.id}`, { method: 'DELETE' });
+          if (res.ok) {
+            showSuccess('Berhasil', 'User berhasil dihapus');
+            fetchUsers();
+          } else {
+            const error = await res.json();
+            showError('Gagal', error.error || 'Gagal menghapus user');
+          }
+        } catch (error) {
+          console.error('Error deleting user:', error);
+          showError('Gagal', 'Terjadi kesalahan saat menghapus user');
+        }
       }
-    } catch (error) {
-      console.error('Error deleting user:', error);
-    }
+    });
   };
 
   const handleToggleStatus = async (user: User) => {
-    setActionLoading(user.id);
-    try {
-      const res = await fetch(`/api/admin/users`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: user.id, action: 'toggle_status' }),
-      });
-      if (res.ok) {
-        fetchUsers();
-      } else {
-        const error = await res.json();
-        alert(error.error || 'Gagal mengubah status');
+    const action = user.status === 'active' ? 'menonaktifkan' : 'mengaktifkan';
+    showConfirm({
+      title: `${user.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'} User`,
+      message: `Apakah Anda yakin ingin ${action} user "${user.username}"?`,
+      type: 'warning',
+      confirmText: 'Ya, Lanjutkan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setActionLoading(user.id);
+        try {
+          const res = await fetch(`/api/admin/users`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: user.id, action: 'toggle_status' }),
+          });
+          if (res.ok) {
+            showSuccess('Berhasil', `Status user berhasil diubah`);
+            fetchUsers();
+          } else {
+            const error = await res.json();
+            showError('Gagal', error.error || 'Gagal mengubah status');
+          }
+        } catch (error) {
+          console.error('Error toggling status:', error);
+          showError('Gagal', 'Terjadi kesalahan saat mengubah status');
+        } finally {
+          setActionLoading(null);
+        }
       }
-    } catch (error) {
-      console.error('Error toggling status:', error);
-    } finally {
-      setActionLoading(null);
-    }
+    });
   };
 
   const handleResetPassword = async (user: User) => {
-    if (!confirm(`Reset password ${user.username} ke default (BPS5305)?`)) return;
-    
-    setActionLoading(user.id);
-    try {
-      const res = await fetch(`/api/admin/users`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: user.id, action: 'reset_password' }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        alert(data.message || 'Password berhasil direset ke BPS5305');
-      } else {
-        const error = await res.json();
-        alert(error.error || 'Gagal mereset password');
+    showConfirm({
+      title: 'Reset Password',
+      message: `Reset password ${user.username} ke default (BPS5305)?`,
+      type: 'warning',
+      confirmText: 'Ya, Reset',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setActionLoading(user.id);
+        try {
+          const res = await fetch(`/api/admin/users`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: user.id, action: 'reset_password' }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            showSuccess('Berhasil', data.message || 'Password berhasil direset ke BPS5305');
+          } else {
+            const error = await res.json();
+            showError('Gagal', error.error || 'Gagal mereset password');
+          }
+        } catch (error) {
+          console.error('Error resetting password:', error);
+          showError('Gagal', 'Terjadi kesalahan saat mereset password');
+        } finally {
+          setActionLoading(null);
+        }
       }
-    } catch (error) {
-      console.error('Error resetting password:', error);
-    } finally {
-      setActionLoading(null);
-    }
+    });
   };
 
   const filteredUsers = users.filter(user => {
@@ -531,6 +565,8 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

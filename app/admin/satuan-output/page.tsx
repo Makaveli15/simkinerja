@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Pagination from '../../components/Pagination';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { LuPlus, LuRuler, LuSearch, LuSquarePen, LuTrash2, LuX, LuCheck, LuCircleX } from 'react-icons/lu';
 
 interface SatuanOutput {
@@ -25,6 +26,9 @@ export default function SatuanOutputPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
+
+  // Alert Modal hook
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
 
   const fetchSatuan = async () => {
     try {
@@ -92,19 +96,28 @@ export default function SatuanOutputPage() {
   };
 
   const handleDelete = async (id: number, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus satuan output "${nama}"?`)) return;
-
-    try {
-      const res = await fetch(`/api/admin/satuan-output?id=${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (res.ok) {
-        fetchSatuan();
-      } else {
-        alert(data.error || 'Gagal menghapus satuan output');
+    showConfirm({
+      title: 'Hapus Satuan Output',
+      message: `Apakah Anda yakin ingin menghapus satuan output "${nama}"?`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/satuan-output?id=${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (res.ok) {
+            showSuccess('Berhasil', 'Satuan output berhasil dihapus');
+            fetchSatuan();
+          } else {
+            showError('Gagal', data.error || 'Gagal menghapus satuan output');
+          }
+        } catch (err) {
+          console.error('Error deleting satuan output:', err);
+          showError('Gagal', 'Terjadi kesalahan saat menghapus satuan output');
+        }
       }
-    } catch (err) {
-      console.error('Error deleting satuan output:', err);
-    }
+    });
   };
 
   const handleToggleActive = async (satuan: SatuanOutput) => {
@@ -124,7 +137,7 @@ export default function SatuanOutputPage() {
         fetchSatuan();
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal mengubah status');
+        showError('Gagal', data.error || 'Gagal mengubah status');
       }
     } catch (err) {
       console.error('Error toggling satuan status:', err);
@@ -433,6 +446,8 @@ export default function SatuanOutputPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }

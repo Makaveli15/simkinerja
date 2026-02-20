@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { LuSearch, LuClipboard, LuEye, LuCheck, LuX, LuClock, LuBadgeCheck, LuBan, LuClipboardCheck, LuUser } from 'react-icons/lu';
 
 interface MitraItem {
@@ -63,6 +64,7 @@ export default function PPKApprovalKegiatanPage() {
   const [approvalSummary, setApprovalSummary] = useState<ApprovalSummary>({ review_ppk: 0, review_kepala: 0, ditolak: 0 });
   const [approvalFilter, setApprovalFilter] = useState<'review_ppk' | 'review_kepala' | 'ditolak' | 'all'>('review_ppk');
   const [searchTerm, setSearchTerm] = useState('');
+  const { showSuccess, showError, AlertModal } = useAlertModal();
 
   // Modal states
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -160,17 +162,18 @@ export default function PPKApprovalKegiatanPage() {
       });
 
       if (res.ok) {
+        showSuccess('Berhasil', approvalAction === 'approve' ? 'Kegiatan berhasil diteruskan' : 'Kegiatan berhasil ditolak');
         setShowApprovalModal(false);
         setSelectedKegiatan(null);
         setCatatan('');
         fetchApprovalData();
       } else {
         const data = await res.json();
-        alert(data.error || 'Terjadi kesalahan');
+        showError('Gagal', data.error || 'Terjadi kesalahan');
       }
     } catch (error) {
       console.error('Error processing approval:', error);
-      alert('Terjadi kesalahan');
+      showError('Gagal', 'Terjadi kesalahan');
     } finally {
       setSubmitting(false);
     }
@@ -778,6 +781,8 @@ export default function PPKApprovalKegiatanPage() {
           </div>
         </div>
       )}
+
+      <AlertModal />
     </div>
   );
 }
