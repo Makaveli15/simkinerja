@@ -130,6 +130,22 @@ export async function GET(request: NextRequest) {
         console.log('Could not fetch kendala list:', e);
       }
 
+      // Get mitra list (multiple mitra per kegiatan)
+      let mitraList: RowDataPacket[] = [];
+      try {
+        const [mitraResult] = await pool.query<RowDataPacket[]>(
+          `SELECT m.id, m.nama, m.posisi, m.alamat, m.no_telp, m.sobat_id
+           FROM kegiatan_mitra km
+           JOIN mitra m ON km.mitra_id = m.id
+           WHERE km.kegiatan_id = ?
+           ORDER BY m.nama ASC`,
+          [k.id]
+        );
+        mitraList = mitraResult;
+      } catch (e) {
+        console.log('Could not fetch mitra list:', e);
+      }
+
       // Determine output tervalidasi based on jenis_validasi
       const jenisValidasi = k.jenis_validasi || 'dokumen';
       const outputTervalidasi = jenisValidasi === 'kuantitas' 
@@ -177,6 +193,8 @@ export async function GET(request: NextRequest) {
         kendala_resolved: kendalaStats[0]?.resolved || 0,
         kendala_open: (kendalaStats[0]?.total || 0) - (kendalaStats[0]?.resolved || 0),
         kendala_list: kendalaList,
+        mitra_list: mitraList,
+        total_mitra: mitraList.length,
         // Include indikator breakdown
         indikator: kinerjaResult.indikator,
         deviasi: kinerjaResult.deviasi,

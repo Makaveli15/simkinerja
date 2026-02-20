@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
-import { hitungKinerjaKegiatanAsync, KegiatanData } from '@/lib/services/kinerjaCalculator';
+import { hitungKinerjaKegiatanAsync, KegiatanData, IndikatorSkor } from '@/lib/services/kinerjaCalculator';
 
 // GET - Statistik kinerja tim untuk koordinator
 export async function GET(req: NextRequest) {
@@ -15,6 +15,11 @@ export async function GET(req: NextRequest) {
     if (!payload || payload.role !== 'koordinator') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    // Get query parameters for filtering
+    const { searchParams } = new URL(req.url);
+    const periode_mulai = searchParams.get('periode_mulai');
+    const periode_selesai = searchParams.get('periode_selesai');
 
     // Get koordinator's tim_id
     const [userRows] = await pool.query<RowDataPacket[]>(
@@ -36,6 +41,19 @@ export async function GET(req: NextRequest) {
       [timId]
     );
 
+    // Build date filter
+    let dateFilter = '';
+    const dateParams: (string | number)[] = [timId];
+    
+    if (periode_mulai) {
+      dateFilter += ' AND ko.tanggal_mulai >= ?';
+      dateParams.push(periode_mulai);
+    }
+    if (periode_selesai) {
+      dateFilter += ' AND ko.tanggal_selesai <= ?';
+      dateParams.push(periode_selesai);
+    }
+
     // Get all kegiatan for this tim with detailed info
     const [kegiatanRows] = await pool.query<RowDataPacket[]>(`
       SELECT 
@@ -44,6 +62,7 @@ export async function GET(req: NextRequest) {
         ko.target_output,
         COALESCE(ko.output_realisasi, 0) as output_realisasi,
         ko.satuan_output,
+        ko.jenis_validasi,
         ko.tanggal_mulai,
         ko.tanggal_selesai,
         ko.tanggal_realisasi_selesai,
@@ -58,27 +77,49 @@ export async function GET(req: NextRequest) {
         kro.nama as kro_nama,
         COALESCE((SELECT SUM(jumlah) FROM realisasi_anggaran WHERE kegiatan_id = ko.id), 0) as total_realisasi_anggaran,
         COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id), 0) as total_kendala,
-        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved
+        COALESCE((SELECT COUNT(*) FROM kendala_kegiatan WHERE kegiatan_id = ko.id AND status = 'resolved'), 0) as kendala_resolved,
+        COALESCE((SELECT SUM(jumlah_output) FROM validasi_kuantitas WHERE kegiatan_id = ko.id AND status = 'disahkan'), 0) as output_tervalidasi,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND status_final = 'disahkan'), 0) as dokumen_disahkan,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final'), 0) as total_dokumen_final,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final' AND status_final = 'menunggu'), 0) as dokumen_menunggu,
+        COALESCE((SELECT COUNT(*) FROM dokumen_output WHERE kegiatan_id = ko.id AND tipe_dokumen = 'final' AND status_final = 'revisi'), 0) as dokumen_revisi
       FROM kegiatan ko
       LEFT JOIN users u ON ko.created_by = u.id
       LEFT JOIN kro ON ko.kro_id = kro.id
-      WHERE ko.tim_id = ?
+      WHERE ko.tim_id = ? ${dateFilter}
       ORDER BY ko.created_at DESC
-    `, [timId]);
+    `, dateParams);
 
     // Calculate kinerja for each kegiatan
     const kegiatanWithKinerja = await Promise.all(kegiatanRows.map(async (kg: RowDataPacket) => {
+      // Determine output tervalidasi based on jenis_validasi
+      const jenisValidasi = kg.jenis_validasi || 'dokumen';
+      const outputTervalidasi = jenisValidasi === 'kuantitas' 
+        ? parseFloat(kg.output_tervalidasi) || 0 
+        : parseInt(kg.dokumen_disahkan) || 0;
+      
+      // Build dokumen_stats if needed
+      const dokumenStats = jenisValidasi === 'dokumen' ? {
+        total_final: parseInt(kg.total_dokumen_final) || 0,
+        final_disahkan: parseInt(kg.dokumen_disahkan) || 0,
+        final_menunggu: parseInt(kg.dokumen_menunggu) || 0,
+        final_revisi: parseInt(kg.dokumen_revisi) || 0
+      } : undefined;
+
       const kegiatanData: KegiatanData = {
         target_output: parseFloat(kg.target_output) || 0,
         tanggal_mulai: kg.tanggal_mulai,
         tanggal_selesai: kg.tanggal_selesai,
         anggaran_pagu: parseFloat(kg.anggaran_pagu) || 0,
         output_realisasi: parseFloat(kg.output_realisasi) || 0,
+        output_tervalidasi: outputTervalidasi,
         tanggal_realisasi_selesai: kg.tanggal_realisasi_selesai,
         status_verifikasi: kg.status_verifikasi || 'belum_verifikasi',
         total_realisasi_anggaran: parseFloat(kg.total_realisasi_anggaran) || 0,
         total_kendala: parseInt(kg.total_kendala) || 0,
-        kendala_resolved: parseInt(kg.kendala_resolved) || 0
+        kendala_resolved: parseInt(kg.kendala_resolved) || 0,
+        jenis_validasi: jenisValidasi as 'kuantitas' | 'dokumen',
+        dokumen_stats: dokumenStats
       };
 
       const kinerjaResult = await hitungKinerjaKegiatanAsync(kegiatanData);
@@ -88,7 +129,9 @@ export async function GET(req: NextRequest) {
         nama: kg.nama,
         target_output: kg.target_output,
         output_realisasi: kg.output_realisasi,
+        output_tervalidasi: outputTervalidasi,
         satuan_output: kg.satuan_output,
+        jenis_validasi: jenisValidasi,
         tanggal_mulai: kg.tanggal_mulai,
         tanggal_selesai: kg.tanggal_selesai,
         anggaran_pagu: kg.anggaran_pagu,
@@ -101,24 +144,42 @@ export async function GET(req: NextRequest) {
         total_kendala: kg.total_kendala,
         kendala_resolved: kg.kendala_resolved,
         skor_kinerja: kinerjaResult.skor_kinerja,
-        status_kinerja: kinerjaResult.status_kinerja
+        status_kinerja: kinerjaResult.status_kinerja,
+        indikator: kinerjaResult.indikator
       };
     }));
 
     // Get all pelaksana in this tim
+    const pelaksanaParams = [timId, timId, timId, timId];
+    if (periode_mulai) {
+      pelaksanaParams.push(periode_mulai as unknown as number);
+    }
+    if (periode_selesai) {
+      pelaksanaParams.push(periode_selesai as unknown as number);
+    }
+
+    let pelaksanaDateFilter = '';
+    if (periode_mulai || periode_selesai) {
+      pelaksanaDateFilter = periode_mulai && periode_selesai 
+        ? ' AND tanggal_mulai >= ? AND tanggal_selesai <= ?'
+        : periode_mulai 
+          ? ' AND tanggal_mulai >= ?'
+          : ' AND tanggal_selesai <= ?';
+    }
+
     const [pelaksanaRows] = await pool.query<RowDataPacket[]>(`
       SELECT 
         u.id,
         u.nama_lengkap,
         u.email,
         u.username,
-        (SELECT COUNT(*) FROM kegiatan WHERE created_by = u.id AND tim_id = ?) as total_kegiatan,
-        (SELECT COUNT(*) FROM kegiatan WHERE created_by = u.id AND tim_id = ? AND status = 'selesai') as kegiatan_selesai,
-        (SELECT COUNT(*) FROM kegiatan WHERE created_by = u.id AND tim_id = ? AND status = 'berjalan') as kegiatan_berjalan
+        (SELECT COUNT(*) FROM kegiatan WHERE created_by = u.id AND tim_id = ? ${pelaksanaDateFilter}) as total_kegiatan,
+        (SELECT COUNT(*) FROM kegiatan WHERE created_by = u.id AND tim_id = ? AND status = 'selesai' ${pelaksanaDateFilter}) as kegiatan_selesai,
+        (SELECT COUNT(*) FROM kegiatan WHERE created_by = u.id AND tim_id = ? AND status = 'berjalan' ${pelaksanaDateFilter}) as kegiatan_berjalan
       FROM users u
       WHERE u.tim_id = ? AND u.role = 'pelaksana'
       ORDER BY u.nama_lengkap
-    `, [timId, timId, timId, timId]);
+    `, pelaksanaParams);
 
     // Calculate pelaksana statistics with kinerja
     const pelaksanaStats = pelaksanaRows.map((p: RowDataPacket) => {
@@ -286,6 +347,47 @@ export async function GET(req: NextRequest) {
       })
       .sort((a, b) => b.hari_terlambat - a.hari_terlambat);
 
+    // === RATA-RATA INDIKATOR TIM ===
+    const kegiatanDinilai = kegiatanWithKinerja.filter(k => k.status_kinerja !== 'Belum Dinilai' && k.indikator);
+    const avgIndikator = kegiatanDinilai.length > 0 ? {
+      capaian_output: Math.round(kegiatanDinilai.reduce((sum, k) => sum + (k.indikator?.capaian_output || 0), 0) / kegiatanDinilai.length * 100) / 100,
+      ketepatan_waktu: Math.round(kegiatanDinilai.reduce((sum, k) => sum + (k.indikator?.ketepatan_waktu || 0), 0) / kegiatanDinilai.length * 100) / 100,
+      serapan_anggaran: Math.round(kegiatanDinilai.reduce((sum, k) => sum + (k.indikator?.serapan_anggaran || 0), 0) / kegiatanDinilai.length * 100) / 100,
+      kualitas_output: Math.round(kegiatanDinilai.reduce((sum, k) => sum + (k.indikator?.kualitas_output || 0), 0) / kegiatanDinilai.length * 100) / 100
+    } : null;
+
+    // === KEGIATAN BERMASALAH DETAIL ===
+    const kegiatanBermasalah = kegiatanWithKinerja
+      .filter(k => k.status_kinerja === 'Bermasalah' || k.status_kinerja === 'Perlu Perhatian')
+      .map(k => {
+        // Tentukan masalah utama
+        let masalahUtama = '';
+        if (k.indikator) {
+          const masalah = [];
+          if (k.indikator.capaian_output < 60) masalah.push('Capaian output rendah');
+          if (k.indikator.ketepatan_waktu < 60) masalah.push('Keterlambatan');
+          if (k.indikator.serapan_anggaran < 40) masalah.push('Serapan anggaran rendah');
+          if (k.indikator.kualitas_output < 60) masalah.push('Kualitas output rendah');
+          masalahUtama = masalah.join(', ') || 'Kinerja di bawah target';
+        }
+        
+        return {
+          id: k.id,
+          nama: k.nama,
+          pelaksana: k.pelaksana_nama,
+          status: k.status,
+          status_kinerja: k.status_kinerja,
+          skor_kinerja: k.skor_kinerja,
+          masalah_utama: masalahUtama,
+          indikator: k.indikator
+        };
+      })
+      .sort((a, b) => a.skor_kinerja - b.skor_kinerja);
+
+    // === STATISTIK OUTPUT TERVALIDASI ===
+    const totalOutputTervalidasi = kegiatanWithKinerja.reduce((sum, k) => sum + (k.output_tervalidasi || 0), 0);
+    const persentaseValidasi = totalTargetOutput > 0 ? Math.round((totalOutputTervalidasi / totalTargetOutput) * 100 * 100) / 100 : 0;
+
     return NextResponse.json({
       tim: timInfo[0] || null,
       ringkasan: {
@@ -306,7 +408,9 @@ export async function GET(req: NextRequest) {
       output: {
         total_target: totalTargetOutput,
         total_realisasi: totalRealisasiOutput,
-        persentase_capaian: persentaseCapaianOutput
+        total_tervalidasi: totalOutputTervalidasi,
+        persentase_capaian: persentaseCapaianOutput,
+        persentase_validasi: persentaseValidasi
       },
       kendala: {
         total: totalKendala,
@@ -315,13 +419,15 @@ export async function GET(req: NextRequest) {
       },
       distribusi_kinerja: kinerjaDistribusi,
       distribusi_pengajuan: pengajuanDistribusi,
+      rata_rata_indikator: avgIndikator,
       pelaksana: pelaksanaStats,
       trend_bulanan: trendBulanan,
       top_kinerja: topKinerja,
       bottom_kinerja: bottomKinerja,
       top_anggaran: topAnggaran,
       kegiatan_deadline: kegiatanDeadline,
-      kegiatan_terlambat: kegiatanTerlambat
+      kegiatan_terlambat: kegiatanTerlambat,
+      kegiatan_bermasalah: kegiatanBermasalah
     });
   } catch (error) {
     console.error('Error fetching koordinator statistik:', error);

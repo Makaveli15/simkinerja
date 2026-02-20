@@ -174,6 +174,12 @@ interface Mitra {
   alamat: string;
   no_telp?: string;
   sobat_id?: string;
+  available?: boolean;
+  busy_info?: {
+    kegiatan: string;
+    mulai: string;
+    selesai: string;
+  } | null;
 }
 
 interface IndikatorConfigItem {
@@ -601,14 +607,31 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const fetchMitraList = async () => {
+  const fetchMitraList = async (tanggalMulai?: string, tanggalSelesai?: string) => {
     try {
-      const res = await fetch('/api/pelaksana/mitra');
+      // Jika ada tanggal, fetch dengan info ketersediaan dan exclude kegiatan saat ini
+      let url = '/api/pelaksana/mitra';
+      if (tanggalMulai && tanggalSelesai) {
+        const params = new URLSearchParams({
+          tanggal_mulai: tanggalMulai,
+          tanggal_selesai: tanggalSelesai,
+          exclude_kegiatan_id: kegiatanId.toString()
+        });
+        url = `/api/pelaksana/mitra?${params}`;
+      }
+      const res = await fetch(url);
       if (res.ok) setMitraList(await res.json());
     } catch (error) {
       console.error('Error fetching Mitra:', error);
     }
   };
+
+  // Re-fetch mitra list when edit form dates change
+  useEffect(() => {
+    if (editForm.tanggal_mulai && editForm.tanggal_selesai) {
+      fetchMitraList(editForm.tanggal_mulai, editForm.tanggal_selesai);
+    }
+  }, [editForm.tanggal_mulai, editForm.tanggal_selesai]);
 
   // KRO selection handlers for edit modal
   const handleEditSelectKRO = (kro: KRO) => {
@@ -635,7 +658,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
 
   // Mitra selection handlers for edit modal
   const handleEditAddMitra = (mitra: Mitra) => {
-    if (!editSelectedMitra.find(m => m.id === mitra.id)) {
+    if (!editSelectedMitra.find(m => m.id === mitra.id) && mitra.available !== false) {
       setEditSelectedMitra(prev => [...prev, mitra]);
     }
     setEditMitraSearch('');
@@ -646,7 +669,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     setEditSelectedMitra(prev => prev.filter(m => m.id !== mitraId));
   };
 
-  // Filter mitra based on search for edit modal
+  // Filter mitra based on search for edit modal - show all including unavailable
   const filteredEditMitra = mitraList.filter(mitra => {
     const searchLower = editMitraSearch.toLowerCase();
     const matchesSearch = 
@@ -2452,22 +2475,33 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                             <button
                               key={mitra.id}
                               type="button"
-                              onClick={() => handleEditAddMitra(mitra)}
-                              className="w-full px-3 py-2.5 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                              onClick={() => mitra.available !== false && handleEditAddMitra(mitra)}
+                              disabled={mitra.available === false}
+                              className={`w-full px-3 py-2.5 text-left border-b border-gray-100 last:border-b-0 transition-colors ${
+                                mitra.available === false ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'hover:bg-blue-50'
+                              }`}
                             >
                               <div className="flex items-center gap-2">
-                                <div className="p-1 bg-gray-100 rounded-full">
-                                  <LuUser className="w-3 h-3 text-gray-600" />
+                                <div className={`p-1 rounded-full ${mitra.available === false ? 'bg-red-100' : 'bg-gray-100'}`}>
+                                  <LuUser className={`w-3 h-3 ${mitra.available === false ? 'text-red-600' : 'text-gray-600'}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900">{mitra.nama}</p>
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {mitra.posisi && `${mitra.posisi}`}
-                                    {mitra.posisi && mitra.alamat && ' • '}
-                                    {mitra.alamat && `${mitra.alamat}`}
-                                  </p>
+                                  <p className={`text-sm font-medium ${mitra.available === false ? 'text-gray-500' : 'text-gray-900'}`}>{mitra.nama}</p>
+                                  {mitra.available === false && mitra.busy_info ? (
+                                    <p className="text-xs text-red-500 truncate">
+                                      Sedang ditugaskan: {mitra.busy_info.kegiatan}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-gray-500 truncate">
+                                      {mitra.posisi && `${mitra.posisi}`}
+                                      {mitra.posisi && mitra.alamat && ' • '}
+                                      {mitra.alamat && `${mitra.alamat}`}
+                                    </p>
+                                  )}
                                 </div>
-                                <LuPlus className="w-4 h-4 text-blue-500" />
+                                {mitra.available !== false && (
+                                  <LuPlus className="w-4 h-4 text-blue-500" />
+                                )}
                               </div>
                             </button>
                           ))

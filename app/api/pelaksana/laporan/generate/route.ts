@@ -191,8 +191,29 @@ export async function POST(request: Request) {
 
     const [kegiatan] = await pool.query<RowDataPacket[]>(query, params);
 
-    // Get kendala for each kegiatan
+    // Get mitra list for each kegiatan
     const kegiatanIds = kegiatan.map(k => k.id);
+    let mitraMap: { [key: number]: RowDataPacket[] } = {};
+    
+    if (kegiatanIds.length > 0) {
+      const [allMitra] = await pool.query<RowDataPacket[]>(
+        `SELECT km.kegiatan_id, m.nama, m.posisi, m.no_telp, m.sobat_id
+         FROM kegiatan_mitra km
+         JOIN mitra m ON km.mitra_id = m.id
+         WHERE km.kegiatan_id IN (?)
+         ORDER BY m.nama ASC`,
+        [kegiatanIds]
+      );
+      
+      allMitra.forEach(m => {
+        if (!mitraMap[m.kegiatan_id]) {
+          mitraMap[m.kegiatan_id] = [];
+        }
+        mitraMap[m.kegiatan_id].push(m);
+      });
+    }
+
+    // Get kendala for each kegiatan
     let kendalaMap: { [key: number]: RowDataPacket[] } = {};
     
     if (kegiatanIds.length > 0) {
@@ -240,6 +261,16 @@ export async function POST(request: Request) {
     
     kegiatan.forEach((k, index) => {
       const kendalaList = kendalaMap[k.id] || [];
+      const mitraList = mitraMap[k.id] || [];
+      
+      // Format mitra display
+      let mitraDisplay = '-';
+      if (mitraList.length > 0) {
+        mitraDisplay = mitraList.map(m => `${m.nama} (${m.posisi || 'Mitra'})`).join(', ');
+      } else if (k.mitra_nama !== '-') {
+        // Fallback to old field
+        mitraDisplay = `${k.mitra_nama} (${k.mitra_posisi})`;
+      }
       
       // Kegiatan header
       detailSections.push(
@@ -326,7 +357,7 @@ export async function POST(request: Request) {
                   borders: tableBorders,
                 }),
                 new TableCell({ 
-                  children: [new Paragraph({ children: [new TextRun({ text: k.mitra_nama !== '-' ? `${k.mitra_nama} (${k.mitra_posisi})` : '-' })] })],
+                  children: [new Paragraph({ children: [new TextRun({ text: mitraDisplay })] })],
                   borders: tableBorders,
                 }),
                 new TableCell({ 

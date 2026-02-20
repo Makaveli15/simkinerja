@@ -27,6 +27,15 @@ interface KendalaItem {
   created_at?: string;
 }
 
+interface MitraItem {
+  id: number;
+  nama: string;
+  posisi?: string;
+  alamat?: string;
+  no_telp?: string;
+  sobat_id?: string;
+}
+
 interface Kegiatan {
   id: number;
   nama: string;
@@ -40,6 +49,8 @@ interface Kegiatan {
   kro_kode: string;
   mitra_id: number;
   mitra_nama: string;
+  mitra_list?: MitraItem[];
+  total_mitra?: number;
   skor_kinerja: number;
   status_kinerja: string;
   realisasi_fisik: number;
@@ -369,6 +380,14 @@ export default function KegiatanPage() {
           return `${idx + 1}. [${statusLabel}] ${kd.deskripsi || '-'} (Dampak: ${dampakLabel})`;
         }).join('\n') || '-';
 
+        // Compile mitra list as text - show all mitra
+        const mitraDetail = (k.mitra_list || []).map((m, idx) => {
+          const parts = [m.nama];
+          if (m.posisi) parts.push(`(${m.posisi})`);
+          if (m.sobat_id) parts.push(`[${m.sobat_id}]`);
+          return `${idx + 1}. ${parts.join(' ')}`;
+        }).join('\n') || k.mitra_nama || '-';
+
         return {
           'No': index + 1,
           'Kode KRO': k.kro_kode || '-',
@@ -393,7 +412,8 @@ export default function KegiatanPage() {
           'Daftar Kendala': kendalaDetail,
           'Skor Kinerja': k.skor_kinerja || 0,
           'Status Kinerja': k.status_kinerja || '-',
-          'Mitra': k.mitra_nama || '-',
+          'Jumlah Mitra': k.total_mitra || (k.mitra_list?.length || (k.mitra_nama ? 1 : 0)),
+          'Daftar Mitra': mitraDetail,
         };
       });
 
@@ -452,8 +472,64 @@ export default function KegiatanPage() {
         )
       ].join('\n') : '';
 
-      // Combine both sheets with separator
+      // Create separate Mitra Detail sheet
+      const allMitra: {
+        'No': number;
+        'Nama Kegiatan': string;
+        'Kode KRO': string;
+        'Nama Mitra': string;
+        'Posisi': string;
+        'Alamat': string;
+        'No. Telp': string;
+        'SOBAT ID': string;
+      }[] = [];
+      
+      let mitraNo = 1;
+      dataForExport.forEach(k => {
+        (k.mitra_list || []).forEach(m => {
+          allMitra.push({
+            'No': mitraNo++,
+            'Nama Kegiatan': k.nama,
+            'Kode KRO': k.kro_kode || '-',
+            'Nama Mitra': m.nama || '-',
+            'Posisi': m.posisi || '-',
+            'Alamat': m.alamat || '-',
+            'No. Telp': m.no_telp || '-',
+            'SOBAT ID': m.sobat_id || '-',
+          });
+        });
+        // If no mitra_list but has mitra_nama (legacy)
+        if ((!k.mitra_list || k.mitra_list.length === 0) && k.mitra_nama) {
+          allMitra.push({
+            'No': mitraNo++,
+            'Nama Kegiatan': k.nama,
+            'Kode KRO': k.kro_kode || '-',
+            'Nama Mitra': k.mitra_nama,
+            'Posisi': '-',
+            'Alamat': '-',
+            'No. Telp': '-',
+            'SOBAT ID': '-',
+          });
+        }
+      });
+
+      // Create mitra CSV content
+      const mitraHeaders = allMitra.length > 0 ? Object.keys(allMitra[0]) : [];
+      const mitraCsvContent = allMitra.length > 0 ? [
+        mitraHeaders.join(';'),
+        ...allMitra.map(row => 
+          mitraHeaders.map(h => {
+            const value = row[h as keyof typeof row];
+            if (typeof value === 'number') return value;
+            return `"${String(value).replace(/"/g, '""')}"`;
+          }).join(';')
+        )
+      ].join('\n') : '';
+
+      // Combine all sheets with separator
       const combinedContent = mainCsvContent + 
+        '\n\n\n=== DAFTAR MITRA DETAIL ===\n\n' + 
+        (mitraCsvContent || 'Tidak ada mitra') +
         '\n\n\n=== DAFTAR KENDALA DETAIL ===\n\n' + 
         (kendalaCsvContent || 'Tidak ada kendala');
 
@@ -652,6 +728,11 @@ export default function KegiatanPage() {
                 const isDokumen = k.jenis_validasi === 'dokumen';
                 const outputRealisasi = isDokumen ? (k.dokumen_disahkan || 0) : (k.output_tervalidasi || 0);
                 const progresOutput = k.target_output > 0 ? (Math.round(Math.min(outputRealisasi / k.target_output * 100, 100) * 100) / 100).toFixed(2) : '0.00';
+                // Get all mitra names
+                const mitraNames = (k.mitra_list && k.mitra_list.length > 0) 
+                  ? k.mitra_list.map(m => m.nama).join(', ')
+                  : (k.mitra_nama || '-');
+                const totalMitra = k.total_mitra || k.mitra_list?.length || (k.mitra_nama ? 1 : 0);
                 return `
                 <tr>
                   <td class="text-center">${index + 1}</td>
@@ -664,7 +745,7 @@ export default function KegiatanPage() {
                   <td class="text-center">${progresOutput}%<br><small style="color:#666">${Math.round(outputRealisasi)}/${Math.round(k.target_output || 0)}${isDokumen ? ' Dok' : ''}</small></td>
                   <td class="text-center">${k.kendala_total > 0 ? `<span style="color: ${hasKendala ? '#dc2626' : '#16a34a'}; font-weight: bold;">${k.kendala_resolved || 0}/${k.kendala_total}</span>` : '-'}</td>
                   <td class="text-center"><span class="kinerja ${kinerjaBg ? 'kinerja-' + kinerjaBg : ''}">${k.skor_kinerja || 0}</span><br><small style="color:#666">${k.status_kinerja || '-'}</small></td>
-                  <td>${k.mitra_nama || '-'}</td>
+                  <td>${mitraNames}${totalMitra > 1 ? `<br><small style="color:#666">(${totalMitra} mitra)</small>` : ''}</td>
                 </tr>
               `}).join('')}
               <tr class="totals-row">

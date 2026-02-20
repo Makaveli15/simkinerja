@@ -25,52 +25,58 @@ export async function GET(request: NextRequest) {
     const tanggalSelesai = searchParams.get('tanggal_selesai');
     const excludeKegiatanId = searchParams.get('exclude_kegiatan_id'); // For update operations
 
-    // If dates are provided, filter out mitra that are already assigned to active kegiatan
+    // If dates are provided, check mitra availability
     if (tanggalMulai && tanggalSelesai) {
-      // Get mitra that are NOT assigned to any kegiatan with overlapping dates
-      // Check both kegiatan_mitra table (new) and kegiatan.mitra_id (legacy)
-      let query = `
-        SELECT m.id, m.nama, m.posisi, m.alamat, m.no_telp, m.sobat_id,
-               CASE 
-                 WHEN ko.id IS NOT NULL THEN 1 
-                 ELSE 0 
-               END as is_busy,
-               ko.nama as busy_kegiatan_nama,
-               ko.tanggal_mulai as busy_mulai,
-               ko.tanggal_selesai as busy_selesai
-        FROM mitra m
-        LEFT JOIN (
-          SELECT DISTINCT km.mitra_id, k.id, k.nama, k.tanggal_mulai, k.tanggal_selesai
-          FROM kegiatan_mitra km
-          INNER JOIN kegiatan k ON km.kegiatan_id = k.id
-          WHERE k.status != 'selesai'
-            AND (
-              (k.tanggal_mulai <= ? AND k.tanggal_selesai >= ?)
-              OR (k.tanggal_mulai <= ? AND k.tanggal_selesai >= ?)
-              OR (k.tanggal_mulai >= ? AND k.tanggal_selesai <= ?)
-            )`;
-      
-      const params: (string | number)[] = [
-        tanggalSelesai, tanggalMulai,  // Overlap check 1: kegiatan spans across our dates
-        tanggalMulai, tanggalMulai,     // Overlap check 2: our start is within kegiatan
-        tanggalMulai, tanggalSelesai    // Overlap check 3: kegiatan is within our dates
-      ];
+      // Mitra tidak tersedia jika sudah dipilih pada kegiatan yang belum selesai
+      // Query lebih sederhana: cek apakah mitra sudah ada di kegiatan yang statusnya bukan 'selesai'
+      let excludeCondition = '';
+      const params: (string | number)[] = [];
 
-      // Exclude specific kegiatan (for update operations)
       if (excludeKegiatanId) {
-        query += ` AND k.id != ?`;
+        excludeCondition = 'AND km.kegiatan_id != ?';
         params.push(parseInt(excludeKegiatanId));
       }
 
-      query += `) ko ON m.id = ko.mitra_id ORDER BY m.nama ASC`;
+      const query = `
+        SELECT 
+          m.id, 
+          m.nama, 
+          m.posisi, 
+          m.alamat, 
+          m.no_telp, 
+          m.sobat_id,
+          busy.kegiatan_id as busy_kegiatan_id,
+          busy.kegiatan_nama as busy_kegiatan_nama,
+          busy.tanggal_mulai as busy_mulai,
+          busy.tanggal_selesai as busy_selesai
+        FROM mitra m
+        LEFT JOIN (
+          SELECT 
+            km.mitra_id,
+            k.id as kegiatan_id,
+            k.nama as kegiatan_nama,
+            k.tanggal_mulai,
+            k.tanggal_selesai
+          FROM kegiatan_mitra km
+          INNER JOIN kegiatan k ON km.kegiatan_id = k.id
+          WHERE k.status != 'selesai'
+          ${excludeCondition}
+        ) busy ON m.id = busy.mitra_id
+        ORDER BY m.nama ASC
+      `;
 
       const [mitra] = await pool.query<RowDataPacket[]>(query, params);
 
       // Mark unavailable mitra
       const mitraWithAvailability = mitra.map((m: RowDataPacket) => ({
-        ...m,
-        available: m.is_busy === 0,
-        busy_info: m.is_busy === 1 ? {
+        id: m.id,
+        nama: m.nama,
+        posisi: m.posisi,
+        alamat: m.alamat,
+        no_telp: m.no_telp,
+        sobat_id: m.sobat_id,
+        available: m.busy_kegiatan_id === null,
+        busy_info: m.busy_kegiatan_id !== null ? {
           kegiatan: m.busy_kegiatan_nama,
           mulai: m.busy_mulai,
           selesai: m.busy_selesai
