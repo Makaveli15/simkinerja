@@ -220,7 +220,7 @@ export default function PPKDashboardPage() {
               {pendingApprovals.slice(0, 5).map((item) => (
                 <Link
                   key={item.id}
-                  href={`/ppk/kegiatan/approval/${item.id}`}
+                  href="/ppk/kegiatan/approval"
                   className="block p-4 bg-gray-50 rounded-xl hover:bg-blue-50 transition-colors"
                 >
                   <div className="flex items-start justify-between">

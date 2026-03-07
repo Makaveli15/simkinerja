@@ -575,7 +575,7 @@ export default function KoordinatorDashboard() {
               {recentActivities.slice(0, 5).map((kegiatan) => (
                 <Link 
                   key={kegiatan.id}
-                  href={`/koordinator/kegiatan/approval/${kegiatan.id}`}
+                  href="/koordinator/kegiatan/approval"
                   className="block p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-4">

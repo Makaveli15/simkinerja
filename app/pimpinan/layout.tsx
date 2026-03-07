@@ -374,7 +374,7 @@ export default function PimpinanLayout({
                       }
                       ${isCollapsed ? 'justify-center' : 'justify-between'}
                     `}
-                    title={isCollapsed ? item.label : undefined}
+                    {...(isCollapsed && { title: item.label })}
                   >
                     <div className="flex items-center gap-3">
                       {item.icon}
@@ -433,7 +433,7 @@ export default function PimpinanLayout({
                   }
                   ${isCollapsed ? 'justify-center' : ''}
                 `}
-                title={isCollapsed ? item.label : undefined}
+                {...(isCollapsed && { title: item.label })}
               >
                 {item.icon}
                 {!isCollapsed && <span className="font-medium">{item.label}</span>}

@@ -183,6 +183,13 @@ interface Mitra {
   } | null;
 }
 
+interface SatuanOutput {
+  id: number;
+  nama: string;
+  deskripsi: string | null;
+  is_active: boolean;
+}
+
 interface IndikatorConfigItem {
   kode: string;
   nama: string;
@@ -279,6 +286,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
   const [kroList, setKroList] = useState<KRO[]>([]);
   const [mitraList, setMitraList] = useState<Mitra[]>([]);
   const [indikatorConfig, setIndikatorConfig] = useState<IndikatorConfigItem[]>([]);
+  const [satuanOutputList, setSatuanOutputList] = useState<SatuanOutput[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('evaluasi');
@@ -336,6 +344,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
     fetchEvaluasi();
     fetchIndikatorConfig();
     fetchValidasiKuantitas();
+    fetchSatuanOutputList();
   }, [kegiatanId]);
 
   const fetchIndikatorConfig = async () => {
@@ -631,6 +640,18 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
       if (res.ok) setMitraList(await res.json());
     } catch (error) {
       console.error('Error fetching Mitra:', error);
+    }
+  };
+
+  const fetchSatuanOutputList = async () => {
+    try {
+      const res = await fetch('/api/admin/satuan-output?active=true');
+      if (res.ok) {
+        const data = await res.json();
+        setSatuanOutputList(data.satuan || []);
+      }
+    } catch (error) {
+      console.error('Error fetching satuan output:', error);
     }
   };
 
@@ -2324,12 +2345,15 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                       onChange={e => setEditForm({...editForm, satuan_output: e.target.value})} 
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
                     >
-                      <option value="dokumen">Dokumen</option>
-                      <option value="publikasi">Publikasi</option>
-                      <option value="layanan">Layanan</option>
-                      <option value="wilayah">Wilayah</option>
-                      <option value="data">Data</option>
-                      <option value="peta">Peta</option>
+                      {satuanOutputList.length === 0 ? (
+                        <option value="">Memuat satuan output...</option>
+                      ) : (
+                        satuanOutputList.map((satuan) => (
+                          <option key={satuan.id} value={satuan.nama}>
+                            {satuan.nama}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                 </div>
