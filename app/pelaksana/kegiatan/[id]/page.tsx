@@ -852,7 +852,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
     { id: 'evaluasi' as TabType, label: 'Evaluasi Kinerja', icon: <LuChartBar className="w-4 h-4" /> },
-    { id: 'progres' as TabType, label: 'Progres', icon: <LuTrendingUp className="w-4 h-4" />, count: progres.length },
+    { id: 'progres' as TabType, label: 'Progres', icon: <LuTrendingUp className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : progres.length },
     { id: 'realisasi-anggaran' as TabType, label: 'Realisasi Anggaran', icon: <LuWallet className="w-4 h-4" />, count: realisasiAnggaran.length },
     { id: 'kendala' as TabType, label: 'Kendala', icon: <LuTriangleAlert className="w-4 h-4" />, count: kendala.length },
     { id: 'verifikasi' as TabType, label: 'Verifikasi Kualitas Output', icon: <LuCircleCheck className="w-4 h-4" />, count: kegiatan?.jenis_validasi === 'kuantitas' ? validasiKuantitas.length : dokumenOutput.length },
@@ -1237,8 +1237,45 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   </div>
                 </div>
 
-                <h3 className="font-semibold text-gray-900 mb-4">Riwayat Progres</h3>
-                {progres.length === 0 ? <p className="text-gray-500 text-center py-8">Belum ada data progres</p> : (
+                <h3 className="font-semibold text-gray-900 mb-4">Riwayat {kegiatan?.jenis_validasi === 'kuantitas' ? 'Validasi Output' : 'Progres'}</h3>
+                {kegiatan?.jenis_validasi === 'kuantitas' ? (
+                  /* Riwayat Validasi Kuantitas */
+                  validasiKuantitas.length === 0 ? <p className="text-gray-500 text-center py-8">Belum ada data validasi output</p> : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tanggal</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Jumlah Output</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Keterangan</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {validasiKuantitas.map(v => (
+                            <tr key={v.id}>
+                              <td className="px-4 py-3">{formatDate(v.created_at)}</td>
+                              <td className="px-4 py-3 font-medium">{Math.round(Number(v.jumlah_output))} {kegiatan?.satuan_output}</td>
+                              <td className="px-4 py-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  v.status === 'disahkan' ? 'bg-green-100 text-green-700' :
+                                  v.status === 'ditolak' ? 'bg-red-100 text-red-700' :
+                                  v.status === 'menunggu' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {v.status === 'disahkan' ? 'Divalidasi' : v.status === 'ditolak' ? 'Ditolak' : v.status === 'menunggu' ? 'Menunggu' : v.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">{v.keterangan || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                ) : (
+                  /* Riwayat Progres Manual */
+                  progres.length === 0 ? <p className="text-gray-500 text-center py-8">Belum ada data progres</p> : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-50">
@@ -1259,6 +1296,7 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                       </tbody>
                     </table>
                   </div>
+                  )
                 )}
               </div>
             )}

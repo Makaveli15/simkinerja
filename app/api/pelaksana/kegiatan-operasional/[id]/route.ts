@@ -363,6 +363,8 @@ export async function GET(
       tanggal_realisasi_selesai: formatDateForResponse(kegiatan[0].tanggal_realisasi_selesai),
       mitra_list: mitraList,
       total_mitra: mitraList.length,
+      // Override output_realisasi dengan output_tervalidasi untuk konsistensi UI
+      output_realisasi: outputTervalidasi,
     };
 
     return NextResponse.json({

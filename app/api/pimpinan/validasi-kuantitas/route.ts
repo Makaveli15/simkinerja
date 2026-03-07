@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { updateOutputAndCheckComplete } from '@/lib/services/autoCompleteService';
 
 // GET - Ambil data validasi kuantitas untuk pimpinan (yang sudah divalidasi koordinator)
 export async function GET(request: NextRequest) {
@@ -139,9 +140,14 @@ export async function PUT(request: NextRequest) {
         WHERE id = ?
       `, [payload.id, catatan || null, catatan || null, id]);
 
+      // Auto-complete check: cek apakah kegiatan bisa diselesaikan otomatis
+      const autoCompleteResult = await updateOutputAndCheckComplete(validasi.kegiatan_id);
+      console.log('Auto-complete result:', autoCompleteResult);
+
       return NextResponse.json({ 
         success: true, 
-        message: 'Validasi kuantitas disahkan' 
+        message: 'Validasi kuantitas disahkan',
+        autoComplete: autoCompleteResult
       });
     } else {
       // Reject -> status jadi ditolak

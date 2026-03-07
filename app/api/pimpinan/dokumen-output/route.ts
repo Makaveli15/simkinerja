@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { createNotification } from '@/lib/services/notificationService';
+import { updateOutputAndCheckComplete } from '@/lib/services/autoCompleteService';
 
 // GET - Get dokumen output for review (pimpinan)
 // Workflow:
@@ -208,9 +209,14 @@ export async function PATCH(req: NextRequest) {
         referenceType: 'kegiatan'
       });
 
+      // Auto-complete check: cek apakah kegiatan bisa diselesaikan otomatis
+      const autoCompleteResult = await updateOutputAndCheckComplete(dokumen.kegiatan_id);
+      console.log('Auto-complete result:', autoCompleteResult);
+
       return NextResponse.json({
         message: 'Dokumen berhasil disahkan',
-        success: true
+        success: true,
+        autoComplete: autoCompleteResult
       });
     }
 
@@ -261,6 +267,10 @@ export async function PATCH(req: NextRequest) {
           'UPDATE kegiatan SET status_verifikasi = ? WHERE id = ?',
           ['valid', dokumen.kegiatan_id]
         );
+        
+        // Auto-complete check: cek apakah kegiatan bisa diselesaikan otomatis
+        const autoCompleteResult = await updateOutputAndCheckComplete(dokumen.kegiatan_id);
+        console.log('Auto-complete result (validasi final):', autoCompleteResult);
       } else {
         // Jika invalid, set kegiatan status to revisi
         await pool.query(

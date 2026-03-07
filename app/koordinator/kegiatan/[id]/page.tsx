@@ -1979,6 +1979,8 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                       <span className="font-semibold text-gray-900">
                         {kegiatan.tanggal_realisasi_mulai 
                           ? formatDate(kegiatan.tanggal_realisasi_mulai) 
+                          : kegiatan.tanggal_realisasi_selesai
+                          ? <span className="text-gray-600">{formatDate(kegiatan.tanggal_mulai)} <span className="text-xs text-gray-400">(rencana)</span></span>
                           : <span className="text-gray-400">Belum dimulai</span>}
                       </span>
                     </div>
@@ -1991,18 +1993,18 @@ export default function KoordinatorKegiatanDetailPage({ params }: { params: Prom
                       </span>
                     </div>
                     <div className={`flex justify-between items-center p-3 rounded-lg ${
-                      kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                      kegiatan.tanggal_realisasi_selesai
                         ? 'bg-green-100'
                         : 'bg-gray-100'
                     }`}>
                       <span className="text-gray-700 font-medium">Durasi Aktual</span>
                       <span className={`font-bold ${
-                        kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
+                        kegiatan.tanggal_realisasi_selesai
                           ? 'text-green-700'
                           : 'text-gray-400'
                       }`}>
-                        {kegiatan.tanggal_realisasi_mulai && kegiatan.tanggal_realisasi_selesai
-                          ? `${Math.ceil((new Date(kegiatan.tanggal_realisasi_selesai).getTime() - new Date(kegiatan.tanggal_realisasi_mulai).getTime()) / (1000 * 60 * 60 * 24))} hari`
+                        {kegiatan.tanggal_realisasi_selesai
+                          ? `${Math.ceil((new Date(kegiatan.tanggal_realisasi_selesai).getTime() - new Date(kegiatan.tanggal_realisasi_mulai || kegiatan.tanggal_mulai).getTime()) / (1000 * 60 * 60 * 24))} hari`
                           : 'Belum selesai'}
                       </span>
                     </div>
