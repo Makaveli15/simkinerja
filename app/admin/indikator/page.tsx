@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { 
   LuPlus, 
   LuPencil, 
   LuTrash2, 
-  LuCheck, 
-  LuX, 
   LuCircleAlert,
   LuGauge,
   LuArrowUp,
@@ -71,8 +70,8 @@ export default function IndikatorKinerjaPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Delete confirmation
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  // Alert Modal
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
 
   useEffect(() => {
     fetchIndikator();
@@ -145,36 +144,40 @@ export default function IndikatorKinerjaPage() {
       setSuccess(data.message);
       setShowModal(false);
       fetchIndikator();
-      
-      setTimeout(() => setSuccess(''), 3000);
+      showSuccess('Berhasil!', editingId ? 'Indikator berhasil diperbarui' : 'Indikator berhasil ditambahkan');
     } catch (error) {
-      setError('Terjadi kesalahan saat menyimpan data');
+      showError('Gagal!', 'Terjadi kesalahan saat menyimpan data');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      const res = await fetch(`/api/admin/indikator?id=${id}`, {
-        method: 'DELETE'
-      });
+  const handleDelete = async (id: number, nama: string) => {
+    showConfirm({
+      title: 'Nonaktifkan Indikator?',
+      message: `Apakah Anda yakin ingin menonaktifkan indikator "${nama}"? Indikator yang dinonaktifkan tidak akan digunakan dalam perhitungan kinerja.`,
+      type: 'warning',
+      confirmText: 'Ya, Nonaktifkan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/admin/indikator?id=${id}`, {
+            method: 'DELETE'
+          });
 
-      const data = await res.json();
+          const data = await res.json();
 
-      if (res.ok) {
-        setSuccess(data.message);
-        fetchIndikator();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error);
-        setTimeout(() => setError(''), 3000);
+          if (res.ok) {
+            showSuccess('Berhasil!', data.message || 'Indikator berhasil dinonaktifkan');
+            fetchIndikator();
+          } else {
+            showError('Gagal!', data.error || 'Gagal menonaktifkan indikator');
+          }
+        } catch (error) {
+          showError('Error!', 'Terjadi kesalahan saat menghapus data');
+        }
       }
-    } catch (error) {
-      setError('Terjadi kesalahan saat menghapus data');
-    } finally {
-      setDeleteConfirm(null);
-    }
+    });
   };
 
   const handleReorder = async (id: number, direction: 'up' | 'down') => {
@@ -360,32 +363,13 @@ export default function IndikatorKinerjaPage() {
                         >
                           <LuPencil className="w-4 h-4" />
                         </button>
-                        {deleteConfirm === item.id ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleDelete(item.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                              title="Konfirmasi hapus"
-                            >
-                              <LuCheck className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm(null)}
-                              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg"
-                              title="Batal"
-                            >
-                              <LuX className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setDeleteConfirm(item.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Nonaktifkan"
-                          >
-                            <LuTrash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDelete(item.id, item.nama)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Nonaktifkan"
+                        >
+                          <LuTrash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -628,6 +612,9 @@ export default function IndikatorKinerjaPage() {
           </div>
         </div>
       )}
+
+      {/* Alert Modal */}
+      <AlertModal />
     </div>
   );
 }

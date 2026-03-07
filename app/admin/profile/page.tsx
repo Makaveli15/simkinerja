@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LuLoader } from 'react-icons/lu';
+import { useAlertModal } from '@/app/components/AlertModal';
 
 interface User {
   id: number;
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const { showSuccess, showError, AlertModal } = useAlertModal();
 
   const [formData, setFormData] = useState({
     username: '',
@@ -69,15 +71,15 @@ export default function ProfilePage() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
+        showSuccess('Berhasil!', 'Profil berhasil diperbarui!');
         setUser({ ...user!, ...formData });
         // Dispatch event to update profile in layout header
         window.dispatchEvent(new CustomEvent('profileUpdated'));
       } else {
-        setMessage({ type: 'error', text: data.error || 'Gagal menyimpan profil' });
+        showError('Gagal!', data.error || 'Gagal menyimpan profil');
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Terjadi kesalahan' });
+      showError('Error!', 'Terjadi kesalahan');
     } finally {
       setIsSaving(false);
     }
@@ -88,13 +90,13 @@ export default function ProfilePage() {
     if (file) {
       // Validasi ukuran file (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        setMessage({ type: 'error', text: 'Ukuran file terlalu besar. Maksimal 2MB' });
+        showError('File Terlalu Besar', 'Ukuran file maksimal 2MB');
         return;
       }
 
       // Validasi tipe file
       if (!file.type.startsWith('image/')) {
-        setMessage({ type: 'error', text: 'File harus berupa gambar' });
+        showError('Format Tidak Valid', 'File harus berupa gambar');
         return;
       }
 
@@ -309,6 +311,9 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LuUser, LuLock, LuLoader, LuInfo } from 'react-icons/lu';
+import { useAlertModal } from '@/app/components/AlertModal';
 
 interface User {
   id: number;
@@ -23,6 +24,7 @@ export default function PPKProfilePage() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
   const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
+  const { showSuccess, showError, AlertModal } = useAlertModal();
 
   const [formData, setFormData] = useState({
     username: '',
@@ -83,14 +85,14 @@ export default function PPKProfilePage() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'Profil berhasil diperbarui!' });
+        showSuccess('Berhasil!', 'Profil berhasil diperbarui!');
         setUser({ ...user!, nama_lengkap: formData.nama_lengkap, email: formData.email, foto: formData.foto });
         window.dispatchEvent(new CustomEvent('profileUpdated'));
       } else {
-        setMessage({ type: 'error', text: data.error || 'Gagal menyimpan profil' });
+        showError('Gagal!', data.error || 'Gagal menyimpan profil');
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Terjadi kesalahan' });
+      showError('Error!', 'Terjadi kesalahan');
     } finally {
       setIsSaving(false);
     }
@@ -111,13 +113,13 @@ export default function PPKProfilePage() {
       const data = await res.json();
 
       if (res.ok) {
-        setPasswordMessage({ type: 'success', text: 'Password berhasil diubah!' });
+        showSuccess('Berhasil!', 'Password berhasil diubah!');
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       } else {
-        setPasswordMessage({ type: 'error', text: data.error || 'Gagal mengubah password' });
+        showError('Gagal!', data.error || 'Gagal mengubah password');
       }
     } catch {
-      setPasswordMessage({ type: 'error', text: 'Terjadi kesalahan' });
+      showError('Error!', 'Terjadi kesalahan');
     } finally {
       setIsChangingPassword(false);
     }
@@ -127,12 +129,12 @@ export default function PPKProfilePage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        setMessage({ type: 'error', text: 'Ukuran file terlalu besar. Maksimal 2MB' });
+        showError('File Terlalu Besar', 'Ukuran file maksimal 2MB');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        setMessage({ type: 'error', text: 'File harus berupa gambar' });
+        showError('Format Tidak Valid', 'File harus berupa gambar');
         return;
       }
 
@@ -463,6 +465,9 @@ export default function PPKProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal />
     </div>
   );
 }
