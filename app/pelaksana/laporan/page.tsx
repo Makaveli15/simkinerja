@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Pagination from '../../components/Pagination';
+import { useAlertModal } from '@/app/components/AlertModal';
 import { 
   LuUpload, 
   LuFileText, 
@@ -36,10 +37,11 @@ export default function LaporanPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedLaporan, setSelectedLaporan] = useState<Laporan | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Alert Modal hook
+  const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
   
   // Filter state
   const [filterTahun, setFilterTahun] = useState(new Date().getFullYear());
@@ -153,27 +155,31 @@ export default function LaporanPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedLaporan) return;
-    
-    try {
-      const response = await fetch(`/api/pelaksana/laporan?id=${selectedLaporan.id}`, {
-        method: 'DELETE'
-      });
-      
-      if (response.ok) {
-        setSuccess('Laporan berhasil dihapus');
-        setShowDeleteModal(false);
-        setSelectedLaporan(null);
-        fetchLaporan();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Gagal menghapus laporan');
+  const handleDelete = async (laporan: Laporan) => {
+    showConfirm({
+      title: 'Hapus Laporan',
+      message: `Apakah Anda yakin ingin menghapus laporan "${laporan.judul}"? Tindakan ini tidak dapat dibatalkan.`,
+      type: 'warning',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`/api/pelaksana/laporan?id=${laporan.id}`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            showSuccess('Berhasil', 'Laporan berhasil dihapus');
+            fetchLaporan();
+          } else {
+            const data = await response.json();
+            showError('Gagal', data.error || 'Gagal menghapus laporan');
+          }
+        } catch (error) {
+          showError('Gagal', 'Terjadi kesalahan saat menghapus');
+        }
       }
-    } catch (error) {
-      setError('Terjadi kesalahan saat menghapus');
-    }
+    });
   };
 
   const resetForm = () => {
@@ -185,11 +191,6 @@ export default function LaporanPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
-
-  const openDeleteModal = (laporan: Laporan) => {
-    setSelectedLaporan(laporan);
-    setShowDeleteModal(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -363,7 +364,7 @@ export default function LaporanPage() {
                           <LuDownload className="h-5 w-5" />
                         </a>
                         <button
-                          onClick={() => openDeleteModal(laporan)}
+                          onClick={() => handleDelete(laporan)}
                           className="text-red-600 hover:text-red-800 p-1"
                           title="Hapus"
                         >
@@ -532,34 +533,8 @@ export default function LaporanPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedLaporan && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6">
-            <div className="text-center">
-              <LuTrash2 className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Hapus Laporan?</h3>
-              <p className="text-gray-600 mb-6">
-                Apakah Anda yakin ingin menghapus laporan &quot;{selectedLaporan.judul}&quot;? Tindakan ini tidak dapat dibatalkan.
-              </p>
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => { setShowDeleteModal(false); setSelectedLaporan(null); }}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Alert Modal */}
+      <AlertModal />
     </div>
   );
 }

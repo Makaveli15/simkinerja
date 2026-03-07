@@ -383,71 +383,94 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   const handleUpdateStatus = async (newStatus: string) => {
     if (newStatus === currentStatus) return;
     
-    setUpdatingStatus(true);
-    setError('');
-    setSuccess('');
+    const statusLabels: Record<string, string> = {
+      'belum_dimulai': 'Belum Dimulai',
+      'berjalan': 'Berjalan',
+      'selesai': 'Selesai',
+      'tertunda': 'Tertunda'
+    };
 
-    try {
-      const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nama: kegiatan?.nama,
-          tanggal_mulai: kegiatan?.tanggal_mulai,
-          status: newStatus
-        })
-      });
+    showConfirm({
+      title: 'Ubah Status Kegiatan',
+      message: `Apakah Anda yakin ingin mengubah status kegiatan menjadi "${statusLabels[newStatus] || newStatus}"?`,
+      type: 'info',
+      confirmText: 'Ya, Ubah',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setUpdatingStatus(true);
+        setError('');
+        setSuccess('');
 
-      if (res.ok) {
-        setCurrentStatus(newStatus);
-        setKegiatan(prev => prev ? { ...prev, status: newStatus } : null);
-        setSuccess('Status berhasil diperbarui');
-        fetchData(); // Refresh to recalculate kinerja
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal mengupdate status');
+        try {
+          const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nama: kegiatan?.nama,
+              tanggal_mulai: kegiatan?.tanggal_mulai,
+              status: newStatus
+            })
+          });
+
+          if (res.ok) {
+            setCurrentStatus(newStatus);
+            setKegiatan(prev => prev ? { ...prev, status: newStatus } : null);
+            showSuccess('Berhasil', 'Status kegiatan berhasil diperbarui');
+            fetchData(); // Refresh to recalculate kinerja
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal mengupdate status');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showError('Gagal', 'Terjadi kesalahan saat mengupdate status');
+        } finally {
+          setUpdatingStatus(false);
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Terjadi kesalahan saat mengupdate status');
-    } finally {
-      setUpdatingStatus(false);
-    }
+    });
   };
 
   // Handle update raw data (data mentah monitoring)
   const handleUpdateRawData = async () => {
-    setUpdatingRawData(true);
-    setError('');
-    setSuccess('');
+    showConfirm({
+      title: 'Update Data Monitoring',
+      message: 'Apakah Anda yakin ingin menyimpan perubahan data monitoring? Skor kinerja akan dihitung ulang.',
+      type: 'info',
+      confirmText: 'Ya, Simpan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setUpdatingRawData(true);
+        setError('');
+        setSuccess('');
 
-    try {
-      const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nama: kegiatan?.nama,
-          tanggal_mulai: kegiatan?.tanggal_mulai,
-          output_realisasi: parseFloat(rawDataForm.output_realisasi) || 0,
-          tanggal_realisasi_selesai: rawDataForm.tanggal_realisasi_selesai || null
-        })
-      });
+        try {
+          const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nama: kegiatan?.nama,
+              tanggal_mulai: kegiatan?.tanggal_mulai,
+              output_realisasi: parseFloat(rawDataForm.output_realisasi) || 0,
+              tanggal_realisasi_selesai: rawDataForm.tanggal_realisasi_selesai || null
+            })
+          });
 
-      if (res.ok) {
-        setSuccess('Data monitoring berhasil diperbarui. Skor kinerja akan dihitung ulang.');
-        fetchData(); // Refresh to get updated kinerja calculation
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal menyimpan data monitoring');
+          if (res.ok) {
+            showSuccess('Berhasil', 'Data monitoring berhasil diperbarui. Skor kinerja akan dihitung ulang.');
+            fetchData(); // Refresh to get updated kinerja calculation
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal menyimpan data monitoring');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showError('Gagal', 'Terjadi kesalahan saat menyimpan data');
+        } finally {
+          setUpdatingRawData(false);
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Terjadi kesalahan saat menyimpan data');
-    } finally {
-      setUpdatingRawData(false);
-    }
+    });
   };
 
   // Handle upload dokumen output
@@ -530,30 +553,38 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
 
   // Handle minta validasi dokumen (mirip dengan handleMintaValidasiKuantitas)
   const handleMintaValidasiDokumen = async (id: number) => {
-    try {
-      setError('');
-      setMintingValidasiDokumenId(id);
-      const res = await fetch('/api/pelaksana/dokumen-output', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dokumenId: id, action: 'minta_validasi' })
-      });
+    showConfirm({
+      title: 'Ajukan Validasi Dokumen',
+      message: 'Apakah Anda yakin ingin mengajukan dokumen ini untuk validasi? Status akan berubah menjadi "Menunggu Validasi".',
+      type: 'info',
+      confirmText: 'Ya, Ajukan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        try {
+          setError('');
+          setMintingValidasiDokumenId(id);
+          const res = await fetch('/api/pelaksana/dokumen-output', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dokumenId: id, action: 'minta_validasi' })
+          });
 
-      const data = await res.json();
-      
-      if (res.ok) {
-        setSuccess('Dokumen berhasil diajukan untuk validasi');
-        fetchDokumenOutput();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error || 'Gagal mengajukan dokumen');
+          const data = await res.json();
+          
+          if (res.ok) {
+            showSuccess('Berhasil', 'Dokumen berhasil diajukan untuk validasi');
+            fetchDokumenOutput();
+          } else {
+            showError('Gagal', data.error || 'Gagal mengajukan dokumen');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showError('Gagal', 'Terjadi kesalahan saat mengajukan dokumen');
+        } finally {
+          setMintingValidasiDokumenId(null);
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Terjadi kesalahan saat mengajukan dokumen');
-    } finally {
-      setMintingValidasiDokumenId(null);
-    }
+    });
   };
 
   // Handle submit kuantitas output (untuk jenis_validasi = 'kuantitas') dengan upload bukti
@@ -742,35 +773,43 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
 
   // Fungsi untuk meminta validasi dari pimpinan
   const handleRequestValidation = async () => {
-    setRequestingValidation(true);
-    setError('');
-    setSuccess('');
+    showConfirm({
+      title: 'Ajukan Validasi ke Pimpinan',
+      message: 'Apakah Anda yakin ingin mengajukan kegiatan ini untuk divalidasi oleh pimpinan? Pastikan semua data sudah lengkap dan benar.',
+      type: 'info',
+      confirmText: 'Ya, Ajukan',
+      cancelText: 'Batal',
+      onConfirm: async () => {
+        setRequestingValidation(true);
+        setError('');
+        setSuccess('');
 
-    try {
-      const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nama: kegiatan?.nama,
-          tanggal_mulai: kegiatan?.tanggal_mulai,
-          status_verifikasi: 'menunggu'
-        })
-      });
+        try {
+          const res = await fetch(`/api/pelaksana/kegiatan-operasional/${kegiatanId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nama: kegiatan?.nama,
+              tanggal_mulai: kegiatan?.tanggal_mulai,
+              status_verifikasi: 'menunggu'
+            })
+          });
 
-      if (res.ok) {
-        setSuccess('Permintaan validasi berhasil dikirim ke pimpinan!');
-        fetchData();
-        setTimeout(() => setSuccess(''), 4000);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Gagal mengirim permintaan validasi');
+          if (res.ok) {
+            showSuccess('Berhasil', 'Permintaan validasi berhasil dikirim ke pimpinan!');
+            fetchData();
+          } else {
+            const data = await res.json();
+            showError('Gagal', data.error || 'Gagal mengirim permintaan validasi');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showError('Gagal', 'Terjadi kesalahan saat mengirim permintaan validasi');
+        } finally {
+          setRequestingValidation(false);
+        }
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setError('Terjadi kesalahan saat mengirim permintaan validasi');
-    } finally {
-      setRequestingValidation(false);
-    }
+    });
   };
 
   const handleSubmitFisik = async (e: React.FormEvent) => {
