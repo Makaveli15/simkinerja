@@ -9,7 +9,7 @@
  *    - Untuk jenis_validasi='kuantitas': SUM(validasi_kuantitas.jumlah_output WHERE status='disahkan')
  *    - Untuk jenis_validasi='dokumen': COUNT(dokumen_output WHERE tipe_dokumen='final' AND status_final='disahkan')
  * 2. Semua kendala sudah resolved (tidak ada kendala dengan status='open')
- * 3. Serapan anggaran >= 50% dari pagu (minimal untuk dianggap selesai)
+ * 3. Serapan anggaran = 100% dari pagu (sesuai aturan BPS, tidak boleh kurang/lebih)
  * 
  * Sinkronisasi dengan kinerjaCalculator.ts:
  * - tanggal_realisasi_selesai akan diisi dengan tanggal saat auto-complete dijalankan
@@ -20,8 +20,9 @@
 import pool from '@/lib/db';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
-// Ambang batas serapan anggaran minimum untuk auto-complete (50%)
-const AMBANG_SERAPAN_MINIMUM = 50;
+// Ambang batas serapan anggaran minimum untuk auto-complete (100%)
+// Di BPS, serapan anggaran harus tepat 100% (tidak boleh kurang atau lebih)
+const AMBANG_SERAPAN_MINIMUM = 100;
 
 export interface KegiatanCompletionStatus {
   kegiatan_id: number;
@@ -180,7 +181,7 @@ export async function checkCompletionConditions(kegiatanId: number): Promise<Keg
     // Cek kondisi
     const isOutputComplete = outputTervalidasi >= targetOutput;
     const isKendalaResolved = totalKendalaOpen === 0;
-    // Anggaran dianggap tercapai jika serapan >= 50% atau tidak ada pagu
+    // Anggaran dianggap tercapai jika serapan = 100% (sesuai aturan BPS) atau tidak ada pagu
     const isAnggaranTercapai = anggaranPagu <= 0 || serapanAnggaranPersen >= AMBANG_SERAPAN_MINIMUM;
     
     const canAutoComplete = isOutputComplete && isKendalaResolved && isAnggaranTercapai;
