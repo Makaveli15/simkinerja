@@ -45,6 +45,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Role tidak valid' }, { status: 400 });
     }
 
+    // Validasi: Pimpinan dan PPK hanya boleh 1 akun
+    if (role === 'pimpinan' || role === 'ppk') {
+      const [existingRows]: any = await pool.execute(
+        'SELECT COUNT(*) as count FROM users WHERE role = ?',
+        [role]
+      );
+      if (existingRows[0].count > 0) {
+        const roleName = role === 'pimpinan' ? 'Pimpinan' : 'PPK';
+        return NextResponse.json({ error: `Hanya boleh ada 1 akun ${roleName} dalam sistem` }, { status: 400 });
+      }
+    }
+
     // Tim wajib untuk pelaksana dan koordinator
     if ((role === 'pelaksana' || role === 'koordinator') && !tim_id) {
       return NextResponse.json({ error: 'Tim wajib dipilih untuk pelaksana dan koordinator' }, { status: 400 });
@@ -149,6 +161,30 @@ export async function PATCH(req: Request) {
       await pool.execute('UPDATE users SET password = ?, is_first_login = 1 WHERE id = ?', [hashedPassword, id]);
       
       return NextResponse.json({ message: `Password berhasil direset ke default (${DEFAULT_PASSWORD})` });
+    }
+
+    if (action === 'update_tim') {
+      const { tim_id } = body;
+      
+      // Cek apakah user adalah pelaksana atau koordinator
+      const [userRows]: any = await pool.execute('SELECT role FROM users WHERE id = ?', [id]);
+      if (!userRows || userRows.length === 0) {
+        return NextResponse.json({ error: 'User tidak ditemukan' }, { status: 404 });
+      }
+      
+      const userRole = userRows[0].role;
+      if (userRole !== 'pelaksana' && userRole !== 'koordinator') {
+        return NextResponse.json({ error: 'Hanya pelaksana dan koordinator yang dapat diubah timnya' }, { status: 400 });
+      }
+
+      // Validasi tim_id wajib untuk pelaksana dan koordinator
+      if (!tim_id) {
+        return NextResponse.json({ error: 'Tim wajib dipilih untuk pelaksana dan koordinator' }, { status: 400 });
+      }
+
+      await pool.execute('UPDATE users SET tim_id = ? WHERE id = ?', [tim_id, id]);
+      
+      return NextResponse.json({ message: 'Tim berhasil diperbarui' });
     }
 
     return NextResponse.json({ error: 'Action tidak valid' }, { status: 400 });

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Pagination from '../../components/Pagination';
 import { useAlertModal } from '@/app/components/AlertModal';
-import { LuPlus, LuUsers, LuCircleCheck, LuBan, LuBadgeCheck, LuSearch, LuKeyRound, LuTrash2, LuInbox, LuX, LuInfo } from 'react-icons/lu';
+import { LuPlus, LuUsers, LuCircleCheck, LuBan, LuBadgeCheck, LuSearch, LuKeyRound, LuTrash2, LuInbox, LuX, LuInfo, LuPencil } from 'react-icons/lu';
 
 interface Tim {
   id: number;
@@ -49,6 +49,12 @@ export default function UsersPage() {
     role: 'pelaksana',
     tim_id: '',
   });
+
+  // State untuk Edit Tim
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editTimId, setEditTimId] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   // Alert Modal hook
   const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
@@ -209,6 +215,44 @@ export default function UsersPage() {
         }
       }
     });
+  };
+
+  const handleEditTim = (user: User) => {
+    setEditUser(user);
+    setEditTimId(user.tim_id?.toString() || '');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditTim = async () => {
+    if (!editUser) return;
+    
+    setEditSaving(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: editUser.id, 
+          action: 'update_tim',
+          tim_id: editTimId || null
+        }),
+      });
+
+      if (res.ok) {
+        setShowEditModal(false);
+        setEditUser(null);
+        showSuccess('Berhasil', 'Tim berhasil diperbarui');
+        fetchUsers();
+      } else {
+        const error = await res.json();
+        showError('Gagal', error.error || 'Gagal memperbarui tim');
+      }
+    } catch (error) {
+      console.error('Error updating tim:', error);
+      showError('Gagal', 'Terjadi kesalahan saat memperbarui tim');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const filteredUsers = users.filter(user => {
@@ -414,6 +458,15 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-1">
+                      {(user.role === 'pelaksana' || user.role === 'koordinator') && (
+                        <button
+                          onClick={() => handleEditTim(user)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit Tim"
+                        >
+                          <LuPencil className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleResetPassword(user)}
                         disabled={actionLoading === user.id}
@@ -523,11 +576,21 @@ export default function UsersPage() {
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
                 >
                   <option value="admin">Admin</option>
-                  <option value="pimpinan">Pimpinan</option>
+                  <option value="pimpinan" disabled={users.some(u => u.role === 'pimpinan')}>
+                    Pimpinan {users.some(u => u.role === 'pimpinan') ? '(sudah ada)' : ''}
+                  </option>
                   <option value="koordinator">Koordinator</option>
-                  <option value="ppk">PPK</option>
+                  <option value="ppk" disabled={users.some(u => u.role === 'ppk')}>
+                    PPK {users.some(u => u.role === 'ppk') ? '(sudah ada)' : ''}
+                  </option>
                   <option value="pelaksana">Pelaksana</option>
                 </select>
+                {(formData.role === 'pimpinan' && users.some(u => u.role === 'pimpinan')) && (
+                  <p className="text-xs text-red-500 mt-1">Sudah ada akun Pimpinan dalam sistem</p>
+                )}
+                {(formData.role === 'ppk' && users.some(u => u.role === 'ppk')) && (
+                  <p className="text-xs text-red-500 mt-1">Sudah ada akun PPK dalam sistem</p>
+                )}
               </div>
               {(formData.role === 'pelaksana' || formData.role === 'koordinator') && (
                 <div>
@@ -562,6 +625,77 @@ export default function UsersPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Tim */}
+      {showEditModal && editUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Edit Tim Pengguna
+                </h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <LuX className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-sm text-gray-500">Pengguna</p>
+                <p className="font-semibold text-gray-900">{editUser.nama_lengkap || editUser.username}</p>
+                <p className="text-sm text-gray-500">@{editUser.username}</p>
+                <span className={`inline-flex px-2 py-0.5 mt-2 text-xs font-medium rounded-full ${roleColors[editUser.role]}`}>
+                  {editUser.role.charAt(0).toUpperCase() + editUser.role.slice(1)}
+                </span>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Tim</label>
+                <select
+                  value={editTimId}
+                  onChange={(e) => setEditTimId(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+                  required
+                >
+                  <option value="">-- Pilih Tim --</option>
+                  {timList.map((tim) => (
+                    <option key={tim.id} value={tim.id}>{tim.nama}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-2 text-blue-700">
+                  <LuInfo className="w-5 h-5 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium">Catatan</p>
+                    <p className="text-blue-600">Admin hanya dapat mengubah tim pengguna. Untuk mengubah data lain, pengguna harus melakukannya sendiri melalui profil mereka.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditTim}
+                  disabled={editSaving}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/30 font-medium disabled:opacity-50"
+                >
+                  {editSaving ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -875,6 +875,10 @@ export default function DetailKegiatanPage({ params }: { params: Promise<{ id: s
                   {getStatusLabel(kegiatan.status)}
                 </span>
                 
+                <Link href={`/pelaksana/kegiatan/${kegiatanId}/update`} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+                  <LuTrendingUp className="w-4 h-4" />
+                  Update
+                </Link>
                 <button onClick={() => setShowEditModal(true)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
                   <LuSquarePen className="w-4 h-4" />
                   Edit

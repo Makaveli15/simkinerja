@@ -91,11 +91,15 @@ export default function AdminLayout({
       icon: <LuLayoutDashboard className="w-5 h-5" />
     },
     { 
+      href: '/admin/users', 
+      label: 'Data Pengguna', 
+      icon: <LuUsers className="w-5 h-5" />
+    },
+    { 
       href: '#', 
       label: 'Data Master', 
       icon: <LuDatabase className="w-5 h-5" />,
       subMenu: [
-        { href: '/admin/users', label: 'Data Pengguna', icon: <LuUsers className="w-4 h-4" /> },
         { href: '/admin/tim', label: 'Data Tim', icon: <LuBuilding2 className="w-4 h-4" /> },
         { href: '/admin/kro', label: 'Data KRO', icon: <LuFileText className="w-4 h-4" /> },
         { href: '/admin/satuan-output', label: 'Satuan Output', icon: <LuRuler className="w-4 h-4" /> },
@@ -111,7 +115,7 @@ export default function AdminLayout({
   ];
 
   // Auto open Data Master submenu if on any of its pages
-  const isDataMasterActive = ['/admin/users', '/admin/tim', '/admin/kro', '/admin/satuan-output', '/admin/mitra', '/admin/indikator'].some(path => pathname.startsWith(path));
+  const isDataMasterActive = ['/admin/tim', '/admin/kro', '/admin/satuan-output', '/admin/mitra', '/admin/indikator'].some(path => pathname.startsWith(path));
   
   useEffect(() => {
     if (isDataMasterActive) {
