@@ -266,15 +266,15 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   });
   const [submittingProgres, setSubmittingProgres] = useState(false);
 
-  // Form states
-  const today = new Date().toISOString().split('T')[0];
+  // Form states - use empty string to avoid hydration mismatch, will be set in useEffect
+  const [today, setToday] = useState('');
   const [fisikForm, setFisikForm] = useState({
-    tanggal: today,
+    tanggal: '',
     persentase: '',
     keterangan: ''
   });
   const [anggaranForm, setAnggaranForm] = useState({
-    tanggal: today,
+    tanggal: '',
     jumlah: '',
     keterangan: ''
   });
@@ -292,6 +292,14 @@ export default function UpdateKegiatanPage({ params }: { params: Promise<{ id: s
   // Modal states
   const [showTindakLanjutModal, setShowTindakLanjutModal] = useState(false);
   const [selectedKendalaForTL, setSelectedKendalaForTL] = useState<Kendala | null>(null);
+
+  // Initialize date on client side to avoid hydration mismatch
+  useEffect(() => {
+    const todayDate = new Date().toISOString().split('T')[0];
+    setToday(todayDate);
+    setFisikForm(prev => ({ ...prev, tanggal: todayDate }));
+    setAnggaranForm(prev => ({ ...prev, tanggal: todayDate }));
+  }, []);
 
   useEffect(() => {
     fetchData();

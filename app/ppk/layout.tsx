@@ -58,6 +58,7 @@ export default function PPKLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Notifications state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -78,6 +79,11 @@ export default function PPKLayout({
       setIsKegiatanOpen(true);
     }
   }, [pathname]);
+
+  // Set mounted state to fix hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const menuItems = [
     { 
@@ -191,16 +197,20 @@ export default function PPKLayout({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
+  const handleLogout = () => {
+    // Use sendBeacon for reliable logout on mobile browsers
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/auth/logout');
+    } else {
+      fetch('/api/auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
     }
+    router.push('/');
   };
 
   const formatTimeAgo = (dateString: string) => {
+    // Return placeholder during SSR to avoid hydration mismatch
+    if (!mounted) return '-';
+    
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();

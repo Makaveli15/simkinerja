@@ -158,13 +158,17 @@ export default function PelaksanaLayout({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/');
-    } catch (error) {
-      console.error('Error logging out:', error);
+  const handleLogout = () => {
+    // Use sendBeacon for reliable logout on mobile browsers
+    // sendBeacon is designed for sending data during page unload/navigation
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/auth/logout');
+    } else {
+      // Fallback: fire-and-forget fetch (don't await)
+      fetch('/api/auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
     }
+    // Immediately redirect without waiting
+    router.push('/');
   };
 
   const markAsRead = async (id: string) => {
@@ -289,7 +293,7 @@ export default function PelaksanaLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50" suppressHydrationWarning>
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 h-full bg-gradient-to-b from-blue-500 via-blue-500 to-blue-600 text-white transition-all duration-300 z-40 ${

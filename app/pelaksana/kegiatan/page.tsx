@@ -94,8 +94,8 @@ export default function KegiatanPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportType, setExportType] = useState<'excel' | 'pdf'>('excel');
   const [exportPeriode, setExportPeriode] = useState('all');
-  const [exportTahun, setExportTahun] = useState(new Date().getFullYear().toString());
-  const [exportBulan, setExportBulan] = useState((new Date().getMonth() + 1).toString());
+  const [exportTahun, setExportTahun] = useState('');
+  const [exportBulan, setExportBulan] = useState('');
   const [submittingId, setSubmittingId] = useState<number | null>(null);
   
   // Alert Modal hook
@@ -105,9 +105,17 @@ export default function KegiatanPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Generate years list (current year and 5 years back)
-  const currentYear = new Date().getFullYear();
-  const yearsList = Array.from({ length: 6 }, (_, i) => currentYear - i);
+  // Generate years list (current year and 5 years back) - initialized on client
+  const [yearsList, setYearsList] = useState<number[]>([]);
+  
+  // Initialize date-based values on client side
+  useEffect(() => {
+    const now = new Date();
+    const thisYear = now.getFullYear();
+    setExportTahun(thisYear.toString());
+    setExportBulan((now.getMonth() + 1).toString());
+    setYearsList(Array.from({ length: 6 }, (_, i) => thisYear - i));
+  }, []);
   
   // Month names
   const bulanList = [

@@ -43,26 +43,40 @@ export default function LaporanPage() {
   // Alert Modal hook
   const { showConfirm, showSuccess, showError, AlertModal } = useAlertModal();
   
-  // Filter state
-  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear());
+  // Filter state - use empty/default initial values to avoid hydration mismatch
+  const [filterTahun, setFilterTahun] = useState<number>(0);
   const [filterBulan, setFilterBulan] = useState<number | ''>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Form state for upload
   const [judul, setJudul] = useState('');
-  const [periodeBulan, setPeriodeBulan] = useState(new Date().getMonth() + 1);
-  const [periodeTahun, setPeriodeTahun] = useState(new Date().getFullYear());
+  const [periodeBulan, setPeriodeBulan] = useState<number>(1);
+  const [periodeTahun, setPeriodeTahun] = useState<number>(0);
   const [keterangan, setKeterangan] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Generate years for dropdown
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  // Generate years for dropdown - will be set after mount
+  const [years, setYears] = useState<number[]>([]);
+
+  // Initialize date-based values on client side only
+  useEffect(() => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    setFilterTahun(currentYear);
+    setPeriodeBulan(currentMonth);
+    setPeriodeTahun(currentYear);
+    setYears(Array.from({ length: 5 }, (_, i) => currentYear - 2 + i));
+    setIsInitialized(true);
+  }, []);
 
   useEffect(() => {
-    fetchLaporan();
-  }, [filterTahun, filterBulan]);
+    if (isInitialized && filterTahun > 0) {
+      fetchLaporan();
+    }
+  }, [filterTahun, filterBulan, isInitialized]);
 
   const fetchLaporan = async () => {
     try {
@@ -184,8 +198,10 @@ export default function LaporanPage() {
 
   const resetForm = () => {
     setJudul('');
-    setPeriodeBulan(new Date().getMonth() + 1);
-    setPeriodeTahun(new Date().getFullYear());
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    setPeriodeBulan(currentMonth);
+    setPeriodeTahun(currentYear);
     setKeterangan('');
     setFile(null);
     if (fileInputRef.current) {

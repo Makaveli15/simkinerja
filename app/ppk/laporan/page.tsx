@@ -27,18 +27,27 @@ export default function PPKLaporanPage() {
   const [laporanList, setLaporanList] = useState<Laporan[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Filter state
-  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear());
+  // Filter state - Initialize with 0 to avoid hydration mismatch
+  const [filterTahun, setFilterTahun] = useState(0);
   const [filterBulan, setFilterBulan] = useState<number | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Generate years for dropdown
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  // Generate years for dropdown - Initialize empty to avoid hydration mismatch
+  const [years, setYears] = useState<number[]>([]);
+
+  // Set initial values on client-side only to avoid hydration mismatch
+  useEffect(() => {
+    const currentYear = new Date().getFullYear();
+    setFilterTahun(currentYear);
+    setYears(Array.from({ length: 5 }, (_, i) => currentYear - 2 + i));
+  }, []);
 
   useEffect(() => {
-    fetchLaporan();
+    if (filterTahun > 0) {
+      fetchLaporan();
+    }
   }, [filterTahun, filterBulan]);
 
   const fetchLaporan = async () => {

@@ -66,6 +66,7 @@ export default function AdminLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Search state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -122,6 +123,11 @@ export default function AdminLayout({
       setOpenSubMenu('Data Master');
     }
   }, [isDataMasterActive]);
+
+  // Set mounted state to fix hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch user profile
   const fetchProfile = useCallback(async () => {
@@ -268,16 +274,20 @@ export default function AdminLayout({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
+  const handleLogout = () => {
+    // Use sendBeacon for reliable logout on mobile browsers
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/auth/logout');
+    } else {
+      fetch('/api/auth/logout', { method: 'POST', keepalive: true }).catch(() => {});
     }
+    router.push('/');
   };
 
   const formatTimeAgo = (dateString: string) => {
+    // Return placeholder during SSR to avoid hydration mismatch
+    if (!mounted) return '-';
+    
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();

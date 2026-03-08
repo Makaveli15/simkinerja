@@ -33,21 +33,32 @@ export default function PimpinanLaporanPage() {
   const [timList, setTimList] = useState<Tim[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Filter state
-  const [filterTahun, setFilterTahun] = useState(new Date().getFullYear());
+  // Filter state - initialize with 0 to avoid hydration mismatch
+  const [filterTahun, setFilterTahun] = useState<number>(0);
   const [filterBulan, setFilterBulan] = useState<number | ''>('');
   const [filterTim, setFilterTim] = useState<number | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Generate years for dropdown
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+  const [years, setYears] = useState<number[]>([]);
+
+  // Initialize date-based values on client side
+  useEffect(() => {
+    const currentYear = new Date().getFullYear();
+    setFilterTahun(currentYear);
+    setYears(Array.from({ length: 5 }, (_, i) => currentYear - 2 + i));
+    setIsInitialized(true);
+  }, []);
 
   useEffect(() => {
-    fetchLaporan();
-    fetchTim();
-  }, [filterTahun, filterBulan, filterTim]);
+    if (isInitialized && filterTahun > 0) {
+      fetchLaporan();
+      fetchTim();
+    }
+  }, [filterTahun, filterBulan, filterTim, isInitialized]);
 
   const fetchLaporan = async () => {
     try {

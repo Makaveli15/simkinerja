@@ -42,13 +42,15 @@ export default function JadwalPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  // Use 0 as initial value to avoid hydration mismatch
+  const [currentMonth, setCurrentMonth] = useState(0);
+  const [currentYear, setCurrentYear] = useState(0);
   const [statusFilter, setStatusFilter] = useState('semua');
   const [filterBulan, setFilterBulan] = useState<string>('semua');
-  const [filterTahun, setFilterTahun] = useState<number>(new Date().getFullYear());
+  const [filterTahun, setFilterTahun] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Real-time state
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -57,7 +59,17 @@ export default function JadwalPage() {
   const prevKegiatanRef = useRef<Kegiatan[]>([]);
 
   // Generate tahun options (5 tahun terakhir hingga tahun depan)
-  const tahunOptions = Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 5 + i);
+  const [tahunOptions, setTahunOptions] = useState<number[]>([]);
+
+  // Initialize date values on client side
+  useEffect(() => {
+    const now = new Date();
+    setCurrentMonth(now.getMonth());
+    setCurrentYear(now.getFullYear());
+    setFilterTahun(now.getFullYear());
+    setTahunOptions(Array.from({ length: 7 }, (_, i) => now.getFullYear() - 5 + i));
+    setIsInitialized(true);
+  }, []);
 
   // Fetch kegiatan dengan silent mode untuk auto-refresh
   const fetchKegiatan = useCallback(async (silent = false) => {
