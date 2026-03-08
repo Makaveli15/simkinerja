@@ -54,11 +54,24 @@ export async function PUT(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { nama, email, foto } = body;
+    const { username, nama, email, foto } = body;
 
     // Validate required fields
+    if (!username) {
+      return NextResponse.json({ error: 'Username wajib diisi' }, { status: 400 });
+    }
     if (!nama) {
       return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
+    }
+
+    // Check if username is already taken by another user
+    const [existingUsernames] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM users WHERE username = ? AND id != ?',
+      [username, auth.id]
+    );
+    
+    if (existingUsernames.length > 0) {
+      return NextResponse.json({ error: 'Username sudah digunakan' }, { status: 400 });
     }
 
     // Check if email is already taken by another user (if email provided)
@@ -75,8 +88,8 @@ export async function PUT(request: NextRequest) {
 
     // Update profile (only columns that exist in users table)
     await pool.query(
-      'UPDATE users SET nama_lengkap = ?, email = ?, foto = ? WHERE id = ?',
-      [nama, email || null, foto || null, auth.id]
+      'UPDATE users SET username = ?, nama_lengkap = ?, email = ?, foto = ? WHERE id = ?',
+      [username, nama, email || null, foto || null, auth.id]
     );
 
     // Fetch updated profile

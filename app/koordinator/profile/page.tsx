@@ -77,6 +77,7 @@ export default function KoordinatorProfilePage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          username: formData.username,
           nama: formData.nama_lengkap,
           email: formData.email,
           foto: formData.foto,
@@ -87,7 +88,7 @@ export default function KoordinatorProfilePage() {
 
       if (res.ok) {
         showSuccess('Berhasil!', 'Profil berhasil diperbarui!');
-        setUser({ ...user!, nama_lengkap: formData.nama_lengkap, email: formData.email, foto: formData.foto });
+        setUser({ ...user!, username: formData.username, nama_lengkap: formData.nama_lengkap, email: formData.email, foto: formData.foto });
         window.dispatchEvent(new CustomEvent('profileUpdated'));
       } else {
         showError('Gagal!', data.error || 'Gagal menyimpan profil');
@@ -323,7 +324,7 @@ export default function KoordinatorProfilePage() {
                     </div>
                   </div>
 
-                  {/* Username (readonly) */}
+                  {/* Username */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Username
@@ -331,10 +332,10 @@ export default function KoordinatorProfilePage() {
                     <input
                       type="text"
                       value={formData.username}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
-                      disabled
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      required
                     />
-                    <p className="text-xs text-gray-500 mt-1">Username tidak dapat diubah</p>
                   </div>
 
                   {/* Nama Lengkap */}
